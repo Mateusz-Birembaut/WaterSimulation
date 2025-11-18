@@ -93,7 +93,6 @@ Useful shortcuts:
 
 - `F5` — start the debugger (pre‑build is configured via `preLaunchTask`)
 - `Ctrl+F5` / `⌘+F5` — start without debugging
-- `Ctrl+Shift+P` -> `Tasks: Run Task` -> `Run WaterSimulation` — run the binary task
 
 Useful commands
 ---------------
