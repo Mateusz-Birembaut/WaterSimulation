@@ -1,0 +1,24 @@
+.vscode/c_cpp_properties.json
+build/
+
+# Don't ignore the `external/` directory — it contains git submodules (Magnum, Corrade)
+# Ignore only build outputs and generated libs inside external
+external/*/build/
+external/*/bin/
+external/*/lib/
+external/*/lib64/
+
+# CMake temporary files
+**/CMakeFiles/
+**/CMakeCache.txt
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.dylib
+*.exe
+
+# Misc
+.DS_Store
+*.log

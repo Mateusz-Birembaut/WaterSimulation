@@ -1,0 +1,55 @@
+{
+    "tasks": [
+        {
+            "label": "CMake: configure Debug",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", ".",
+                "-B", "build",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: build",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build",
+                "--", "-j4"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMake: build WaterSimulation",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build", "build",
+                "--target", "WaterSimulation",
+                "--", "-j4"
+            ],
+            "dependsOn": "CMake: configure Debug",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run WaterSimulation",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/Debug/bin/WaterSimulation",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "dependsOn": "CMake: build WaterSimulation",
+            "problemMatcher": []
+        }
+    ],
+    "version": "2.0.0"
+}
