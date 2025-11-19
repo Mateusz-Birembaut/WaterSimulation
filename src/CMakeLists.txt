@@ -2,11 +2,17 @@ find_package(Magnum REQUIRED GL Sdl2Application)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-add_executable(WaterSimulation WaterSimulation.cpp)
+add_executable(WaterSimulation 
+    WaterSimulation.cpp
+    UIManager.cpp
+)
+
 target_link_libraries(WaterSimulation PRIVATE
     Magnum::Application
     Magnum::GL
-    Magnum::Magnum)
+    Magnum::Magnum
+    MagnumIntegration::ImGui
+)
 
 
 target_include_directories(WaterSimulation PUBLIC

@@ -1,15 +1,17 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Corrade/Containers/StringView.h>
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/Math/Time.h>
 
 #include <WaterSimulation/WaterSimulation.h>
 
 using namespace Magnum;
-
+using namespace Math::Literals;
 
 WaterSimulation::Application::Application(const Arguments& arguments): 
     Platform::Application{arguments, Configuration{}
@@ -17,12 +19,16 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         .setSize({1200, 800})
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
-
 {
-    {
-        using namespace Math::Literals;
-        GL::Renderer::setClearColor(0xa5c9ea_rgbf);
-    }
+    m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
+
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+        GL::Renderer::BlendEquation::Add);
+
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
+    GL::Renderer::setClearColor(0xa5c9ea_rgbf);
 
     Debug{} << "This application is running on"
             << GL::Context::current().version() << "using"
@@ -31,14 +37,51 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
 void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
     GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
+
+    m_imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
+        event.windowSize(), event.framebufferSize());
 }
 
 void WaterSimulation::Application::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 
-    /* TODO: Add your drawing code here */
+    m_UIManager.drawUI(*this, m_imgui);
 
     swapBuffers();
+    redraw();
+}
+
+
+void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
+    if(m_imgui.handleKeyPressEvent(event)) return;
+}
+
+void WaterSimulation::Application::keyReleaseEvent(KeyEvent& event) {
+    if(m_imgui.handleKeyReleaseEvent(event)) return;
+}
+
+void WaterSimulation::Application::pointerPressEvent(PointerEvent& event) {
+    if(m_imgui.handlePointerPressEvent(event)) return;
+}
+
+void WaterSimulation::Application::pointerReleaseEvent(PointerEvent& event) {
+    if(m_imgui.handlePointerReleaseEvent(event)) return;
+}
+
+void WaterSimulation::Application::pointerMoveEvent(PointerMoveEvent& event) {
+    if(m_imgui.handlePointerMoveEvent(event)) return;
+}
+
+void WaterSimulation::Application::scrollEvent(ScrollEvent& event) {
+    if(m_imgui.handleScrollEvent(event)) {
+        /* Prevent scrolling the page */
+        event.setAccepted();
+        return;
+    }
+}
+
+void WaterSimulation::Application::textInputEvent(TextInputEvent& event) {
+    if(m_imgui.handleTextInputEvent(event)) return;
 }
 
 MAGNUM_APPLICATION_MAIN(WaterSimulation::Application)

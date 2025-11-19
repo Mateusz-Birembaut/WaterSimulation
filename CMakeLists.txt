@@ -10,4 +10,9 @@ add_subdirectory(external/corrade EXCLUDE_FROM_ALL)
 set(MAGNUM_WITH_SDL2APPLICATION ON CACHE BOOL "" FORCE)
 add_subdirectory(external/magnum EXCLUDE_FROM_ALL)
 
+# Magnum Integration
+set(MAGNUM_WITH_IMGUIINTEGRATION ON CACHE BOOL "" FORCE)
+set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/external/imgui CACHE STRING "" FORCE) # Specify the location of imgui
+add_subdirectory(external/magnum-integration EXCLUDE_FROM_ALL)
+
 add_subdirectory(src)
