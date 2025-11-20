@@ -1,14 +1,19 @@
 #pragma once
 
+#include <WaterSimulation/Camera.h>
+
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
 
 namespace WaterSimulation {
+    class Application;
+
     class UIManager {
     public:
-        void drawUI(Magnum::Platform::Sdl2Application & _app, Magnum::ImGuiIntegration::Context& _context);
+        void drawUI(Application& app);
 
     private:
-        void paramWindow();
+        void perfWindow();
+        void cameraWindow(Camera & cam);
     };
 } // namespace WaterSimulation
