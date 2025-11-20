@@ -76,13 +76,20 @@ void WaterSimulation::UIManager::cameraWindow(Camera & cam){
 
         Magnum::Deg fovDeg = cam.FOV();              
         float fov = static_cast<float>(fovDeg);                  
-        ImGui::Text("FOV: %.1f deg", static_cast<double>(fov));
+        if(ImGui::SliderFloat("FOV", &fov, 10.0f, 170.0f)) {
+            cam.setFOV(fov);
+        }
 
         Magnum::Vector3 pos = cam.position();
-        ImGui::Text("Position: (%.2f, %.2f, %.2f)", static_cast<double>(pos.x()), static_cast<double>(pos.y()), static_cast<double>(pos.z()));
+        if(ImGui::DragFloat3("Position", pos.data(), 0.1f)) {
+            cam.setPos(pos); 
+        }
 
         Magnum::Vector3 dir = cam.direction();
         ImGui::Text("Target Direction: (%.2f, %.2f, %.2f)", static_cast<double>(dir.x()), static_cast<double>(dir.y()), static_cast<double>(dir.z()));
+
+
+
         ImGui::End();
 
     }

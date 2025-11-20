@@ -4,7 +4,8 @@
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/ECS.h>
-#include <WaterSimulation/RenderSystem.h>
+#include <WaterSimulation/Systems/RenderSystem.h>
+#include <WaterSimulation/Systems/TransformSystem.h>
 
 #include <memory>
 #include <unordered_set>
@@ -34,12 +35,12 @@ namespace WaterSimulation {
 			bool m_cursorLocked{false};
 
 			Registry m_registry;
+			TransformSystem m_transform_System;
 			RenderSystem m_renderSystem;
 			
 			std::unique_ptr<Mesh> m_testMesh;
 			Magnum::Shaders::FlatGL3D m_testFlatShader{Magnum::NoCreate};
 			
-
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;
 			void handleCameraInputs();

@@ -1,4 +1,5 @@
-#include <WaterSimulation/RenderSystem.h>
+#include <WaterSimulation/Systems/RenderSystem.h>
+#include <WaterSimulation/Components/TransformComponent.h>
 
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/PhongGL.h>
@@ -17,22 +18,24 @@ void RenderSystem::render(
     
     const Matrix4 viewProj = projectionMatrix * viewMatrix;
     
-    auto view = registry.view<MeshComponent>();
+    auto view = registry.view<MeshComponent, TransformComponent>();
     for (Entity entity : view) {
         MeshComponent& meshComp = registry.get<MeshComponent>(entity);
-        
-        renderMesh(meshComp, meshComp.transform, viewProj);
+        TransformComponent& transformComp = registry.get<TransformComponent>(entity);
+
+        Matrix4 mvp = viewProj * transformComp.globalModel;
+
+        Debug{} << "render entity : " << transformComp.position;
+
+        renderMesh(meshComp, mvp);
     }
 }
 
 void RenderSystem::renderMesh(
     MeshComponent& meshComp,
-    const Matrix4& transformation,
-    const Matrix4& viewProj) {
+    const Matrix4& mvp) {
     
     if (!meshComp.shader) return;
-    
-    const Matrix4 mvp = viewProj * transformation;
     
     if (auto* flatShader = dynamic_cast<Shaders::FlatGL3D*>(meshComp.shader)) {
         flatShader->setTransformationProjectionMatrix(mvp)

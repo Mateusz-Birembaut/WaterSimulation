@@ -1,4 +1,4 @@
-#include <WaterSimulation/MeshComponent.h>
+#include <WaterSimulation/Components/MeshComponent.h>
 
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/Shaders/FlatGL.h>

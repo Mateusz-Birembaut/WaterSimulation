@@ -6,8 +6,9 @@ add_executable(WaterSimulation
     WaterSimulation.cpp
     UIManager.cpp
     Mesh.cpp
-    MeshComponent.cpp
-    RenderSystem.cpp
+    Components/MeshComponent.cpp
+    Systems/RenderSystem.cpp
+    Systems/TransformSystem.cpp
 )
 
 target_link_libraries(WaterSimulation PRIVATE

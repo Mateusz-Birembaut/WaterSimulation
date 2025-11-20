@@ -2,7 +2,10 @@
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
-#include <WaterSimulation/MeshComponent.h>
+#include <WaterSimulation/Components/MeshComponent.h>
+#include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Systems/RenderSystem.h>
+#include <WaterSimulation/Systems/TransformSystem.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
@@ -47,13 +50,18 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera->setPos({0.0f, 0.0f, 3.0f});
+    m_camera->setPos({0.0f, 0.0f, 0.0f});
     
     m_testFlatShader = Shaders::FlatGL3D{};
     
-    m_testMesh = std::make_unique<Mesh>("/home/mat/WaterSimulation/assets/Meshes/sphereLOD1.obj");
+    m_testMesh = std::make_unique<Mesh>("/home/mat/WaterSimulation/resources/assets/Meshes/sphereLOD1.obj");
 
     Entity testEntity = m_registry.create();
+    m_registry.emplace<TransformComponent>(
+        testEntity,
+        Magnum::Vector3{0.0f, 2.0f, -3.0f}
+    );
+
     m_registry.emplace<MeshComponent>(
         testEntity,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}},
@@ -84,10 +92,11 @@ void WaterSimulation::Application::drawEvent() {
     m_timeline.nextFrame();
     m_deltaTime = m_timeline.previousFrameDuration();
 
-
-
     auto view = m_camera->viewMatrix();
     auto proj = m_camera->projectionMatrix();
+
+    m_transform_System.update(m_registry);
+
     m_renderSystem.render(m_registry, view, proj);
 
     m_UIManager->drawUI(*this);
