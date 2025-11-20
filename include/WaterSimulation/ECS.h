@@ -18,7 +18,7 @@ namespace WaterSimulation{
 	class IComponentStorage {
 	public:
 		virtual ~IComponentStorage() = default;
-		virtual const bool has(Entity entity) = 0;
+		virtual bool has(Entity entity) = 0; 
 		virtual void remove(Entity entity) = 0;
 		virtual void clear() = 0;
 	};
@@ -39,7 +39,7 @@ namespace WaterSimulation{
 			components.reserve(MAX_ENTITIES);
 		}
 
-		inline const bool has(Entity entity){return sparse[entity] != INVALID;}
+		inline bool has(Entity entity){return sparse[entity] != INVALID;}
 
 		inline Component & get(Entity entity) {return components[sparse[entity]];}
 

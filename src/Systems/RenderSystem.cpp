@@ -25,8 +25,6 @@ void RenderSystem::render(
 
         Matrix4 mvp = viewProj * transformComp.globalModel;
 
-        Debug{} << "render entity : " << transformComp.position;
-
         renderMesh(meshComp, mvp);
     }
 }
@@ -43,7 +41,7 @@ void RenderSystem::renderMesh(
                   .draw(meshComp.glMesh);
     } 
 
-    // TODO: ajouter notre shader
+    // TODO: ajouter notre shader par exemple
     // if (auto* shaderPerso =  dynamic_cast<Shaders::ClasseDeNotreSahder*>(meshComp.shader))....
 }
 

@@ -59,7 +59,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Entity testEntity = m_registry.create();
     m_registry.emplace<TransformComponent>(
         testEntity,
-        Magnum::Vector3{0.0f, 2.0f, -3.0f}
+        Magnum::Vector3{0.0f, 0.0f, -3.0f}
     );
 
     m_registry.emplace<MeshComponent>(

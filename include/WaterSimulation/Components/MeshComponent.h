@@ -29,7 +29,7 @@ struct MeshComponent {
     std::vector<std::string> textureUniforms;
     std::string materialPath = "";
     
-    Magnum::Matrix4 transform;
+    //Magnum::Matrix4 transform;
     
     MeshComponent() = default;
 
@@ -49,8 +49,8 @@ struct MeshComponent {
     ) : 
         meshLODs(lods), 
         activeMesh(lods.empty() ? nullptr : lods[0].second),
-        shader(shaderProgram),
-        transform{Magnum::Math::IdentityInit}
+        shader(shaderProgram)
+        //transform{Magnum::Math::IdentityInit}
 
     {
         if (material.empty()) {
