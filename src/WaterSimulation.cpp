@@ -1,6 +1,8 @@
 #include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
+#include <WaterSimulation/Mesh.h>
+#include <WaterSimulation/MeshComponent.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
@@ -44,6 +46,19 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
+    
+
+    m_testMesh = std::make_unique<Mesh>("/home/mat/WaterSimulation/assets/Meshes/sphereLOD1.obj");
+    
+    Entity entity = m_registry.create();
+    m_registry.emplace<MeshComponent>(
+        entity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+    );
+}
+
+WaterSimulation::Application::~Application() {
+    m_registry.clear(); 
 }
 
 void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
@@ -111,6 +126,9 @@ void WaterSimulation::Application::pointerReleaseEvent(PointerEvent& event) {
 
 void WaterSimulation::Application::pointerMoveEvent(PointerMoveEvent& event) {
     if(m_imgui.handlePointerMoveEvent(event)) return;
+
+    if(!m_cursorLocked) return;
+
     Vector2 delta = event.relativePosition();
     if(delta.isZero()) return;
 

@@ -58,6 +58,15 @@ void WaterSimulation::UIManager::perfWindow(){
     }
 }
 
+void WaterSimulation::UIManager::sceneGraph(){
+    // test fenêtre
+    {
+        ImGui::Begin("Scene Graph");
+
+        ImGui::End();
+    }
+}
+
 void WaterSimulation::UIManager::cameraWindow(Camera & cam){
     // camera test fenêtre
     {

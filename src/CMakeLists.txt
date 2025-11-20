@@ -5,6 +5,8 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 add_executable(WaterSimulation 
     WaterSimulation.cpp
     UIManager.cpp
+    Mesh.cpp
+    MeshComponent.cpp
 )
 
 target_link_libraries(WaterSimulation PRIVATE
@@ -15,9 +17,12 @@ target_link_libraries(WaterSimulation PRIVATE
 )
 
 
-target_include_directories(WaterSimulation PUBLIC
+target_include_directories(WaterSimulation
+    PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}
 )
 
 # Make the executable a default target to build & run in Visual Studio

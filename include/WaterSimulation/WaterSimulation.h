@@ -2,6 +2,8 @@
 
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
+#include <WaterSimulation/Mesh.h>
+#include <WaterSimulation/ECS.h>
 
 #include <memory>
 #include <unordered_set>
@@ -15,9 +17,13 @@ namespace WaterSimulation {
 	class Application : public Magnum::Platform::Sdl2Application {
 		public:
 			explicit Application(const Arguments& arguments);
+			~Application();
+
+
 			Camera& camera() { return *m_camera; }
 			Magnum::ImGuiIntegration::Context & getContext() {return m_imgui;};
 			bool cursorLocked() { return m_cursorLocked;};
+
 		private:
 			Magnum::Timeline m_timeline;
 			float m_deltaTime{};
@@ -26,6 +32,10 @@ namespace WaterSimulation {
 			std::unique_ptr<Camera> m_camera;
 			bool m_cursorLocked{false};
 
+			Registry m_registry;
+			std::unique_ptr<Mesh> m_testMesh;
+			
+			//RenderSystem renderSystem;
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;
 			void handleCameraInputs();

@@ -14,6 +14,7 @@ namespace WaterSimulation {
 
     private:
         void perfWindow();
+        void sceneGraph();
         void cameraWindow(Camera & cam);
     };
 } // namespace WaterSimulation
