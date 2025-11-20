@@ -16,6 +16,7 @@
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/Shaders/FlatGL.h>
 #include <memory>
 
 using namespace Magnum;
@@ -46,15 +47,19 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
+    m_camera->setPos({0.0f, 0.0f, 3.0f});
     
-
+    m_testFlatShader = Shaders::FlatGL3D{};
+    
     m_testMesh = std::make_unique<Mesh>("/home/mat/WaterSimulation/assets/Meshes/sphereLOD1.obj");
-    
-    Entity entity = m_registry.create();
+
+    Entity testEntity = m_registry.create();
     m_registry.emplace<MeshComponent>(
-        entity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+        testEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}},
+        &m_testFlatShader
     );
+    
 }
 
 WaterSimulation::Application::~Application() {
@@ -71,15 +76,19 @@ void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
 }
 
 void WaterSimulation::Application::drawEvent() {
-    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
-    m_timeline.nextFrame();
-
-    m_deltaTime = m_timeline.previousFrameDuration();
-
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+    
     handleCameraInputs();
 
-    //auto proj = m_camera->projectionMatrix();
-    //auto view = m_camera->viewMatrix();
+    m_timeline.nextFrame();
+    m_deltaTime = m_timeline.previousFrameDuration();
+
+
+
+    auto view = m_camera->viewMatrix();
+    auto proj = m_camera->projectionMatrix();
+    m_renderSystem.render(m_registry, view, proj);
 
     m_UIManager->drawUI(*this);
 

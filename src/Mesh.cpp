@@ -31,8 +31,8 @@ void WaterSimulation::loadOBJ(const char* fileName, std::vector<Magnum::Vector3>
                 normals.emplace_back(vertex.Normal.X, vertex.Normal.Y, vertex.Normal.Z);
                 uvs.emplace_back(vertex.TextureCoordinate.X, vertex.TextureCoordinate.Y);
             }
-
-            for(int i = 0; i < mesh.Indices.size(); i+= 3){
+            int size {static_cast<int>(mesh.Indices.size())};
+            for(int i = 0; i < size; i+= 3){
 
                 triangles.emplace_back(mesh.Indices[i] + vertexOffset);
                 triangles.emplace_back(mesh.Indices[i + 1] + vertexOffset);

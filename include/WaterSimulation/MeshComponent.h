@@ -49,8 +49,9 @@ struct MeshComponent {
     ) : 
         meshLODs(lods), 
         activeMesh(lods.empty() ? nullptr : lods[0].second),
-        transform{Magnum::Math::IdentityInit},
-        shader(shaderProgram)
+        shader(shaderProgram),
+        transform{Magnum::Math::IdentityInit}
+
     {
         if (material.empty()) {
             textureFiles = texFiles;
@@ -76,8 +77,8 @@ struct MeshComponent {
     void clearBuffers();
     void checkLOD(const Magnum::Vector3& cameraPos, const Magnum::Vector3& entityPos);
     
-    void onAttach(Registry& registry, Entity entity) {}
-    void onDetach(Registry& registry, Entity entity) {}
+    void onAttach(Registry& registry [[maybe_unused]], Entity entity [[maybe_unused]]) {} // [[maybe_unused]] evite warnings
+    void onDetach(Registry& registry [[maybe_unused]], Entity entity [[maybe_unused]]) {} 
 };
 
 } // namespace WaterSimulation

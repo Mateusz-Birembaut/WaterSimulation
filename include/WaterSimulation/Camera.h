@@ -94,6 +94,11 @@ namespace WaterSimulation
 			return m_position;
 		}
 
+		void setPos(Magnum::Vector3 pos){
+			m_position = pos;
+			m_viewDirty = true;
+		}
+
 		float speed(){
 			return m_speed;
 		}
