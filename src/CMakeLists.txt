@@ -4,6 +4,7 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 add_executable(WaterSimulation 
     WaterSimulation.cpp
+    ShallowWater.cpp
     UIManager.cpp
 )
 

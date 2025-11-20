@@ -7,8 +7,10 @@
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
+#include <Magnum/GL/TextureFormat.h>
 
 #include <WaterSimulation/WaterSimulation.h>
+
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -21,6 +23,15 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     } 
 {
     m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
+
+    m_shallowWaterSimulation = ShallowWater(128,128, 1.0f, 1.0f/144.0f);
+    m_shallowWaterSimulation.initBump();
+
+    m_heightTexture = GL::Texture2D{};
+    m_heightTexture.setWrapping(GL::SamplerWrapping::ClampToEdge)
+                   .setMinificationFilter(GL::SamplerFilter::Linear)
+                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
+                   .setStorage(1, GL::TextureFormat::R8, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
 
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
         GL::Renderer::BlendEquation::Add);
@@ -42,8 +53,13 @@ void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
         event.windowSize(), event.framebufferSize());
 }
 
+//main draw loop
 void WaterSimulation::Application::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
+
+    m_shallowWaterSimulation.step();
+
+    m_shallowWaterSimulation.updateHeightTexture(&m_heightTexture);
 
     m_UIManager.drawUI(*this, m_imgui);
 

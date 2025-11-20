@@ -16,3 +16,5 @@ set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/external/imgui CACHE STRING "" FORCE) # Spec
 add_subdirectory(external/magnum-integration EXCLUDE_FROM_ALL)
 
 add_subdirectory(src)
+
+add_compile_options(O2)

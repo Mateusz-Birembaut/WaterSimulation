@@ -1,4 +1,7 @@
 
+#include "Magnum/GL/GL.h"
+#include "WaterSimulation/ShallowWater.h"
+#include "WaterSimulation/WaterSimulation.h"
 #include <WaterSimulation/UIManager.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -23,7 +26,7 @@ void WaterSimulation::UIManager::drawUI(Magnum::Platform::Sdl2Application & _app
     else if(!ImGui::GetIO().WantTextInput && _app.isTextInputActive())
         _app.stopTextInput();
 
-    paramWindow();
+    paramWindow(_app);
 
     _imgui.updateApplicationCursor(_app);
 
@@ -40,7 +43,10 @@ void WaterSimulation::UIManager::drawUI(Magnum::Platform::Sdl2Application & _app
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
-void WaterSimulation::UIManager::paramWindow(){
+void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application & _app){
+
+    auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
+
     // test fenêtre
     {
         ImGui::Text("Hello, world!");
@@ -48,5 +54,19 @@ void WaterSimulation::UIManager::paramWindow(){
             Debug{} << "Button Pressed";
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
             1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
+    }
+
+    // texture 
+    {
+        Magnum::GL::Texture2D * heightTexture = &(app->m_heightTexture);
+        ShallowWater * simulation = &(app->m_shallowWaterSimulation); 
+
+        if (heightTexture) {
+            ImVec2 textureSize(512, 512);
+            ImGui::Text("Water height:");
+            ImGui::Image(reinterpret_cast<void*>(heightTexture->id()), textureSize);
+        } else {
+            ImGui::Text("texture error");
+        }
     }
 }
