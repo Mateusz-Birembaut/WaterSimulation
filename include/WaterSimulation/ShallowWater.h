@@ -80,4 +80,6 @@ public:
 
      //initialisation
     void initBump();
+
+    void loadTerrainHeightMap();
 };

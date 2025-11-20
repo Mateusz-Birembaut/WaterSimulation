@@ -8,12 +8,19 @@
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Corrade/PluginManager/Manager.h>
+#include <Magnum/Trade/AbstractImporter.h>
+#include <Corrade/Utility/Debug.h>
+#include <MagnumPlugins/StbImageImporter/StbImageImporter.h>
+
+
 
 #include <WaterSimulation/WaterSimulation.h>
 
 
 using namespace Magnum;
 using namespace Math::Literals;
+using namespace Corrade::Utility;
 
 WaterSimulation::Application::Application(const Arguments& arguments): 
     Platform::Application{arguments, Configuration{}
@@ -21,9 +28,31 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         .setSize({1200, 800})
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
-{
+{   
+
+    Debug{} << "Creating application";
+
+    // Plugins setup
+
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
+
+    auto importer = manager.loadAndInstantiate("StbImageImporter");
+
+    Debug{} << "Available plugins : " << manager.pluginList();
+
+    if(!importer){
+        Error{} << "Could not load STB Image plugins, have you initialized all git submodules ?";
+    }else{
+        Debug{} << "Plugin STB Image Importer loaded ";
+    }
+
+    importer->openFile("ressources/heightmaps/h1.png");
+    auto image = importer->image2D(0);
+
+    // ImGui setup
     m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
 
+    // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(128,128, 1.0f, 1.0f/144.0f);
     m_shallowWaterSimulation.initBump();
 
@@ -32,6 +61,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
                    .setMinificationFilter(GL::SamplerFilter::Linear)
                    .setMagnificationFilter(GL::SamplerFilter::Nearest)
                    .setStorage(1, GL::TextureFormat::R8, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
+
+
+    // OpenGL setup
 
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
         GL::Renderer::BlendEquation::Add);

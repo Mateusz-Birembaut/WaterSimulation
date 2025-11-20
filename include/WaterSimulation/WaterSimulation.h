@@ -1,10 +1,14 @@
 #pragma once
 
+#include "Corrade/PluginManager/Manager.h"
 #include "Magnum/GL/GL.h"
 #include <WaterSimulation/UIManager.h>
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
+#include <Magnum/Trade/ImageData.h>
+#include <Corrade/PluginManager/Manager.h>
+#include <Magnum/Trade/AbstractImporter.h>
 
 #include <WaterSimulation/ShallowWater.h>
 
@@ -15,8 +19,15 @@ namespace WaterSimulation {
 		public:
 			explicit Application(const Arguments& arguments);
 
-			ShallowWater m_shallowWaterSimulation;
-			Magnum::GL::Texture2D m_heightTexture;
+			ShallowWater m_shallowWaterSimulation; // simulation de l'eau
+			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
+			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q
+			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
+
+
+			
+
+
 
 		private:
 			UIManager m_UIManager{};

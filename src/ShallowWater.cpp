@@ -67,7 +67,9 @@ void ShallowWater::updateFluxes(){
                 continue;
             }
 
-            //ajouter advection
+            //advection x
+
+
 
             float Hl = h[idc(i-1, j)] + terrain[idc(i-1,j)];
             float Hr = h[idc(i,j)] + terrain[idc(i,j)];
@@ -93,7 +95,9 @@ void ShallowWater::updateFluxes(){
                 continue;
             }
 
-            //ajouter advection
+            //advection x
+
+            //
 
             float Hb = h[idc(i, j-1)] + terrain[idc(i, j-1)];
             float Ht = h[idc(i, j)] + terrain[idc(i, j)];
@@ -182,17 +186,21 @@ void ShallowWater::updateHeightTexture(Magnum::GL::Texture2D* texture) const {
 
 void ShallowWater::initBump(){
     int centerX = nx / 2;
-        int centerY = ny / 2;
-        float bumpHeight = 1.0f;
+    int centerY = ny / 2;
+    float bumpHeight = 1.0f;
+    float baseLevel = 2.0f;
+    
 
-        for (int j = 0; j < ny; ++j) {
-            for (int i = 0; i < nx; ++i) {
-                float distance = std::sqrt((i - centerX) * (i - centerX) + (j - centerY) * (j - centerY));
-                float radius = 16.0f;
-                h[idc(i, j)] = 2.0f;
-                if (distance < radius) {
-                    h[idc(i, j)] += bumpHeight * (1.0f - distance / radius);
-                }
+    for (int j = 0; j < ny; ++j) {
+        for (int i = 0; i < nx; ++i) {
+            float distance = std::sqrt((i - centerX) * (i - centerX) + (j - centerY) * (j - centerY));
+            float radius = 16.0f;
+            float totalHeight = baseLevel - terrain[idc(i, j)];
+            if (totalHeight <= dryEps) continue;
+            h[idc(i, j)] = totalHeight;
+            if (distance < radius) {
+                h[idc(i, j)] += bumpHeight * (1.0f - distance / radius);
             }
         }
+    }
 }

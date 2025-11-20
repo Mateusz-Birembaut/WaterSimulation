@@ -15,6 +15,12 @@ set(MAGNUM_WITH_IMGUIINTEGRATION ON CACHE BOOL "" FORCE)
 set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/external/imgui CACHE STRING "" FORCE) # Specify the location of imgui
 add_subdirectory(external/magnum-integration EXCLUDE_FROM_ALL)
 
+# Magnum Plugins
+set(MAGNUM_WITH_STBIMAGEIMPORTER ON CACHE BOOL "" FORCE) # To import Textures
+set(MAGNUM_BUILD_PLUGINS_STATIC ON CACHE BOOL "" FORCE) # Static linking 
+add_subdirectory(external/magnum-plugins EXCLUDE_FROM_ALL)
+
+
 add_subdirectory(src)
 
 add_compile_options(O2)

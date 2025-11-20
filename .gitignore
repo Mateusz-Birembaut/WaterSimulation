@@ -1,6 +1,7 @@
 .vscode/c_cpp_properties.json
 build/
-
+.cache/
+imgui.ini
 # Don't ignore the `external/` directory — it contains git submodules (Magnum, Corrade)
 # Ignore only build outputs and generated libs inside external
 external/*/build/

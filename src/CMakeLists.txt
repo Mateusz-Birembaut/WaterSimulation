@@ -13,6 +13,9 @@ target_link_libraries(WaterSimulation PRIVATE
     Magnum::GL
     Magnum::Magnum
     MagnumIntegration::ImGui
+    Corrade::PluginManager
+    Magnum::Trade
+    MagnumPlugins::StbImageImporter
 )
 
 
