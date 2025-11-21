@@ -96,8 +96,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     
     m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 3.0f);
-    m_shallowWaterSimulation.initBump();
-    //m_shallowWaterSimulation.initTop();
+    //m_shallowWaterSimulation.initBump();
+    m_shallowWaterSimulation.initTop();
 
     // ImGui setup
     m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());

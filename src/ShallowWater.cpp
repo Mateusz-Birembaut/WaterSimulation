@@ -22,6 +22,11 @@ float ShallowWater::upwinded_h_x(int i, int j, float qxij) {
     float h_l_recon = std::max(0.0f, eta_l - terrain_max);
     float h_r_recon = std::max(0.0f, eta_r - terrain_max);
 
+    //allow better flooding
+    if (std::abs(qxij) < dryEps) {
+        return std::max(h_l_recon, h_r_recon);
+    }
+
     return (qxij >= 0.0f) ? h_l_recon : h_r_recon;
 }
 
@@ -35,6 +40,10 @@ float ShallowWater::upwinded_h_y(int i, int j, float qyij) {
     float terrain_max = std::max(terrain[idc(i, jl)], terrain[idc(i, jr)]);
     float h_b_recon = std::max(0.0f, eta_b - terrain_max);
     float h_t_recon = std::max(0.0f, eta_t - terrain_max);
+
+    if (std::abs(qyij) < dryEps) {
+        return std::max(h_b_recon, h_t_recon);
+    }
     
     return (qyij >= 0.0f) ? h_b_recon : h_t_recon;
 }
@@ -386,7 +395,7 @@ void ShallowWater::initBump() {
 }
 
 void ShallowWater::initTop() {
-    float waterLevel = 1.0f;
+    float waterLevel = 3.0f;
     int damPosition = ny / 6;
     
     for (int j = 0; j < ny; ++j) {
