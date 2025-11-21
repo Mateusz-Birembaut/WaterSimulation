@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstdint>
 
-//first order upwinding with hydrostatic reconstruction
+//get h at face ij with upwinding and hydrostatic reconstruction
 float ShallowWater::upwinded_h_x(int i, int j, float qxij) {
     int il = std::max(0, i - 1);
     int ir = std::min(nx - 1, i);
@@ -39,6 +39,27 @@ float ShallowWater::upwinded_h_y(int i, int j, float qyij) {
     return (qyij >= 0.0f) ? h_b_recon : h_t_recon;
 }
 
+bool ShallowWater::isWetFaceX(int i, int j) const {
+    int il = std::max(0, i - 1);
+    int ir = std::min(nx - 1, i);
+    
+    float etaL = h[idc(il, j)] + terrain[idc(il, j)];
+    float etaR = h[idc(ir, j)] + terrain[idc(ir, j)];
+    float zmax = std::max(terrain[idc(il, j)], terrain[idc(ir, j)]);
+    return (etaL > zmax + dryEps) || (etaR > zmax + dryEps);
+
+}
+
+bool ShallowWater::isWetFaceY(int i, int j) const {
+    int jl = std::max(0, j - 1);
+    int jr = std::min(ny - 1, j);
+
+    float etaB = h[idc(i, jl)] + terrain[idc(i, jl)];
+    float etaT = h[idc(i, jr)] + terrain[idc(i, jr)];
+    float zmax = std::max(terrain[idc(i, jl)], terrain[idc(i, jr)]);
+    return (etaB > zmax + dryEps) || (etaT > zmax + dryEps);
+}
+
 void ShallowWater::computeVelocities() {
 
     for (int j = 0; j < ny; ++j) {
@@ -51,7 +72,7 @@ void ShallowWater::computeVelocities() {
                 ux[idsx(i, j)] = qxij / h_upwind;
             } else {
                 ux[idsx(i, j)] = 0.0f;
-                qx[idsx(i, j)] = 0.0f;
+                //qx[idsx(i, j)] = 0.0f;
             }
         }
     }
@@ -66,124 +87,124 @@ void ShallowWater::computeVelocities() {
                 uy[idsy(i, j)] = qyij / h_upwind;
             } else {
                 uy[idsy(i, j)] = 0.0f;
-                qy[idsy(i, j)] = 0.0f;
+                //qy[idsy(i, j)] = 0.0f;
             }
         }
     }
 }
 
 void ShallowWater::updateFluxes() {
+    std::vector<float> qx_new = qx;
+    std::vector<float> qy_new = qy;
 
-	std::vector<float> ux_current = ux; 
-	std::vector<float> uy_current = uy; 
-
-    // calcul des du / dt
-    for (int j = 1; j < ny; ++j) { // loop through vertical faces
+    for (int j = 1; j < ny - 1; ++j) {
         for (int i = 1; i < nx; ++i) {
+            
+            if(!isWetFaceX(i, j)){
+                qx_new[idsx(i, j)] = 0.0f;
+                continue;
+            }
 
             float qxij = qx[idsx(i, j)];
-			float qyij = qy[idsy(i, j)];
-
             float h_upwind = upwinded_h_x(i, j, qxij);
-			
-			//Corrade::Utility::Debug{} << h_upwind << "  " << dryEps;
 
-            if (h_upwind <= dryEps) { // pas assez d'eau donc on skip
-				//Corrade::Utility::Debug{} << "h too small";
-				//qx[idsx(i, j)] = 0.0f;
-				ux[idsx(i, j)] = 0.0f;
+            if (h_upwind <= dryEps) {
+                qx_new[idsx(i, j)] = 0.0f;
                 continue;
             }
 
-            /* // advection x
-			float u_face = (qxij > 0) ? ux_current[idsx(i - 1, j)] : ux_current[idsx(i, j)];
-			float q_up = (qxij > 0) ? qx[idsx(i - 1, j)] : qx[idsx(i, j)];
-			float advection_x = (qxij - q_up) / h_upwind * u_face;
+            float eta_l = h[idc(i-1, j)] + terrain[idc(i-1, j)];
+            float eta_r = h[idc(i, j)] + terrain[idc(i, j)];
+            
+            float h_avg = 0.5f * (h[idc(i-1, j)] + h[idc(i, j)]);
 
-			// advection y
-			float v_face = (qyij > 0) ? uy_current[idsy(i, j - 1)] : uy_current[idsy(i, j)];
-			float qy_up = (qyij > 0) ? qy[idsy(i, j - 1)] : qy[idsy(i, j)];
-			float advection_y = (qyij - qy_up) / h_upwind * v_face; */
+            float pressure = -gravity * (eta_r - eta_l) / dx;
 
+            //advection
+            float qx_center = qxij;
+            float qx_left = qx[idsx(i-1, j)];
+            float qx_right = qx[idsx(i+1, j)];
+            
+            float u_face = qxij / h_upwind;
+            float advection = 0.0f;
+            
+            if (u_face > 0.0f) {
+                advection = -u_face * (qx_center - qx_left) / dx;
+            } else {
+                advection = -u_face * (qx_right - qx_center) / dx;
+            }
 
-			float uc = ux_current[idsx(i, j)];
-			float ul = ux_current[idsx(i-1, j)];
+            //
 
-			float ql = qx[idsx(i-1, j)];
+            float friction = -friction_coef * u_face * std::abs(u_face) / h_upwind;
 
+            float accel = pressure + friction;
+            
+            float dqdt = h_avg * accel + advection;
 
-
-			//
-
-            float Hl = h[idc(i - 1, j)] + terrain[idc(i - 1, j)];
-            float Hr = h[idc(i, j)] + terrain[idc(i, j)];
-
-            float pressure = -gravity * (Hr - Hl) / dx;
-
-            float dudt = pressure ;//+ advection_x + advection_y;
-
-            ux[idsx(i, j)] += dudt * dt;
-            ux[idsx(i, j)] = Magnum::Math::clamp(ux[idsx(i, j)], -limitCFL, limitCFL);
+            qx_new[idsx(i, j)] = qxij + dqdt * dt;
+            
+            float max_q = h_upwind * limitCFL;
+            qx_new[idsx(i, j)] = Magnum::Math::clamp(qx_new[idsx(i, j)], 
+                                                      -max_q, max_q);
         }
     }
 
-    for (int j = 1; j < ny; ++j) { //loop through horizontal faces
-        for (int i = 1; i < nx; ++i) {
+    for (int j = 1; j < ny; ++j) {
+        for (int i = 1; i < nx - 1; ++i) {
+            
+            if(!isWetFaceY(i, j)){
+                qy_new[idsy(i, j)] = 0.0f;
+                continue;
+            }
 
             float qyij = qy[idsy(i, j)];
-            float uyij = uy_current[idsy(i, j)];
-
             float h_upwind = upwinded_h_y(i, j, qyij);
 
-            if (h_upwind <= dryEps) { // pas assez d'eau donc on skip
-				//qy[idsy(i, j)] = 0.0f;
-				uy[idsy(i, j)] = 0.0f;
+            if (h_upwind <= dryEps) {
+                qy_new[idsy(i, j)] = 0.0f;
                 continue;
             }
 
-            /* // advection x
-			float ul = ux_current[idsx(i - 1, j)];
-			float ur = ux_current[idsx(i, j)];
-			float ql = qx[idsx(i - 1, j)];
-			float qr = qx[idsx(i, j)];
-			float advection_x = ((qr - ql) / h_upwind) * (ur - ul) / dx;
-
-			// advection y
-			float ub = uy_current[idsy(i, j - 1)];
-			float ut = uy_current[idsy(i, j)];
-			float qb = qy[idsy(i, j - 1)];
-			float qt = qy[idsy(i, j)];
-			float advection_y = ((qt - qb) / h_upwind) * (ut - ub) / dx; */
+            float eta_b = h[idc(i, j-1)] + terrain[idc(i, j-1)];
+            float eta_t = h[idc(i, j)] + terrain[idc(i, j)];
             
+            float h_avg = 0.5f * (h[idc(i, j-1)] + h[idc(i, j)]);
 
-            float Hb = h[idc(i, j - 1)] + terrain[idc(i, j - 1)];
-            float Ht = h[idc(i, j)] + terrain[idc(i, j)];
+            float pressure = -gravity * (eta_t - eta_b) / dx;
 
-            float pressure = -gravity * (Ht - Hb) / dx;
+            //advection
 
-            float dudt = pressure ;//+ advection_x + advection_y;
+            float qy_center = qyij;
+            float qy_bottom = qy[idsy(i, j-1)];
+            float qy_top = qy[idsy(i, j+1)];
+            
+            float v_face = qyij / h_upwind;
+            float advection = 0.0f;
+            
+            if (v_face > 0.0f) {
+                advection = -v_face * (qy_center - qy_bottom) / dx;
+            } else {
+                advection = -v_face * (qy_top - qy_center) / dx;
+            }
 
-            uy[idsy(i, j)] += dudt * dt;
-            uy[idsy(i, j)] = Magnum::Math::clamp(uy[idsy(i, j)], -limitCFL, limitCFL);
+            //
+
+            float friction = -friction_coef * v_face * std::abs(v_face) / h_upwind;
+
+            float accel = pressure + friction;
+            float dqdt = h_avg * accel + advection;
+
+            qy_new[idsy(i, j)] = qyij + dqdt * dt;
+            
+            float max_q = h_upwind * limitCFL;
+            qy_new[idsy(i, j)] = Magnum::Math::clamp(qy_new[idsy(i, j)], 
+                                                      -max_q, max_q);
         }
     }
 
-    // mise a jour de qx et qy
-    for (int j = 0; j < ny; ++j) {
-        for (int i = 0; i < nx + 1; ++i) {
-            float uxij = ux[idsx(i, j)];
-            float h_upwind = upwinded_h_x(i, j, uxij);
-            qx[idsx(i, j)] = Magnum::Math::clamp(ux[idsx(i, j)] * h_upwind, -h_upwind * limitCFL, h_upwind * limitCFL);
-        }
-    }
-
-    for (int j = 0; j < ny + 1; ++j) {
-        for (int i = 0; i < nx; ++i) {
-            float uyij = uy[idsy(i, j)];
-            float h_upwind = upwinded_h_y(i, j, uyij);
-            qy[idsy(i, j)] = Magnum::Math::clamp(uy[idsy(i, j)] * h_upwind, -h_upwind * limitCFL, h_upwind * limitCFL);
-        }
-    }
+    qx = std::move(qx_new);
+    qy = std::move(qy_new);
 }
 
 void ShallowWater::applyBarrier() {
@@ -242,13 +263,16 @@ void ShallowWater::step() {
 }
 
 // convertit h en tableau de pixels normalisé
-void ShallowWater::updateHeightTexture(Magnum::GL::Texture2D *texture) const {
+void ShallowWater::updateHeightTexture(Magnum::GL::Texture2D *texture) {
 
     auto minmax = std::minmax_element(h.begin(), h.end());
     auto minIt = minmax.first;
     auto maxIt = minmax.second;
     float minHeight = *minIt;
     float maxHeight = *maxIt;
+
+    minh = minHeight;
+    maxh = maxHeight;
 
     std::vector<uint8_t> pixels;
     pixels.resize(h.size());
@@ -265,7 +289,7 @@ void ShallowWater::updateHeightTexture(Magnum::GL::Texture2D *texture) const {
 }
 
 // convertit ux et uy  en tableau de pixels
-void ShallowWater::updateMomentumTexture(Magnum::GL::Texture2D *texture) const {
+void ShallowWater::updateMomentumTexture(Magnum::GL::Texture2D *texture) {
     float minUx = INFINITY, maxUx = -INFINITY;
     float minUy = INFINITY, maxUy = -INFINITY;
 
@@ -280,19 +304,27 @@ void ShallowWater::updateMomentumTexture(Magnum::GL::Texture2D *texture) const {
         }
     }
 
+    minux = minUx;
+    maxux = maxUx;
+    minuy = minUy;
+    maxuy = maxUy;
+    bool normalize = false;
+
     std::vector<uint8_t> pixels;
     pixels.resize(nx * ny * 3);
 
-    const float rangeUx = maxUx - minUx;
-    const float rangeUy = maxUy - minUy;
+    const float rangeUx = normalize ? (maxUx - minUx) : 1.0f;
+    const float rangeUy = normalize ? (maxUy - minUy) : 1.0f;
+    const float offsetUx = normalize ? minUx : 0.0f;
+    const float offsetUy = normalize ? minUy : 0.0f;
 
     for (int j = 0; j < ny; ++j) {
         for (int i = 0; i < nx; ++i) {
             float uxi = ux[idsx(i, j)];
             float uyi = uy[idsy(i, j)];
 
-            float normUx = (rangeUx > 0.0f) ? (uxi - minUx) / rangeUx : 0.0f;
-            float normUy = (rangeUy > 0.0f) ? (uyi - minUy) / rangeUy : 0.0f;
+            float normUx = (rangeUx > 0.0f) ? (uxi - offsetUx) / rangeUx : 0.0f;
+            float normUy = (rangeUy > 0.0f) ? (uyi - offsetUy) / rangeUy : 0.0f;
 
             normUx = Magnum::Math::clamp(normUx, 0.0f, 1.0f);
             normUy = Magnum::Math::clamp(normUy, 0.0f, 1.0f);

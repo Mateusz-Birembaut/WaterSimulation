@@ -24,4 +24,5 @@ add_subdirectory(external/magnum-plugins EXCLUDE_FROM_ALL)
 
 add_subdirectory(src)
 
-add_compile_options(O2)
+add_compile_options(O3)
+add_compile_options(f)

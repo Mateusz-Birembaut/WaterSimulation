@@ -72,7 +72,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
 
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(256,256, .25f, 1.0f/144.0f);
+    m_shallowWaterSimulation = ShallowWater(256,256, .25f, 1.0f/60.0f);
     
 
     m_heightTexture = GL::Texture2D{};
@@ -95,9 +95,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
                    .setSubImage(0, {}, *resized);
 
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 5.0f);
-    //m_shallowWaterSimulation.initBump();
-    m_shallowWaterSimulation.initTop();
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 3.0f);
+    m_shallowWaterSimulation.initBump();
+    //m_shallowWaterSimulation.initTop();
 
     // ImGui setup
     m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());

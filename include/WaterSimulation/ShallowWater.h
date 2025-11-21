@@ -33,6 +33,7 @@ private:
     //stabilité
     float dryEps = 1e-3f; //valeur de h a partir de laquelle une cellule est considéré comme sec
     float limitCFL; //coefficient CFL
+    float friction_coef = 0.2f; 
 
     //coeur de la simu
     void computeVelocities(); //calcul de u et v a partir de q et h
@@ -50,7 +51,6 @@ private:
     float upwinded_h_x(int i, int j,float qxij); // récupère la hauteur sur les faces
     float upwinded_h_y(int i, int j,float qyij);
 
-
 public:
 
     ShallowWater() = default;
@@ -67,7 +67,7 @@ public:
         ux.assign((nx+1) * ny, 0.0f);
         uy.assign(nx*(ny+1), 0.0f);
         
-        limitCFL = dx / (4.0f*dt);
+        limitCFL = dx / (5.0f*dt);
     }
 
     void step();
@@ -78,15 +78,25 @@ public:
     inline int idc(int i, int j) const {return j * nx + i;} //retourne l'index pour les grilles centrés (comme la hauteur)
     inline int idsx(int i, int j) const { return j * (nx+1) + i;} //index side x, retourne l'index pour les valeurs de qx et ux
     inline int idsy(int i, int j) const { return j * nx + i;} //index side y, retourne l'index pour les valeurs de qy et uy
+    bool isWetFaceX(int i,int j) const;
+    bool isWetFaceY(int i,int j) const;
 
     int getnx() const {return nx;}
     int getny() const {return ny;}
-    void updateHeightTexture(Magnum::GL::Texture2D* texture) const;
-    void updateMomentumTexture(Magnum::GL::Texture2D* texture) const;
+    void updateHeightTexture(Magnum::GL::Texture2D* texture);
+    void updateMomentumTexture(Magnum::GL::Texture2D* texture);
 
      //initialisation
     void initBump();
     void initTop();
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D * img, float scaling = 1.0f);
+
+    //debug
+    float minh;
+    float maxh;
+    float minux;
+    float maxux;
+    float minuy;
+    float maxuy;
 };

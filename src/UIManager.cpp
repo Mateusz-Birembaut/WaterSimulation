@@ -49,12 +49,12 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
 
     // test fenêtre
     {
-        ImGui::Text("Hello, world!");
-        if(ImGui::Button("Test Button"))
-            Debug{} << "Button Pressed";
+        ImGui::Text("Debug Window");
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
             1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
     }
+
+
 
     // texture 
     {
@@ -62,6 +62,12 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
         Magnum::GL::Texture2D * momentumTexture = &(app->m_momentumTexture);
         Magnum::GL::Texture2D * heightmapTexture = &(app->m_terrainHeightmap);
         ShallowWater * simulation = &(app->m_shallowWaterSimulation); 
+
+        ImGui::Text("Values:");
+        ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);
+        ImGui::Text("Velocity X - min: %.3f, max: %.3f", simulation->minux, simulation->maxux);
+        ImGui::Text("Velocity Y - min: %.3f, max: %.3f", simulation->minuy, simulation->maxuy);
+        ImGui::Separator();
 
         ImVec2 textureSize(512, 512); // texture size in imgui window
 
