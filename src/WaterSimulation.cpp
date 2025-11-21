@@ -1,3 +1,6 @@
+#include "Magnum/Magnum.h"
+#include "Magnum/Trade/AbstractImageConverter.h"
+#include "MagnumPlugins/StbImageConverter/StbImageConverter.h"
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
@@ -11,9 +14,10 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Corrade/Utility/Debug.h>
-#include <MagnumPlugins/StbImageImporter/StbImageImporter.h>
-
-
+#include <Magnum/Trade/ImageData.h>
+#include <Magnum/PixelFormat.h>
+#include <Magnum/ImageView.h>
+#include <Corrade/Utility/ConfigurationGroup.h>
 
 #include <WaterSimulation/WaterSimulation.h>
 
@@ -34,34 +38,69 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     // Plugins setup
 
-    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> importerManager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> converterManager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
 
-    auto importer = manager.loadAndInstantiate("StbImageImporter");
+    Debug{} << "Available importer plugins : " << importerManager.pluginList();
+    Debug{} << "Available converter plugins : " << converterManager.pluginList();
 
-    Debug{} << "Available plugins : " << manager.pluginList();
+    auto importer = importerManager.loadAndInstantiate("StbImageImporter");
 
     if(!importer){
-        Error{} << "Could not load STB Image plugins, have you initialized all git submodules ?";
+        Error{} << "Could not load STB Image Importer plugin, have you initialized all git submodules ?";
     }else{
         Debug{} << "Plugin STB Image Importer loaded ";
     }
 
-    importer->openFile("ressources/heightmaps/h1.png");
+    auto converter = converterManager.loadAndInstantiate("StbResizeImageConverter");
+
+    if(!importer){
+        Error{} << "Could not load STB Resize Image Converter plugin, have you initialized all git submodules ?";
+    }else{
+        Debug{} << "Plugin STB Image Resizer and Converter loaded ";
+    }
+
+    importer->openFile("ressources/heightmaps/h3.png");
     auto image = importer->image2D(0);
 
-    // ImGui setup
-    m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
+    converter->configuration().setValue("size", "256 256");
+    auto resized = converter->convert(*image);
+    auto allo = resized->format();
+    Debug{} << "FORMAT IS : " << allo;
+    Debug{} << "SIZE IS : " << resized->size();
+    ImageView2D resized_converted_heightmap = ImageView2D{PixelFormat::R8Unorm, resized->size(), resized->data()};
+    
 
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(128,128, 1.0f, 1.0f/144.0f);
-    m_shallowWaterSimulation.initBump();
+    m_shallowWaterSimulation = ShallowWater(256,256, .25f, 1.0f/144.0f);
+    
 
     m_heightTexture = GL::Texture2D{};
     m_heightTexture.setWrapping(GL::SamplerWrapping::ClampToEdge)
                    .setMinificationFilter(GL::SamplerFilter::Linear)
                    .setMagnificationFilter(GL::SamplerFilter::Nearest)
-                   .setStorage(1, GL::TextureFormat::R8, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
+                   .setStorage(1, GL::TextureFormat::R32F, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
 
+    m_momentumTexture = GL::Texture2D{};
+    m_momentumTexture.setWrapping(GL::SamplerWrapping::ClampToEdge)
+                   .setMinificationFilter(GL::SamplerFilter::Linear)
+                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
+                   .setStorage(1, GL::TextureFormat::RG32F, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
+
+    m_terrainHeightmap = GL::Texture2D{};
+    m_terrainHeightmap.setWrapping(GL::SamplerWrapping::ClampToEdge)
+                   .setMinificationFilter(GL::SamplerFilter::Linear)
+                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
+                   .setStorage(1, GL::TextureFormat::R8, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()})
+                   .setSubImage(0, {}, *resized);
+
+    
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 5.0f);
+    //m_shallowWaterSimulation.initBump();
+    m_shallowWaterSimulation.initTop();
+
+    // ImGui setup
+    m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
 
     // OpenGL setup
 
@@ -90,8 +129,8 @@ void WaterSimulation::Application::drawEvent() {
     GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 
     m_shallowWaterSimulation.step();
-
     m_shallowWaterSimulation.updateHeightTexture(&m_heightTexture);
+    m_shallowWaterSimulation.updateMomentumTexture(&m_momentumTexture);
 
     m_UIManager.drawUI(*this, m_imgui);
 

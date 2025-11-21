@@ -59,14 +59,31 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     // texture 
     {
         Magnum::GL::Texture2D * heightTexture = &(app->m_heightTexture);
+        Magnum::GL::Texture2D * momentumTexture = &(app->m_momentumTexture);
+        Magnum::GL::Texture2D * heightmapTexture = &(app->m_terrainHeightmap);
         ShallowWater * simulation = &(app->m_shallowWaterSimulation); 
 
+        ImVec2 textureSize(512, 512); // texture size in imgui window
+
         if (heightTexture) {
-            ImVec2 textureSize(512, 512);
             ImGui::Text("Water height:");
             ImGui::Image(reinterpret_cast<void*>(heightTexture->id()), textureSize);
         } else {
-            ImGui::Text("texture error");
+            ImGui::Text("height texture error");
+        }
+
+        if (momentumTexture) {
+            ImGui::Text("Velocities:");
+            ImGui::Image(reinterpret_cast<void*>(momentumTexture->id()), textureSize);
+        } else {
+            ImGui::Text("velocities texture error");
+        }
+
+        if (heightmapTexture) {
+            ImGui::Text("Terrain Heightmap:");
+            ImGui::Image(reinterpret_cast<void*>(heightmapTexture->id()), textureSize);
+        } else {
+            ImGui::Text("terrain texture error");
         }
     }
 }

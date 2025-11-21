@@ -1,8 +1,11 @@
 #pragma once
 
+#include "Magnum/Magnum.h"
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <Magnum/Image.h>
+#include <Magnum/Trade/ImageData.h>
 #include <Magnum/GL/Texture.h>
 
 class ShallowWater{
@@ -29,7 +32,7 @@ private:
 
     //stabilité
     float dryEps = 1e-3f; //valeur de h a partir de laquelle une cellule est considéré comme sec
-    float CFLCoef; //coefficient CFL
+    float limitCFL; //coefficient CFL
 
     //coeur de la simu
     void computeVelocities(); //calcul de u et v a partir de q et h
@@ -37,9 +40,11 @@ private:
     void updateFluxes(); //mise a jour des q 
     void updateWaterHeight(); //calcul des h a partir de la divergence des q
 
-    void applyBarrier(); //gère les quantités en bordure de la simulation (paroies réflechissantes ou ouvertes)
+    void applyBarrier(); //gère les quantités en bordure
 
-    void enforceCFL(); //Pour garder la simulation stable il ne faut pas que la velocité soit très grande selon le pas de temps
+    inline bool isDry(int i, int j){ return h[idc(i, j)] <= dryEps;}
+
+    void enforceCFL(); //Pour garder la simulation stable il ne faut pas que la velocité (ou le pas de temps) soit trop grande
 
     //helper func
     float upwinded_h_x(int i, int j,float qxij); // récupère la hauteur sur les faces
@@ -48,7 +53,7 @@ private:
 
 public:
 
-    ShallowWater(){}
+    ShallowWater() = default;
 
     ShallowWater(size_t nx_, size_t ny_, float dx_, float dt_){
         nx = nx_; ny = ny_; dx = dx_; dt = dt_;
@@ -62,7 +67,7 @@ public:
         ux.assign((nx+1) * ny, 0.0f);
         uy.assign(nx*(ny+1), 0.0f);
         
-
+        limitCFL = dx / (4.0f*dt);
     }
 
     void step();
@@ -77,9 +82,11 @@ public:
     int getnx() const {return nx;}
     int getny() const {return ny;}
     void updateHeightTexture(Magnum::GL::Texture2D* texture) const;
+    void updateMomentumTexture(Magnum::GL::Texture2D* texture) const;
 
      //initialisation
     void initBump();
+    void initTop();
 
-    void loadTerrainHeightMap();
+    void loadTerrainHeightMap(Magnum::Trade::ImageData2D * img, float scaling = 1.0f);
 };

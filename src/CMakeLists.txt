@@ -8,6 +8,7 @@ add_executable(WaterSimulation
     UIManager.cpp
 )
 
+# Don't forget to also add plugins here
 target_link_libraries(WaterSimulation PRIVATE
     Magnum::Application
     Magnum::GL
@@ -16,6 +17,7 @@ target_link_libraries(WaterSimulation PRIVATE
     Corrade::PluginManager
     Magnum::Trade
     MagnumPlugins::StbImageImporter
+    MagnumPlugins::StbResizeImageConverter
 )
 
 

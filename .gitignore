@@ -2,6 +2,7 @@
 build/
 .cache/
 imgui.ini
+.clang-format
 # Don't ignore the `external/` directory — it contains git submodules (Magnum, Corrade)
 # Ignore only build outputs and generated libs inside external
 external/*/build/

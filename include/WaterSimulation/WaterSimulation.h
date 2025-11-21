@@ -23,12 +23,7 @@ namespace WaterSimulation {
 			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
 			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q
 			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
-
-
 			
-
-
-
 		private:
 			UIManager m_UIManager{};
 			
