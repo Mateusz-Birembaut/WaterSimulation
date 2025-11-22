@@ -4,6 +4,7 @@
 #include "Corrade/Utility/DebugAssert.h"
 #include "Magnum/GL/AbstractShaderProgram.h"
 #include "Magnum/GL/GL.h"
+#include "Magnum/GL/OpenGL.h"
 #include "Magnum/GL/Shader.h"
 #include "Magnum/GL/TextureArray.h"
 #include "Magnum/GL/ImageFormat.h"
@@ -78,7 +79,7 @@ private:
         ComputeProgram(Magnum::Containers::String filepath){
             Magnum::GL::Shader compute(Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Compute);
         
-            compute.addSource(filepath);
+            compute.addFile(filepath);
             CORRADE_INTERNAL_ASSERT_OUTPUT(compute.compile());
 
             attachShader(compute);
@@ -106,6 +107,16 @@ private:
             return *this;
         }
 
+        ComputeProgram& setFloatUniform(const char * name, float value){
+            setUniform(uniformLocation(name), value);
+            return *this;
+        }
+
+        ComputeProgram& run(unsigned int nx, unsigned int ny){
+            dispatchCompute({nx , ny, 1});
+            return *this;
+        }
+
 
     };
 
@@ -113,6 +124,8 @@ private:
     ComputeProgram m_updateFluxesProgram;
     ComputeProgram m_updateWaterHeightProgram;
     ComputeProgram m_applyBarrierProgram;
+
+    ComputeProgram m_initDamBreakProgram;
 
 
 public:
@@ -155,11 +168,20 @@ public:
         m_updateFluxesProgram = ComputeProgram("ressources/shaders/compute/updateFluxes.comp");
         m_updateWaterHeightProgram = ComputeProgram("ressources/shaders/compute/updateWaterHeight.comp");
         m_applyBarrierProgram = ComputeProgram("ressources/shaders/compute/applyBarrier.comp");
+        m_initDamBreakProgram = ComputeProgram("ressources/shaders/compute/initDamBreak.comp");
 
         m_computeVelocitiesProgram.bindStates(m_stateTexturePing, m_stateTexturePong).bindTerrain(m_terrainTexture).setParametersUniforms(*this);
         m_updateFluxesProgram.bindStates(m_stateTexturePing, m_stateTexturePong).bindTerrain(m_terrainTexture).setParametersUniforms(*this);
         m_updateWaterHeightProgram.bindStates(m_stateTexturePing, m_stateTexturePong).bindTerrain(m_terrainTexture).setParametersUniforms(*this);
         m_applyBarrierProgram.bindStates(m_stateTexturePing, m_stateTexturePong).bindTerrain(m_terrainTexture).setParametersUniforms(*this);
+    
+        
+        m_initDamBreakProgram.bindStates(m_stateTexturePing, m_stateTexturePong)
+        .bindTerrain(m_terrainTexture)
+        .setParametersUniforms(*this)
+        .run(nx, ny);
+
+        
     }
 
     void step();

@@ -15,6 +15,7 @@
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
+#include <imgui.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -69,7 +70,7 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     // texture 
     {   
         ShallowWater * simulation = &(app->shallowWaterSimulation());
-        Magnum::GL::Texture2D * heightTexture = &(simulation->getStateTexture());
+        Magnum::GL::Texture2D * stateTexture = &(simulation->getStateTexture());
         Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
         Magnum::GL::Texture2D * heightmapTexture = &(simulation->getTerrainTexture());    
 
@@ -83,9 +84,9 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
 
         ImVec2 textureSize(512, 512); // texture size in imgui window
 
-        if (heightTexture) {
+        if (stateTexture) {
             ImGui::Text("Water height:");
-            ImGui::Image(reinterpret_cast<void*>(heightTexture->id()), textureSize);
+            ImGui::Image(reinterpret_cast<void*>(stateTexture->id()), textureSize);
         } else {
             ImGui::Text("height texture error");
         }
