@@ -9,7 +9,6 @@
 
 #include <Magnum/Magnum.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
-#include <MagnumPlugins/StbImageConverter/StbImageConverter.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
