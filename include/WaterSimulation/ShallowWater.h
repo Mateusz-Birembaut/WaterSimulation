@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Magnum/Magnum.h"
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <Magnum/Magnum.h>
 #include <Magnum/Image.h>
 #include <Magnum/Trade/ImageData.h>
 #include <Magnum/GL/Texture.h>

@@ -2,15 +2,14 @@
 
 #include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/Camera.h>
-#include <Magnum/GL/GL.h>
 #include <WaterSimulation/ShallowWater.h>
 #include <WaterSimulation/UIManager.h>
 
-
+#include <Corrade/Containers/StringView.h>
+#include <Magnum/GL/GL.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
-#include <Corrade/Containers/StringView.h>
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/Version.h>
@@ -67,14 +66,14 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
 
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
 
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
-
     // texture 
     {
         Magnum::GL::Texture2D * heightTexture = &(app->heightTexture());
         Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
         Magnum::GL::Texture2D * heightmapTexture = &(app->terrainHeightmap());
         ShallowWater * simulation = &(app->shallowWaterSimulation()); 
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
 
         ImGui::Text("Values:");
         ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);

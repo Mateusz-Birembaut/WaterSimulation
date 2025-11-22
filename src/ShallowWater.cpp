@@ -1,5 +1,5 @@
-#include "Corrade/Utility/Debug.h"
-#include "Magnum/GL/GL.h"
+#include <Corrade/Utility/Debug.h>
+#include <Magnum/GL/GL.h>
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
 #include <Magnum/Math/Color.h>

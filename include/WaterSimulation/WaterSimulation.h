@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Corrade/PluginManager/Manager.h"
-#include "Magnum/GL/GL.h"
+
+
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
@@ -9,8 +9,11 @@
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
 
+
 #include <memory>
 #include <unordered_set>
+#include <Corrade/PluginManager/Manager.h>
+#include <Magnum/GL/GL.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Magnum/Math/Vector2.h>
@@ -18,7 +21,6 @@
 #include <Magnum/Trade/ImageData.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Magnum/Trade/AbstractImporter.h>
-
 #include <WaterSimulation/ShallowWater.h>
 
 

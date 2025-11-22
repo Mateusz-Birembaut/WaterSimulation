@@ -1,6 +1,5 @@
-#include <WaterSimulation/Mesh.h>
-
 #include <external/OBJ_Loader.h>
+#include <WaterSimulation/Mesh.h>
 
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Vector2.h>
