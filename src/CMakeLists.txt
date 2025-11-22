@@ -4,6 +4,7 @@ set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
 add_executable(WaterSimulation 
     WaterSimulation.cpp
+    ShallowWater.cpp
     UIManager.cpp
     Mesh.cpp
     Components/MeshComponent.cpp
@@ -11,11 +12,16 @@ add_executable(WaterSimulation
     Systems/TransformSystem.cpp
 )
 
+# Don't forget to also add plugins here
 target_link_libraries(WaterSimulation PRIVATE
     Magnum::Application
     Magnum::GL
     Magnum::Magnum
     MagnumIntegration::ImGui
+    Corrade::PluginManager
+    Magnum::Trade
+    MagnumPlugins::StbImageImporter
+    MagnumPlugins::StbResizeImageConverter
 )
 
 

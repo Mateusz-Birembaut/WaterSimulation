@@ -1,6 +1,11 @@
 
+
 #include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/Camera.h>
+#include <Magnum/GL/GL.h>
+#include <WaterSimulation/ShallowWater.h>
+#include <WaterSimulation/UIManager.h>
+
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/Platform/Sdl2Application.h>
@@ -27,6 +32,9 @@ void WaterSimulation::UIManager::drawUI(Application & app){
         app.stopTextInput();
 
 
+    paramWindow(app);
+
+
     cameraWindow(app.camera());
     //perfWindow();
 
@@ -46,24 +54,57 @@ void WaterSimulation::UIManager::drawUI(Application & app){
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 }
 
-void WaterSimulation::UIManager::perfWindow(){
-    // test fenêtre
-    {
-        ImGui::Begin("Perfs");
-
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-            1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
-            
-        ImGui::End();
-    }
-}
-
 void WaterSimulation::UIManager::sceneGraph(){
     // test fenêtre
     {
         ImGui::Begin("Scene Graph");
 
         ImGui::End();
+    }
+}
+
+void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application & _app){
+
+    auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
+
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
+
+    // texture 
+    {
+        Magnum::GL::Texture2D * heightTexture = &(app->heightTexture());
+        Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
+        Magnum::GL::Texture2D * heightmapTexture = &(app->terrainHeightmap());
+        ShallowWater * simulation = &(app->shallowWaterSimulation()); 
+
+        ImGui::Text("Values:");
+        ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);
+        ImGui::Text("Velocity X - min: %.3f, max: %.3f", simulation->minux, simulation->maxux);
+        ImGui::Text("Velocity Y - min: %.3f, max: %.3f", simulation->minuy, simulation->maxuy);
+        ImGui::Separator();
+
+        ImVec2 textureSize(512, 512); // texture size in imgui window
+
+        if (heightTexture) {
+            ImGui::Text("Water height:");
+            ImGui::Image(reinterpret_cast<void*>(heightTexture->id()), textureSize);
+        } else {
+            ImGui::Text("height texture error");
+        }
+
+        if (momentumTexture) {
+            ImGui::Text("Velocities:");
+            ImGui::Image(reinterpret_cast<void*>(momentumTexture->id()), textureSize);
+        } else {
+            ImGui::Text("velocities texture error");
+        }
+
+        if (heightmapTexture) {
+            ImGui::Text("Terrain Heightmap:");
+            ImGui::Image(reinterpret_cast<void*>(heightmapTexture->id()), textureSize);
+        } else {
+            ImGui::Text("terrain texture error");
+        }
+
     }
 }
 

@@ -13,7 +13,8 @@ namespace WaterSimulation {
         void drawUI(Application& app);
 
     private:
-        void perfWindow();
+
+        void paramWindow(Magnum::Platform::Sdl2Application & app);
         void sceneGraph();
         void cameraWindow(Camera & cam);
     };
