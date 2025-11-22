@@ -133,7 +133,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
     // test ECS et rendu avec shader de base
     m_testFlatShader = Shaders::FlatGL3D{};
-    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    m_testMesh = std::make_unique<Mesh>("./ressources/assets/Meshes/suzanneLOD1.obj");
     Entity testEntity = m_registry.create();
     m_registry.emplace<TransformComponent>(
         testEntity,

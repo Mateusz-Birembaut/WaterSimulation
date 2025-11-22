@@ -67,11 +67,11 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
 
     // texture 
-    {
-        Magnum::GL::Texture2D * heightTexture = &(app->heightTexture());
+    {   
+        ShallowWater * simulation = &(app->shallowWaterSimulation());
+        Magnum::GL::Texture2D * heightTexture = &(simulation->getStateTexture());
         Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
-        Magnum::GL::Texture2D * heightmapTexture = &(app->terrainHeightmap());
-        ShallowWater * simulation = &(app->shallowWaterSimulation()); 
+        Magnum::GL::Texture2D * heightmapTexture = &(simulation->getTerrainTexture());    
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
 
