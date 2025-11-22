@@ -1,16 +1,43 @@
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Camera.h>
 
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/PhongGL.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Matrix3.h>
+#include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/DefaultFramebuffer.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
 
 namespace WaterSimulation {
 
+void RenderSystem::render(Registry& registry,
+                          Camera& cam) 
+{
+    auto viewMatrix = cam.viewMatrix();
+    auto projectionMatrix = cam.projectionMatrix();
+
+    m_depthPass.render(registry, viewMatrix, projectionMatrix);
+    if(m_renderDepth){
+        GL::defaultFramebuffer.bind();
+        GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+        m_depthDebugShader
+            .bindDepthTexture(m_depthPass.getDepthTexture())
+            .setNear(cam.near())
+            .setFar(cam.far())
+            .draw(m_fullscreenTriangle);
+        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+        return;
+    }
+
+}
+
+
+
+/*
 void RenderSystem::render(
     Registry& registry,
     const Matrix4& viewMatrix,
@@ -28,7 +55,8 @@ void RenderSystem::render(
         renderMesh(meshComp, mvp);
     }
 }
-
+*/
+/*
 void RenderSystem::renderMesh(
     MeshComponent& meshComp,
     const Matrix4& mvp) {
@@ -44,5 +72,6 @@ void RenderSystem::renderMesh(
     // TODO: ajouter notre shader par exemple
     // if (auto* shaderPerso =  dynamic_cast<Shaders::ClasseDeNotreSahder*>(meshComp.shader))....
 }
+*/
 
 } // namespace WaterSimulation

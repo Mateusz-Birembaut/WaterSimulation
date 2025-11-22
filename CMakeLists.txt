@@ -8,7 +8,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
 
 # Adds Corrade as a subproject
+set(CORRADE_WITH_UTILITY ON CACHE BOOL "" FORCE)
+set(CORRADE_WITH_RC ON CACHE BOOL "" FORCE)
 add_subdirectory(external/corrade EXCLUDE_FROM_ALL)
+
+# Enable corrade_add_resource
+set(CORRADE_INCLUDE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+include(${PROJECT_SOURCE_DIR}/external/corrade/modules/UseCorrade.cmake)
 
 # Add Magnum as a subproject, enable Sdl2Application
 set(MAGNUM_WITH_SDL2APPLICATION ON CACHE BOOL "" FORCE)

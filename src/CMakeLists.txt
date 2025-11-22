@@ -2,6 +2,9 @@ find_package(Magnum REQUIRED GL Sdl2Application)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
+# Compile resources
+corrade_add_resource(WaterSimulation_RESOURCES ${PROJECT_SOURCE_DIR}/resources/resources.conf)
+
 add_executable(WaterSimulation 
     WaterSimulation.cpp
     ShallowWater.cpp
@@ -10,6 +13,8 @@ add_executable(WaterSimulation
     Components/MeshComponent.cpp
     Systems/RenderSystem.cpp
     Systems/TransformSystem.cpp
+    Rendering/DepthPass.cpp
+    ${WaterSimulation_RESOURCES}
 )
 
 # Don't forget to also add plugins here
@@ -19,6 +24,7 @@ target_link_libraries(WaterSimulation PRIVATE
     Magnum::Magnum
     MagnumIntegration::ImGui
     Corrade::PluginManager
+    Corrade::Utility
     Magnum::Trade
     MagnumPlugins::StbImageImporter
     MagnumPlugins::StbResizeImageConverter

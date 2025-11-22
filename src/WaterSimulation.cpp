@@ -1,35 +1,35 @@
-#include <WaterSimulation/WaterSimulation.h>
-#include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
-#include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
+#include <WaterSimulation/UIManager.h>
+#include <WaterSimulation/WaterSimulation.h>
 
-#include <Magnum/Magnum.h>
-#include <Magnum/Trade/AbstractImageConverter.h>
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Corrade/Containers/StringView.h>
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/Debug.h>
 #include <Magnum/GL/Context.h>
+#include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
+#include <Magnum/ImageView.h>
+#include <Magnum/Magnum.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
-#include <Magnum/GL/TextureFormat.h>
-#include <Corrade/PluginManager/Manager.h>
-#include <Magnum/Trade/AbstractImporter.h>
-#include <Corrade/Utility/Debug.h>
-#include <Magnum/Trade/ImageData.h>
-#include <Magnum/PixelFormat.h>
-#include <Magnum/ImageView.h>
-#include <Corrade/Utility/ConfigurationGroup.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
-#include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/PixelFormat.h>
+#include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Shaders/FlatGL.h>
+#include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/Trade/AbstractImageConverter.h>
+#include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/ImageData.h>
 #include <memory>
 
 
@@ -44,6 +44,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
 {   
+	Corrade::Utility::Resource rs{"WaterSimulationResources"};
+
     Debug{} << "Creating application";
     
     m_timeline.start();
@@ -71,7 +73,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    importer->openFile("ressources/heightmaps/h3.png");
+    importer->openFile("resources/heightmaps/h3.png");
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "256 256");
@@ -82,7 +84,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
     //ImageView2D resized_converted_heightmap = ImageView2D{PixelFormat::R8Unorm, resized->size(), resized->data()};
     
-
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(256,256, .25f, 1.0f/60.0f);
     
@@ -124,6 +125,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     GL::Renderer::setClearColor(0xa5c9ea_rgbf);
 
+    m_renderSystem.init(framebufferSize());
+
     Debug{} << "This application is running on"
             << GL::Context::current().version() << "using"
             << GL::Context::current().rendererString();
@@ -154,6 +157,7 @@ WaterSimulation::Application::~Application() {
 void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
     GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
 
+    m_renderSystem.resize(event.framebufferSize());
     m_imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
         event.windowSize(), event.framebufferSize());
 
@@ -176,9 +180,8 @@ void WaterSimulation::Application::drawEvent() {
 
     m_transform_System.update(m_registry);
 
-    auto view = m_camera->viewMatrix();
-    auto proj = m_camera->projectionMatrix();
-    m_renderSystem.render(m_registry, view, proj);
+
+    m_renderSystem.render(m_registry, *m_camera.get());
 
     m_UIManager->drawUI(*this);
 
