@@ -70,11 +70,15 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     // texture 
     {   
         ShallowWater * simulation = &(app->shallowWaterSimulation());
-        Magnum::GL::Texture2D * stateTexture = &(simulation->getStateTexture());
+        Magnum::GL::Texture2D * stateTexture = nullptr;//&(simulation->getStateTexture());
         Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
         Magnum::GL::Texture2D * heightmapTexture = &(simulation->getTerrainTexture());    
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
+
+        if (ImGui::Button(app->simulationPaused ? "Resume" : "Pause")) {
+            app->simulationPaused = !app->simulationPaused;
+        }
 
         ImGui::Text("Values:");
         ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);
@@ -85,7 +89,7 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
         ImVec2 textureSize(512, 512); // texture size in imgui window
 
         if (stateTexture) {
-            ImGui::Text("Water height:");
+            ImGui::Text("Water Height:");
             ImGui::Image(reinterpret_cast<void*>(stateTexture->id()), textureSize);
         } else {
             ImGui::Text("height texture error");

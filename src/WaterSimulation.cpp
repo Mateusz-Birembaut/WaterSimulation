@@ -84,7 +84,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
 
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(256,256, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(255,255, .25f, 1.0f/60.0f);
     
 
     m_heightTexture = GL::Texture2D{};
@@ -107,9 +107,12 @@ WaterSimulation::Application::Application(const Arguments& arguments):
                    .setSubImage(0, {}, *resized);
 
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 3.0f);
-    //m_shallowWaterSimulation.initBump();
-    m_shallowWaterSimulation.initTop();
+    //m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 10.0f);
+
+    m_shallowWaterSimulation.initDamBreak();
+
+    debugShader = DisplayShader("./ressources/shaders/debug.vs", "./ressources/shaders/debug.fs");
+    
 
     // ImGui setup
     m_imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),windowSize(), framebufferSize());
@@ -130,19 +133,23 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
+
+    Debug{} << "Camera pos:" << m_camera->position();
     
     // test ECS et rendu avec shader de base
     m_testFlatShader = Shaders::FlatGL3D{};
-    m_testMesh = std::make_unique<Mesh>("./ressources/assets/Meshes/suzanneLOD1.obj");
+    
+    m_testMesh = std::make_unique<Mesh>("./ressources/assets/Meshes/quad.obj");
     Entity testEntity = m_registry.create();
     m_registry.emplace<TransformComponent>(
         testEntity,
-        Magnum::Vector3{0.0f, 0.0f, -3.0f}
+        Magnum::Vector3{0.0f, 0.0f, -1.0f},
+        Quaternion::rotation(-90.0_degf, Vector3::yAxis())
     );
     m_registry.emplace<MeshComponent>(
         testEntity,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}},
-        &m_testFlatShader
+        &debugShader
     );
     
 }
@@ -170,9 +177,11 @@ void WaterSimulation::Application::drawEvent() {
 
     handleCameraInputs();
 
-    m_shallowWaterSimulation.step();
-    m_shallowWaterSimulation.updateHeightTexture(&m_heightTexture);
-    m_shallowWaterSimulation.updateMomentumTexture(&m_momentumTexture);
+    debugShader.bind(&m_shallowWaterSimulation.getTerrainTexture(), 1);
+    debugShader.bind(&m_shallowWaterSimulation.getStateTexture(), 0);
+    
+
+    if(!simulationPaused) m_shallowWaterSimulation.step();
 
     m_transform_System.update(m_registry);
 

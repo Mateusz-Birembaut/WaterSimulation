@@ -2,6 +2,7 @@
 
 
 
+#include "Corrade/Tags.h"
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
@@ -22,6 +23,7 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <WaterSimulation/ShallowWater.h>
+#include <WaterSimulation/Systems/RenderSystem.h>
 
 
 namespace WaterSimulation {
@@ -34,6 +36,8 @@ namespace WaterSimulation {
 			Camera& camera() { return *m_camera; }
 			Magnum::ImGuiIntegration::Context & getContext() {return m_imgui;};
 			bool cursorLocked() { return m_cursorLocked;};
+
+			bool simulationPaused = false;
 
 			Magnum::GL::Texture2D& heightTexture() { return m_heightTexture; }
 			Magnum::GL::Texture2D& momentumTexture() { return m_momentumTexture; }
@@ -59,6 +63,7 @@ namespace WaterSimulation {
 			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
 			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q
 			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
+			DisplayShader debugShader;
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;
 			void handleCameraInputs();
