@@ -1,0 +1,37 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
+layout(binding = 1, rgba32f) writeonly uniform highp image2D stateOut;
+layout(binding = 2, r32f) readonly uniform highp image2D terrain;
+
+uniform float dx;
+uniform float dt;
+uniform float gravity;
+uniform float dryEps;
+uniform float friction_coef;
+
+void main() {
+    uvec3 globalID = gl_GlobalInvocationID;
+    ivec2 gridSize = imageSize(stateIn);
+
+    vec4 outValues = vec4(0.0);
+
+    if (globalID.x >= (uint(gridSize.x) - 1u) ||
+        globalID.y >= (uint(gridSize.y) - 1u)) {
+        return;
+    }
+
+    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
+    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
+
+    float divx = (stater.y - statec.y) / dx;
+    float divy = (statet.z - statec.z) / dx;
+
+    outValues.x = max(statec.x - (divx + divy) * dt, 0.0);
+    outValues.y = statec.y;
+    outValues.z = statec.z;
+    outValues.a = 1.0;
+
+    imageStore(stateOut, ivec2(globalID.xy), outValues);
+}

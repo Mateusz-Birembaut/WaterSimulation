@@ -1,0 +1,149 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
+layout(binding = 1, rgba32f) writeonly uniform highp image2D stateOut;
+layout(binding = 2, r32f) readonly uniform highp image2D terrain;
+
+uniform float dx;
+uniform float dt;
+uniform float gravity;
+uniform float dryEps;
+uniform float friction_coef;
+
+float upwinded_h_x(float etal, float etar, float terrain_max, float qxij) {
+    float hl_recon = max(0.0, etal - terrain_max);
+    float hr_recon = max(0.0, etar - terrain_max);
+
+    if (abs(qxij) < dryEps) {
+        return max(hl_recon, hr_recon);
+    }
+    return (qxij >= 0.0) ? hl_recon : hr_recon;
+}
+
+float upwinded_h_y(float etab, float etat, float terrain_max, float qyij) {
+    float hb_recon = max(0.0, etab - terrain_max);
+    float ht_recon = max(0.0, etat - terrain_max);
+
+    if (abs(qyij) < dryEps) {
+        return max(hb_recon, ht_recon);
+    }
+    return (qyij >= 0.0) ? hb_recon : ht_recon;
+}
+
+bool is_wet_face_x(float etal, float etar, float terrain_max) {
+    return (etal > (terrain_max + dryEps)) || (etar > (terrain_max + dryEps));
+}
+
+bool is_wet_face_y(float etab, float etat, float terrain_max) {
+    return (etab > (terrain_max + dryEps)) || (etat > (terrain_max + dryEps));
+}
+
+void main() {
+    uvec3 globalID = gl_GlobalInvocationID;
+    ivec2 gridSize = imageSize(stateIn);
+
+    vec4 outValues = vec4(0.0);
+
+    float limitCFL = dx / (4.0 * dt);
+
+    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
+    vec4 statel = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(-1, 0));
+    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
+    vec4 stateb = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, -1));
+
+    float terrainc = imageLoad(terrain, ivec2(globalID.xy)).r;
+    float terrainl = imageLoad(terrain, ivec2(globalID.xy) + ivec2(-1, 0)).r;
+    float terrainr = imageLoad(terrain, ivec2(globalID.xy) + ivec2(1, 0)).r;
+    float terraint = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, 1)).r;
+    float terrainb = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, -1)).r;
+
+    float etac = statec.x + terrainc;
+    float etal = statel.x + terrainl;
+    float etar = stater.x + terrainr;
+    float etat = statet.x + terraint;
+    float etab = stateb.x + terrainb;
+
+    float max_terrain_x = max(terrainl, terrainc);
+    float max_terrain_y = max(terrainb, terrainc);
+
+    float h_upwind_x = upwinded_h_x(etal, etac, max_terrain_x, statec.y);
+    float h_upwind_y = upwinded_h_y(etab, etac, max_terrain_y, statec.z);
+
+    outValues.x = statec.x; // h should not be changed in this shader
+    outValues.a = 1.0;
+
+    float dqx = 0.0;
+    float dqy = 0.0;
+
+    if (!is_wet_face_x(etal, etac, max_terrain_x) || h_upwind_x <= dryEps ||
+        globalID.x == 0u || globalID.x == (uint(gridSize.x) - 1u)) {
+        outValues.y = 0.0; // qx = 0
+    } else {
+
+        // Pressure
+
+        float havg = 0.5 * (statel.x + statec.x);
+
+        float pressure = -gravity * (etac - etal) / dx;
+
+        // Advection
+
+        float advection = 0.0;
+        float u = statec.y / h_upwind_x;
+
+        if (u > 0.0) {
+            advection = -u * (statec.y - statel.y) / dx;
+        } else {
+            advection = -u * (stater.y - statec.y) / dx;
+        }
+        // Friction
+
+        float friction = -friction_coef * u ;
+
+        // Add all forces
+
+        dqx += havg * (pressure + friction) + advection;
+
+        float maxqx = h_upwind_x * limitCFL;
+        float newqx = clamp(statec.y + dqx * dt, -maxqx, maxqx);
+        outValues.y = newqx;
+    }
+
+    if (!is_wet_face_y(etab, etac, max_terrain_y) || h_upwind_y <= dryEps ||
+        globalID.y == 0u || globalID.y == (uint(gridSize.y) - 1u)) {
+        outValues.z = 0.0; // qy = 0
+    } else {
+
+        float havg = 0.5 * (stateb.x + statec.x);
+
+        float pressure = -gravity * (etac - etab) / dx;
+
+        // Advection
+
+        float advection = 0.0;
+        float v = statec.z / h_upwind_y;
+
+        if (v > 0.0) {
+            advection = -v * (statec.z - stateb.z) / dx;
+        } else {
+            advection = -v * (statet.z - statec.z) / dx;
+        }
+
+        // Friction
+
+        float friction = -friction_coef * v ;
+
+        // Add all forces
+
+        dqy += havg * (pressure + friction) + advection;
+
+        float maxqy = h_upwind_y * limitCFL;
+        float newqy = clamp(statec.z + dqy * dt, -maxqy, maxqy);
+        outValues.z = newqy;
+    }
+
+    //
+
+    imageStore(stateOut, ivec2(globalID.xy), outValues);
+}

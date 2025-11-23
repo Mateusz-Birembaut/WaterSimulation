@@ -1,3 +1,4 @@
+#include "WaterSimulation/Systems/RenderSystem.h"
 #include <WaterSimulation/Components/MeshComponent.h>
 
 #include <Magnum/GL/Buffer.h>
@@ -36,14 +37,16 @@ void MeshComponent::setupBuffers() {
     
     Corrade::Utility::Debug{} << "Creating vertex buffer...";
     vertexBuffer.setData(Containers::arrayView(activeMesh->vertices)); // Containers::arrayView permet 
-    glMesh.addVertexBuffer(vertexBuffer, 0, Shaders::FlatGL3D::Position{});
+    glMesh.addVertexBuffer(vertexBuffer, 0, DisplayShader::Position{});
     
     if (!activeMesh->normals.empty()) {
         normalBuffer.setData(Containers::arrayView(activeMesh->normals));
+        glMesh.addVertexBuffer(normalBuffer, 0, DisplayShader::Normal{});
     }
 
     if (!activeMesh->uvs.empty()) {
         uvBuffer.setData(Containers::arrayView(activeMesh->uvs));
+        glMesh.addVertexBuffer(uvBuffer, 0, DisplayShader::TextureCoordinates{});
     }
     
     indexBuffer.setData(Containers::arrayView(activeMesh->triangles));
