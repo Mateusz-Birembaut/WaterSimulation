@@ -10,18 +10,16 @@ uniform float gravity;
 uniform float dryEps;
 uniform float friction_coef;
 
-
 void main() {
     uvec3 globalID = gl_GlobalInvocationID;
     ivec2 gridSize = imageSize(stateIn);
 
     vec4 outValues = vec4(0.0);
 
-    if (globalID.x >= (uint(gridSize.x) - 1u) || globalID.y >= (uint(gridSize.y) - 1u)) {
+    if (globalID.x >= (uint(gridSize.x) - 1u) ||
+        globalID.y >= (uint(gridSize.y) - 1u)) {
         return;
     }
-
-    float limitCFL = dx/(5.0*dt);
 
     vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
     vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
@@ -30,11 +28,10 @@ void main() {
     float divx = (stater.y - statec.y) / dx;
     float divy = (statet.z - statec.z) / dx;
 
-    outValues.x = max(statec.x - (divx + divy) * dt, 0.0 );
+    outValues.x = max(statec.x - (divx + divy) * dt, 0.0);
     outValues.y = statec.y;
     outValues.z = statec.z;
     outValues.a = 1.0;
 
     imageStore(stateOut, ivec2(globalID.xy), outValues);
-
 }

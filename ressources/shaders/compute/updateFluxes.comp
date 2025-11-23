@@ -99,7 +99,7 @@ void main() {
         }
         // Friction
 
-        float friction = -friction_coef * u;
+        float friction = -friction_coef * u ;
 
         // Add all forces
 
@@ -132,7 +132,7 @@ void main() {
 
         // Friction
 
-        float friction = -friction_coef * v;
+        float friction = -friction_coef * v ;
 
         // Add all forces
 

@@ -70,9 +70,6 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     // texture 
     {   
         ShallowWater * simulation = &(app->shallowWaterSimulation());
-        Magnum::GL::Texture2D * stateTexture = nullptr;//&(simulation->getStateTexture());
-        Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
-        Magnum::GL::Texture2D * heightmapTexture = &(simulation->getTerrainTexture());    
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
 
@@ -80,34 +77,15 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
             app->simulationPaused = !app->simulationPaused;
         }
 
-        ImGui::Text("Values:");
-        ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);
-        ImGui::Text("Velocity X - min: %.3f, max: %.3f", simulation->minux, simulation->maxux);
-        ImGui::Text("Velocity Y - min: %.3f, max: %.3f", simulation->minuy, simulation->maxuy);
-        ImGui::Separator();
-
-        ImVec2 textureSize(512, 512); // texture size in imgui window
-
-        if (stateTexture) {
-            ImGui::Text("Water Height:");
-            ImGui::Image(reinterpret_cast<void*>(stateTexture->id()), textureSize);
-        } else {
-            ImGui::Text("height texture error");
+        if (ImGui::Button("Init Dam Break")) {
+            simulation->initDamBreak();
         }
 
-        if (momentumTexture) {
-            ImGui::Text("Velocities:");
-            ImGui::Image(reinterpret_cast<void*>(momentumTexture->id()), textureSize);
-        } else {
-            ImGui::Text("velocities texture error");
+        if (ImGui::Button("Init Bump")) {
+            simulation->initBump();
         }
 
-        if (heightmapTexture) {
-            ImGui::Text("Terrain Heightmap:");
-            ImGui::Image(reinterpret_cast<void*>(heightmapTexture->id()), textureSize);
-        } else {
-            ImGui::Text("terrain texture error");
-        }
+  
 
     }
 }

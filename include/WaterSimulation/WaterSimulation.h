@@ -38,10 +38,6 @@ namespace WaterSimulation {
 			bool cursorLocked() { return m_cursorLocked;};
 
 			bool simulationPaused = false;
-
-			Magnum::GL::Texture2D& heightTexture() { return m_heightTexture; }
-			Magnum::GL::Texture2D& momentumTexture() { return m_momentumTexture; }
-			Magnum::GL::Texture2D& terrainHeightmap() { return m_terrainHeightmap; }
 			ShallowWater& shallowWaterSimulation() { return m_shallowWaterSimulation; }
 
 		private:
@@ -52,6 +48,7 @@ namespace WaterSimulation {
 			std::unique_ptr<Camera> m_camera;
 			bool m_cursorLocked{false};
 
+			// ECS registry and systems 
 			Registry m_registry;
 			TransformSystem m_transform_System;
 			RenderSystem m_renderSystem;
@@ -59,11 +56,8 @@ namespace WaterSimulation {
 			std::unique_ptr<Mesh> m_testMesh;
 			Magnum::Shaders::FlatGL3D m_testFlatShader{Magnum::NoCreate};
 			
-			ShallowWater m_shallowWaterSimulation; // simulation de l'eau
-			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
-			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q
-			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
-			DisplayShader debugShader;
+			ShallowWater m_shallowWaterSimulation; // Shallow water + airy waves simulation
+			DisplayShader debugShader; // 
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;
 			void handleCameraInputs();

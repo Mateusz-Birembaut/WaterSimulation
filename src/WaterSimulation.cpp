@@ -74,7 +74,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     importer->openFile("ressources/heightmaps/h3.png");
     auto image = importer->image2D(0);
 
-    converter->configuration().setValue("size", "256 256");
+    converter->configuration().setValue("size", "512 512");
     auto resized = converter->convert(*image);
     auto allo = resized->format();
     Debug{} << "FORMAT IS : " << allo;
@@ -84,30 +84,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
 
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(255,255, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/30.0f);
     
-
-    m_heightTexture = GL::Texture2D{};
-    m_heightTexture.setWrapping(GL::SamplerWrapping::ClampToEdge)
-                   .setMinificationFilter(GL::SamplerFilter::Linear)
-                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
-                   .setStorage(1, GL::TextureFormat::R32F, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
-
-    m_momentumTexture = GL::Texture2D{};
-    m_momentumTexture.setWrapping(GL::SamplerWrapping::ClampToEdge)
-                   .setMinificationFilter(GL::SamplerFilter::Linear)
-                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
-                   .setStorage(1, GL::TextureFormat::RG32F, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()});
-
-    m_terrainHeightmap = GL::Texture2D{};
-    m_terrainHeightmap.setWrapping(GL::SamplerWrapping::ClampToEdge)
-                   .setMinificationFilter(GL::SamplerFilter::Linear)
-                   .setMagnificationFilter(GL::SamplerFilter::Nearest)
-                   .setStorage(1, GL::TextureFormat::R8, {m_shallowWaterSimulation.getnx(), m_shallowWaterSimulation.getny()})
-                   .setSubImage(0, {}, *resized);
-
-    
-    //m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 10.0f);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 10.0f);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -144,7 +123,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_registry.emplace<TransformComponent>(
         testEntity,
         Magnum::Vector3{0.0f, 0.0f, -1.0f},
-        Quaternion::rotation(-90.0_degf, Vector3::yAxis())
+        Quaternion::rotation(-90.0_degf, Vector3::yAxis()),
+        Magnum::Vector3{2.0f,2.0f,2.0f}
     );
     m_registry.emplace<MeshComponent>(
         testEntity,
@@ -177,8 +157,9 @@ void WaterSimulation::Application::drawEvent() {
 
     handleCameraInputs();
 
-    debugShader.bind(&m_shallowWaterSimulation.getTerrainTexture(), 1);
+    
     debugShader.bind(&m_shallowWaterSimulation.getStateTexture(), 0);
+    debugShader.bind(&m_shallowWaterSimulation.getTerrainTexture(), 1);
     
 
     if(!simulationPaused) m_shallowWaterSimulation.step();

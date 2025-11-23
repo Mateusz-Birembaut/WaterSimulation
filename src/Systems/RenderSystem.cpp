@@ -72,7 +72,6 @@ DisplayShader::DisplayShader(const char * vertex_shader_file, const char * fragm
 
 DisplayShader& DisplayShader::bind(Magnum::GL::Texture2D* tex, int location) {
     if (tex) {
-        setUniform(uniformLocation("debugTexture"), location);
         tex->bind(location);
     } else {
         Corrade::Utility::Error{} << "Could not bind texture to shader";
