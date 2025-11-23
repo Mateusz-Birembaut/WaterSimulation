@@ -11,7 +11,7 @@
 
 
 namespace WaterSimulation {
-	class DepthPass
+	class ShadowMapPass
 	{
 		public:
 			void init(const Magnum::Vector2i& windowSize);

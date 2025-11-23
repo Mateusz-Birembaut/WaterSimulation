@@ -1,4 +1,4 @@
-#include <WaterSimulation/Rendering/DepthPass.h>
+#include <WaterSimulation/Rendering/ShadowMapPass.h>
 
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Components/MeshComponent.h>
@@ -16,7 +16,7 @@
 
 using namespace Magnum;
 
-void WaterSimulation::DepthPass::init(const Magnum::Vector2i& windowSize){
+void WaterSimulation::ShadowMapPass::init(const Magnum::Vector2i& windowSize){
 	m_fb = GL::Framebuffer{{{}, windowSize}};
 
     m_depthTexture = GL::Texture2D{};
@@ -29,7 +29,7 @@ void WaterSimulation::DepthPass::init(const Magnum::Vector2i& windowSize){
     m_fb.mapForDraw({});
 }
 
-void WaterSimulation::DepthPass::resize(const Magnum::Vector2i& windowSize){
+void WaterSimulation::ShadowMapPass::resize(const Magnum::Vector2i& windowSize){
     m_depthTexture = GL::Texture2D{};
     m_depthTexture.setStorage(1, GL::TextureFormat::DepthComponent32F, windowSize)
         .setMinificationFilter(GL::SamplerFilter::Linear)
@@ -40,7 +40,7 @@ void WaterSimulation::DepthPass::resize(const Magnum::Vector2i& windowSize){
     m_fb.setViewport({{}, windowSize});
 }
 
-void WaterSimulation::DepthPass::render(Registry & registry, const Magnum::Matrix4 & viewMatrix,const Magnum::Matrix4 & projMatrix){
+void WaterSimulation::ShadowMapPass::render(Registry & registry, const Magnum::Matrix4 & viewMatrix,const Magnum::Matrix4 & projMatrix){
 	m_fb.clear(GL::FramebufferClear::Color|GL::FramebufferClear::Depth).bind();
 
 	const Matrix4 viewProj = projMatrix * viewMatrix;

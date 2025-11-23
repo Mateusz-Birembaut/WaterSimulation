@@ -9,6 +9,7 @@
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 
+
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -20,58 +21,27 @@ void RenderSystem::render(Registry& registry,
     auto viewMatrix = cam.viewMatrix();
     auto projectionMatrix = cam.projectionMatrix();
 
-    m_depthPass.render(registry, viewMatrix, projectionMatrix);
-    if(m_renderDepth){
-        GL::defaultFramebuffer.bind();
-        GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-        m_depthDebugShader
-            .bindDepthTexture(m_depthPass.getDepthTexture())
-            .setNear(cam.near())
-            .setFar(cam.far())
-            .draw(m_fullscreenTriangle);
-        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    m_opaquePass.render(registry, viewMatrix, projectionMatrix);
+
+    if(m_renderDepthOnly){
+        drawFullscreenTexture(m_opaquePass.getDepthTexture(), cam.near(), cam.far());
         return;
     }
 
+    drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
+    return;
 }
 
 
-
-/*
-void RenderSystem::render(
-    Registry& registry,
-    const Matrix4& viewMatrix,
-    const Matrix4& projectionMatrix) {
-    
-    const Matrix4 viewProj = projectionMatrix * viewMatrix;
-    
-    auto view = registry.view<MeshComponent, TransformComponent>();
-    for (Entity entity : view) {
-        MeshComponent& meshComp = registry.get<MeshComponent>(entity);
-        TransformComponent& transformComp = registry.get<TransformComponent>(entity);
-
-        Matrix4 mvp = viewProj * transformComp.globalModel;
-
-        renderMesh(meshComp, mvp);
-    }
+void RenderSystem::drawFullscreenTexture(Magnum::GL::Texture2D& texture, float near, float far) {
+    GL::defaultFramebuffer.bind();
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    m_fullScreenTextureShader
+        .bindDepthTexture(texture)
+        .setNear(near)
+        .setFar(far)
+        .draw(m_fullscreenTriangle);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 }
-*/
-/*
-void RenderSystem::renderMesh(
-    MeshComponent& meshComp,
-    const Matrix4& mvp) {
-    
-    if (!meshComp.shader) return;
-    
-    if (auto* flatShader = dynamic_cast<Shaders::FlatGL3D*>(meshComp.shader)) {
-        flatShader->setTransformationProjectionMatrix(mvp)
-                  .setColor(0x2f83cc_rgbf)
-                  .draw(meshComp.glMesh);
-    } 
-
-    // TODO: ajouter notre shader par exemple
-    // if (auto* shaderPerso =  dynamic_cast<Shaders::ClasseDeNotreSahder*>(meshComp.shader))....
-}
-*/
 
 } // namespace WaterSimulation

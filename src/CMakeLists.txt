@@ -13,7 +13,7 @@ add_executable(WaterSimulation
     Components/MeshComponent.cpp
     Systems/RenderSystem.cpp
     Systems/TransformSystem.cpp
-    Rendering/DepthPass.cpp
+    Rendering/OpaquePass.cpp
     ${WaterSimulation_RESOURCES}
 )
 

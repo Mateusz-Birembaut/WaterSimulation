@@ -1,11 +1,15 @@
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Components/MaterialComponent.h>
+#include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/WaterSimulation.h>
+#include <WaterSimulation/ECS.h>
+#include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -73,7 +77,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    importer->openFile("resources/heightmaps/h3.png");
+    importer->openFile("resources/heightmaps/h4.png");
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "256 256");
@@ -133,21 +137,82 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
+    m_camera.get()->setPos({0.0, 1.0, 0.0f});
     
     // test ECS et rendu avec shader de base
-    m_testFlatShader = Shaders::FlatGL3D{};
-    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    // test sphere avec texture
+
+    auto grassData = rs.getRaw("grass.png");
+    importer->openData(grassData);
+    auto imageTest = importer->image2D(0);
+    m_testAlbedo.setWrapping(Magnum::GL::SamplerWrapping::ClampToEdge)
+                    .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+                    .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest)
+                    .setStorage(1, Magnum::GL::TextureFormat::RGBA8, imageTest->size())
+                    .setSubImage(0, {}, Magnum::ImageView2D{*imageTest});   
+
+    auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
+    /*
     Entity testEntity = m_registry.create();
+    auto & mat = m_registry.emplace<MaterialComponent>(
+        testEntity
+    );
+    mat.setAlbedo(albedoPtr);
     m_registry.emplace<TransformComponent>(
         testEntity,
-        Magnum::Vector3{0.0f, 0.0f, -3.0f}
+        Magnum::Vector3{0.0f, 2.0f, -3.0f}
     );
+    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     m_registry.emplace<MeshComponent>(
         testEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}},
-        &m_testFlatShader
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
+    */
     
+    // terrain test avec heightmap et texture pas pbr
+    Entity testTerrain = m_registry.create();
+    auto & matTerrain = m_registry.emplace<MaterialComponent>(
+        testTerrain
+    );
+
+    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_terrainHeightmap, [](Magnum::GL::Texture2D*){});
+    matTerrain.setAlbedo(albedoPtr);
+    matTerrain.setHeightMap(heightmapPtr);
+    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f));
+    m_registry.emplace<MeshComponent>(
+        testTerrain,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_terrainMesh.get()}}
+    );
+    m_registry.emplace<TransformComponent>(
+        testTerrain,
+        Magnum::Vector3{0.0f, -1.0f, -3.0f}
+    );
+    auto shaderPtr = std::make_shared<TerrainShader>();
+    m_registry.emplace<ShaderComponent>(
+        testTerrain,
+        shaderPtr
+    ); 
+
+    //visu eau rapide
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_heightTexture, [](Magnum::GL::Texture2D*){});
+    auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_momentumTexture, [](Magnum::GL::Texture2D*){});
+    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f)); 
+    Entity waterEntity = m_registry.create();
+    m_registry.emplace<MeshComponent>(
+        waterEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_waterMesh.get()}}
+    );
+    m_registry.emplace<TransformComponent>(
+        waterEntity,
+        Magnum::Vector3{0.0f, -1.0f, -3.0f} 
+    );
+    auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
+    waterMat.setHeightMap(waterHeightTexPtr);
+    waterMat.setAlbedo(waterAlbedoTexPtr);
+    m_registry.emplace<ShaderComponent>(
+        waterEntity,
+        shaderPtr
+    ); 
 }
 
 WaterSimulation::Application::~Application() {
@@ -207,6 +272,12 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
         setCursor(Platform::Sdl2Application::Cursor::Arrow);
         m_cursorLocked = false;
         Debug{} << "unlocked";
+        return;
+    }
+
+    if(event.key() == Key::N) {
+        m_renderSystem.m_renderDepthOnly = !m_renderSystem.m_renderDepthOnly;
+        Debug{} << "Depth Mode :" << m_renderSystem.m_renderDepthOnly;
         return;
     }
 

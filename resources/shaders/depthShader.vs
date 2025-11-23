@@ -1,7 +1,12 @@
-layout(location = 0) uniform mat4 mvp;
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec2 textureCoordinates;
 
-layout(location = 0) in vec3 position;
+out vec2 texCoords;
 
-void main() {
-    gl_Position = mvp * vec4(position, 1.0);
+void main(){
+	gl_Position = position;
+	texCoords = textureCoordinates;
 }
+
+
+

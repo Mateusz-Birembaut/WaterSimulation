@@ -24,12 +24,6 @@ struct MeshComponent {
 
     Magnum::GL::Mesh glMesh{Magnum::NoCreate};
     Magnum::GL::AbstractShaderProgram* shader = nullptr;
-
-    std::vector<std::string> textureFiles;
-    std::vector<std::string> textureUniforms;
-    std::string materialPath = "";
-    
-    //Magnum::Matrix4 transform;
     
     MeshComponent() = default;
 
@@ -42,32 +36,12 @@ struct MeshComponent {
     
     MeshComponent(
         const std::vector<std::pair<float, Mesh*>>& lods,
-        Magnum::GL::AbstractShaderProgram* shaderProgram = nullptr,
-        const std::vector<std::string>& texFiles = {},
-        const std::vector<std::string>& texUniforms = {},
-        const std::string& material = ""
+        Magnum::GL::AbstractShaderProgram* shaderProgram = nullptr
     ) : 
         meshLODs(lods), 
         activeMesh(lods.empty() ? nullptr : lods[0].second),
         shader(shaderProgram)
-        //transform{Magnum::Math::IdentityInit}
-
     {
-        if (material.empty()) {
-            textureFiles = texFiles;
-            textureUniforms = texUniforms;
-        } else {
-            materialPath = material;
-            textureFiles = {
-                material + "/albedo.png", 
-                material + "/ao.png", 
-                material + "/metallic.png",
-                material + "/normal.png", 
-                material + "/roughness.png"
-            };
-            textureUniforms = {"albedoMap", "aoMap", "metallicMap", "normalMap", "roughnessMap"};
-        }
-        
         if (activeMesh) {
             setupBuffers();
         }

@@ -1,5 +1,5 @@
-layout(location = 0) in vec4 position;
-layout(location = 1) in vec2 textureCoordinates;
+in vec4 position;
+in vec2 textureCoordinates;
 
 out vec2 texCoords;
 

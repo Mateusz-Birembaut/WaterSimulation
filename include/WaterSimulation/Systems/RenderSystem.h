@@ -2,8 +2,8 @@
 #pragma once
 
 #include <WaterSimulation/ECS.h>
-#include <WaterSimulation/Rendering/DepthPass.h>
-#include <WaterSimulation/Rendering/CustomShader/DepthDebugShader.h>
+#include <WaterSimulation/Rendering/OpaquePass.h>
+#include <WaterSimulation/Rendering/CustomShader/FullscreenTextureShader.h>
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Camera.h>
 
@@ -22,21 +22,24 @@ namespace WaterSimulation {
 	class RenderSystem {
 		public:
 			void init(const Magnum::Vector2i& windowSize){
-				m_depthPass.init(windowSize);
+				   m_opaquePass.init(windowSize);
 			}
 
 			void resize(const Magnum::Vector2i& windowSize){
-				m_depthPass.resize(windowSize);
+				   m_opaquePass.resize(windowSize);
 			}
 
 			void render(Registry & registry, Camera & cam);
 
+			bool m_renderDepthOnly{false};
+
 		private:
-			DepthPass m_depthPass;
-			DepthDebugShader m_depthDebugShader;
-			bool m_renderDepth{true};
+			OpaquePass m_opaquePass;
+			FullscreenTextureShader m_fullScreenTextureShader;
 
 			Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};
+
+			void drawFullscreenTexture(Magnum::GL::Texture2D& texture, float, float);
 
 			Magnum::GL::Mesh createFullscreenTriangle()
 			{
@@ -62,12 +65,14 @@ namespace WaterSimulation {
 					.addVertexBuffer(
 						std::move(vertexBuffer),
 						0,
-						GL::Attribute<0, Vector2>{},      // position
-						GL::Attribute<1, Vector2>{}       // uv
+						GL::Attribute<0, Vector2>{},      // positions
+						GL::Attribute<1, Vector2>{}       // uvs
 					);
 
 				return mesh;
 			}
+
+
 
 	};
 
