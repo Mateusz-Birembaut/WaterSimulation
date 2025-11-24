@@ -122,8 +122,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Entity testEntity = m_registry.create();
     m_registry.emplace<TransformComponent>(
         testEntity,
-        Magnum::Vector3{0.0f, 0.0f, -1.0f},
-        Quaternion::rotation(-90.0_degf, Vector3::yAxis()),
+        Magnum::Vector3{0.0f, .0f, -3.0f},
+        Quaternion::rotation(0.0_degf, Vector3::yAxis()),
         Magnum::Vector3{2.0f,2.0f,2.0f}
     );
     m_registry.emplace<MeshComponent>(
