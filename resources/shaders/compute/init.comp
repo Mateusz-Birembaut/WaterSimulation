@@ -21,8 +21,8 @@ void main() {
     if (init_type == 0) { // init flat with bump
         int centerX = gridSize.x / 2;
         int centerY = gridSize.y / 2;
-        float bumpHeight = 1.0;
-        float baseLevel = 0.5;
+        float bumpHeight = 3.0;
+        float baseLevel = 0.1;
 
         float distance = length(vec2(globalID.xy) - vec2(centerX, centerY));
         float radius = 16.0;
@@ -46,7 +46,7 @@ void main() {
 
     } else if (init_type == 1) { // init dam break
 
-        float waterLevel = 3.0;
+        float waterLevel = 1.0;
         int damPosition = gridSize.y / 6;
 
         float terrainHeight = imageLoad(terrain, ivec2(globalID.xy)).r;

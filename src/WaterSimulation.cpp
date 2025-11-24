@@ -86,7 +86,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h3.png");
+    auto heightmapData = rs.getRaw("h6.png");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -164,7 +164,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     */
 
-    float scale = 25.0f;
+    float scale = 75.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();
@@ -194,14 +194,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
     //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
 
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
 
-    auto waterShader = std::make_shared<DebugShader>();
-    m_registry.emplace<ShaderComponent>(
-        testTerrain,
-        shaderPtr
-    ); 
 
     m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
     Entity waterEntity = m_registry.create();
@@ -213,13 +208,24 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         Magnum::Vector3{0.0f, -1.0f, -3.0f} 
     );
+
+    auto waterShader = std::make_shared<DebugShader>();
     auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
     waterMat.setHeightMap(waterHeightTexPtr);
     waterMat.setAlbedo(waterAlbedoTexPtr);
+
     m_registry.emplace<ShaderComponent>(
         waterEntity,
         waterShader
     ); 
+
+    //Debug Quad
+
+    /* m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    m_registry.emplace<MeshComponent>(
+        testEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+    ); */
     
 
     // sun light en cours
