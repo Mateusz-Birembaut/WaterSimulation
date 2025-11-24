@@ -65,7 +65,6 @@ namespace WaterSimulation {
 			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
 			Magnum::Shaders::FlatGL3D m_testFlatShader{Magnum::NoCreate};
 			
-			ShallowWater m_shallowWaterSimulation; // Shallow water + airy waves simulation
 			DisplayShader debugShader; // 
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;

@@ -3,6 +3,8 @@
 #include "Corrade/Containers/String.h"
 #include "Corrade/Utility/Debug.h"
 #include "Corrade/Utility/DebugAssert.h"
+#include "Corrade/Utility/Resource.h"
+#include <Corrade/Utility/ConfigurationGroup.h>
 #include "Magnum/GL/AbstractShaderProgram.h"
 #include "Magnum/GL/GL.h"
 #include "Magnum/GL/ImageFormat.h"
@@ -54,7 +56,9 @@ class ShallowWater {
             Magnum::GL::Shader compute(Magnum::GL::Version::GL430,
                                        Magnum::GL::Shader::Type::Compute);
 
-            compute.addFile(filepath);
+            Corrade::Utility::Resource rs{"WaterSimulationResources"};
+            compute.addSource(rs.get(filepath));
+
             CORRADE_INTERNAL_ASSERT_OUTPUT(compute.compile());
 
             attachShader(compute);
@@ -143,10 +147,10 @@ class ShallowWater {
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
 
         m_updateFluxesProgram =
-            ComputeProgram("ressources/shaders/compute/updateFluxes.comp");
+            ComputeProgram("updateFluxes.comp");
         m_updateWaterHeightProgram =
-            ComputeProgram("ressources/shaders/compute/updateWaterHeight.comp");
-        m_initProgram = ComputeProgram("ressources/shaders/compute/init.comp");
+            ComputeProgram("updateWaterHeight.comp");
+        m_initProgram = ComputeProgram("init.comp");
 
         m_updateFluxesProgram.setParametersUniforms(*this);
         m_updateWaterHeightProgram.setParametersUniforms(*this);

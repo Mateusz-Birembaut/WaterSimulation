@@ -103,8 +103,16 @@ namespace WaterSimulation
 			return m_speed;
 		}
 
+		void setSpeed(float s){
+			m_speed = s;
+		}
+
 		float rotSpeed(){
 			return m_rotationSpeed;
+		}
+
+		void setRotSpeed(float s){
+			m_rotationSpeed = s;
 		}
 
 		Magnum::Vector3 direction() {

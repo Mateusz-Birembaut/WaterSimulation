@@ -48,6 +48,8 @@ void RenderSystem::drawFullscreenTexture(Magnum::GL::Texture2D& texture, float n
         .setFar(far)
         .draw(m_fullscreenTriangle);
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+
+}
 void RenderSystem::renderMesh(
     MeshComponent& meshComp,
     const Matrix4& mvp) {
@@ -71,11 +73,13 @@ void RenderSystem::renderMesh(
 
 
 DisplayShader::DisplayShader(const char * vertex_shader_file, const char * fragment_shader_file ) {
+    Corrade::Utility::Resource rs{"WaterSimulationResources"};
+
     GL::Shader vert{GL::Version::GL430, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL430, GL::Shader::Type::Fragment};
 
-    vert.addFile(vertex_shader_file);
-    frag.addFile(fragment_shader_file);
+    vert.addSource(rs.get(vertex_shader_file));
+    frag.addSource(rs.get(fragment_shader_file));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(vert.compile());
     CORRADE_INTERNAL_ASSERT_OUTPUT(frag.compile());

@@ -43,6 +43,7 @@ namespace WaterSimulation {
 			Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};
 			void drawFullscreenTexture(Magnum::GL::Texture2D& texture, float, float);
 
+			void renderMesh(MeshComponent& meshComp,const Magnum::Matrix4& mvp);
 
 			Magnum::GL::Mesh createFullscreenTriangle()
 			{

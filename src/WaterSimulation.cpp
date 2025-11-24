@@ -9,6 +9,7 @@
 #include <WaterSimulation/ECS.h>
 
 #include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
+#include <WaterSimulation/Rendering/CustomShader/DebugShader.h>
 
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
@@ -85,7 +86,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    importer->openFile("resources/heightmaps/h3.png");
+    auto heightmapData = rs.getRaw("h3.png");
+    importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "512 512");
@@ -103,7 +105,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_shallowWaterSimulation.initDamBreak();
 
-    debugShader = DisplayShader("./ressources/shaders/debug.vs", "./ressources/shaders/debug.fs");
+    debugShader = DisplayShader("debug.vs", "debug.fs");
     
 
     // ImGui setup
@@ -128,6 +130,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
     m_camera.get()->setPos({0.0, 1.0, 0.0f});
+    m_camera.get()->setSpeed(10.0f);
+    m_camera.get()->setRotSpeed(5.0f);
     
     // test ECS et rendu avec shader de base
     // test sphere avec texture
@@ -159,6 +163,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
     */
+
+    float scale = 25.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();
@@ -166,10 +172,10 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         testTerrain
     );
 
-    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_terrainHeightmap, [](Magnum::GL::Texture2D*){});
+    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     matTerrain.setAlbedo(albedoPtr);
     matTerrain.setHeightMap(heightmapPtr);
-    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f));
+    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale));
     m_registry.emplace<MeshComponent>(
         testTerrain,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_terrainMesh.get()}}
@@ -185,9 +191,19 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     ); 
 
     //visu eau rapide
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_heightTexture, [](Magnum::GL::Texture2D*){});
-    auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_momentumTexture, [](Magnum::GL::Texture2D*){});
-    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f)); 
+    //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
+
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+
+    auto waterShader = std::make_shared<DebugShader>();
+    m_registry.emplace<ShaderComponent>(
+        testTerrain,
+        shaderPtr
+    ); 
+
+    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
     Entity waterEntity = m_registry.create();
     m_registry.emplace<MeshComponent>(
         waterEntity,
@@ -202,7 +218,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     waterMat.setAlbedo(waterAlbedoTexPtr);
     m_registry.emplace<ShaderComponent>(
         waterEntity,
-        shaderPtr
+        waterShader
     ); 
     
 

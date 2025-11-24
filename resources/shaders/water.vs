@@ -1,22 +1,24 @@
-#version 330 core
+in vec4 position; 
+in vec3 normal;
+in vec2 uv;
 
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec3 aNormal;
+uniform mat4 uMVP;
+uniform sampler2D uHeightMap;
+uniform sampler2D uAlbedoTexture;
 
-uniform mat4 MVP;
-uniform int dx;
-uniform int dy;
+out vec2 frag_UV;
+out vec3 frag_Normal;
 
-out vec3 vPos;
-out vec3 vNormal;
-out vec2 vUV;
+void main() {
+    frag_UV = uv;
+    frag_Normal = normal;
 
-void main()
-{
-    vPos = aPos;
-    vNormal = aNormal;
-    vUV = aUV;
-    gl_Position = MVP * vec4(aPos, 1.0);
+    vec4 height = texture(uHeightMap, uv);
 
+    vec4 heightWater = texture(uAlbedoTexture,uv);
+
+    vec4 finalPosition = position;
+    finalPosition.y = finalPosition.y + (height.r) + heightWater.r;
+
+    gl_Position = uMVP * finalPosition;
 }
