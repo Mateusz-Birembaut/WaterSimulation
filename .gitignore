@@ -15,7 +15,6 @@ external/*/lib64/
 **/CMakeFiles/
 **/CMakeCache.txt
 *.o
-*.obj
 *.so
 *.a
 *.dll

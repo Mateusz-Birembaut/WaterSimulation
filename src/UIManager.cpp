@@ -15,6 +15,7 @@
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
+#include <imgui.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -67,42 +68,24 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
 
     // texture 
-    {
-        Magnum::GL::Texture2D * heightTexture = &(app->heightTexture());
-        Magnum::GL::Texture2D * momentumTexture = &(app->momentumTexture());
-        Magnum::GL::Texture2D * heightmapTexture = &(app->terrainHeightmap());
-        ShallowWater * simulation = &(app->shallowWaterSimulation()); 
+    {   
+        ShallowWater * simulation = &(app->shallowWaterSimulation());
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",1000.0/Double(ImGui::GetIO().Framerate), Double(ImGui::GetIO().Framerate));
 
-        ImGui::Text("Values:");
-        ImGui::Text("Height - min: %.3f, max: %.3f", simulation->minh, simulation->maxh);
-        ImGui::Text("Velocity X - min: %.3f, max: %.3f", simulation->minux, simulation->maxux);
-        ImGui::Text("Velocity Y - min: %.3f, max: %.3f", simulation->minuy, simulation->maxuy);
-        ImGui::Separator();
-
-        ImVec2 textureSize(512, 512); // texture size in imgui window
-
-        if (heightTexture) {
-            ImGui::Text("Water height:");
-            ImGui::Image(reinterpret_cast<void*>(heightTexture->id()), textureSize);
-        } else {
-            ImGui::Text("height texture error");
+        if (ImGui::Button(app->simulationPaused ? "Resume" : "Pause")) {
+            app->simulationPaused = !app->simulationPaused;
         }
 
-        if (momentumTexture) {
-            ImGui::Text("Velocities:");
-            ImGui::Image(reinterpret_cast<void*>(momentumTexture->id()), textureSize);
-        } else {
-            ImGui::Text("velocities texture error");
+        if (ImGui::Button("Init Dam Break")) {
+            simulation->initDamBreak();
         }
 
-        if (heightmapTexture) {
-            ImGui::Text("Terrain Heightmap:");
-            ImGui::Image(reinterpret_cast<void*>(heightmapTexture->id()), textureSize);
-        } else {
-            ImGui::Text("terrain texture error");
+        if (ImGui::Button("Init Bump")) {
+            simulation->initBump();
         }
+
+  
 
     }
 }
