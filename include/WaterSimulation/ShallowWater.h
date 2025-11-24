@@ -133,18 +133,18 @@ class ShallowWater {
                 1, Magnum::GL::TextureFormat::RGBA32F,
                 {nx + 1, ny + 1}) // Store only 3 components but there a no
                                   // RGB32F image format for compute binding
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_stateTexturePong
             .setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_terrainTexture
             .setStorage(1, Magnum::GL::TextureFormat::R32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_updateFluxesProgram =
             ComputeProgram("updateFluxes.comp");

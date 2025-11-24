@@ -265,7 +265,11 @@ void WaterSimulation::Application::drawEvent() {
     debugShader.bind(&m_shallowWaterSimulation.getTerrainTexture(), 1);
     
 
-    if(!simulationPaused) m_shallowWaterSimulation.step();
+    if(!simulationPaused) {
+        for(int i = 0; i < step_number; ++i){
+            m_shallowWaterSimulation.step();
+        }
+    }
 
     m_transform_System.update(m_registry);
 

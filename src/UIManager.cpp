@@ -85,7 +85,15 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
             simulation->initBump();
         }
 
-  
+        /* const char* items[] = { "h3.png", "h6.png" };
+        static int currentItem = 0;
+        if (ImGui::Combo("Texture", &currentItem, items, IM_ARRAYSIZE(items))) {
+                        auto heightmapData = app->resourceManager().getRaw(items[currentItem]);
+                        app->importer()->openData(heightmapData);
+                        auto image = app->importer()->image2D(0);
+                        simulation->loadTerrainHeightMap(&*image, 10.0f);  } */
+
+        ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
     }
 }
