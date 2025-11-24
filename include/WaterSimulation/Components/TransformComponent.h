@@ -35,6 +35,23 @@ namespace WaterSimulation
 			globalModel = parentGlobal * model();
 		}
 
+		Magnum::Vector3 forward() const {
+			return rotation.transformVector(-Magnum::Vector3::zAxis());
+		}
+
+		Magnum::Vector3 target() const {
+			return position + forward();
+		}
+
+		Magnum::Vector3 up() const {
+			return rotation.transformVector(Magnum::Vector3::yAxis());
+		}
+
+		Magnum::Vector3 right() const {
+			return rotation.transformVector(Magnum::Vector3::xAxis());
+		}
+
+
 		void onAttach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};
     	void onDetach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};
 

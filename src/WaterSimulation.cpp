@@ -1,37 +1,49 @@
-#include <WaterSimulation/WaterSimulation.h>
-#include <WaterSimulation/UIManager.h>
-#include <WaterSimulation/Camera.h>
-#include <WaterSimulation/Mesh.h>
-#include <WaterSimulation/Components/MeshComponent.h>
-#include <WaterSimulation/Components/TransformComponent.h>
+
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
 
-#include <Magnum/Magnum.h>
-#include <Magnum/Trade/AbstractImageConverter.h>
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/Platform/Sdl2Application.h>
-#include <Magnum/ImGuiIntegration/Context.hpp>
+#include <WaterSimulation/Camera.h>
+#include <WaterSimulation/Mesh.h>
+#include <WaterSimulation/UIManager.h>
+#include <WaterSimulation/WaterSimulation.h>
+#include <WaterSimulation/ECS.h>
+
+#include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
+
+#include <WaterSimulation/Components/MeshComponent.h>
+#include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Components/MaterialComponent.h>
+#include <WaterSimulation/Components/ShaderComponent.h>
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
+#include <WaterSimulation/Components/LightComponent.h>
+#include <WaterSimulation/Components/ShadowCasterComponent.h>
+#include <WaterSimulation/Components/ShaderComponent.h>
+
 #include <Corrade/Containers/StringView.h>
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/Debug.h>
 #include <Magnum/GL/Context.h>
+#include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
+#include <Magnum/ImageView.h>
+#include <Magnum/Magnum.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Time.h>
-#include <Magnum/GL/TextureFormat.h>
-#include <Corrade/PluginManager/Manager.h>
-#include <Magnum/Trade/AbstractImporter.h>
-#include <Corrade/Utility/Debug.h>
-#include <Magnum/Trade/ImageData.h>
-#include <Magnum/PixelFormat.h>
-#include <Magnum/ImageView.h>
-#include <Corrade/Utility/ConfigurationGroup.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Math/Vector3.h>
-#include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/PixelFormat.h>
+#include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/Shaders/FlatGL.h>
-#include <memory>
+#include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/Trade/AbstractImageConverter.h>
+#include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/ImageData.h>
 
+#include <memory>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -44,6 +56,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
 {   
+	Corrade::Utility::Resource rs{"WaterSimulationResources"};
+
     Debug{} << "Creating application";
     
     m_timeline.start();
@@ -71,7 +85,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    importer->openFile("ressources/heightmaps/h3.png");
+    importer->openFile("resources/heightmaps/h3.png");
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "512 512");
@@ -82,7 +96,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
     //ImageView2D resized_converted_heightmap = ImageView2D{PixelFormat::R8Unorm, resized->size(), resized->data()};
     
-
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/30.0f);
     
@@ -106,32 +119,99 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     GL::Renderer::setClearColor(0xa5c9ea_rgbf);
 
+    m_renderSystem.init(framebufferSize());
+
     Debug{} << "This application is running on"
             << GL::Context::current().version() << "using"
             << GL::Context::current().rendererString();
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-
-    Debug{} << "Camera pos:" << m_camera->position();
+    m_camera.get()->setPos({0.0, 1.0, 0.0f});
     
     // test ECS et rendu avec shader de base
-    m_testFlatShader = Shaders::FlatGL3D{};
+    // test sphere avec texture
+
+    auto grassData = rs.getRaw("grass.png");
+    importer->openData(grassData);
+    auto imageTest = importer->image2D(0);
+    m_testAlbedo.setWrapping(Magnum::GL::SamplerWrapping::ClampToEdge)
+                    .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+                    .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest)
+                    .setStorage(1, Magnum::GL::TextureFormat::RGBA8, imageTest->size())
+                    .setSubImage(0, {}, Magnum::ImageView2D{*imageTest});   
+
+    auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
     
-    m_testMesh = std::make_unique<Mesh>("./ressources/assets/Meshes/quad.obj");
+    /* test maillage
     Entity testEntity = m_registry.create();
+    auto & mat = m_registry.emplace<MaterialComponent>(
+        testEntity
+    );
+    mat.setAlbedo(albedoPtr);
     m_registry.emplace<TransformComponent>(
         testEntity,
-        Magnum::Vector3{0.0f, .0f, -3.0f},
-        Quaternion::rotation(0.0_degf, Vector3::yAxis()),
-        Magnum::Vector3{2.0f,2.0f,2.0f}
+        Magnum::Vector3{0.0f, 2.0f, -3.0f}
     );
+    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     m_registry.emplace<MeshComponent>(
         testEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}},
-        &debugShader
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
+    */
     
+    // terrain test avec heightmap et texture pas pbr
+    Entity testTerrain = m_registry.create();
+    auto & matTerrain = m_registry.emplace<MaterialComponent>(
+        testTerrain
+    );
+
+    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_terrainHeightmap, [](Magnum::GL::Texture2D*){});
+    matTerrain.setAlbedo(albedoPtr);
+    matTerrain.setHeightMap(heightmapPtr);
+    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f));
+    m_registry.emplace<MeshComponent>(
+        testTerrain,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_terrainMesh.get()}}
+    );
+    m_registry.emplace<TransformComponent>(
+        testTerrain,
+        Magnum::Vector3{0.0f, -1.0f, -3.0f}
+    );
+    auto shaderPtr = std::make_shared<TerrainShader>();
+    m_registry.emplace<ShaderComponent>(
+        testTerrain,
+        shaderPtr
+    ); 
+
+    //visu eau rapide
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_heightTexture, [](Magnum::GL::Texture2D*){});
+    auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_momentumTexture, [](Magnum::GL::Texture2D*){});
+    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(256, 256, 10.0f)); 
+    Entity waterEntity = m_registry.create();
+    m_registry.emplace<MeshComponent>(
+        waterEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_waterMesh.get()}}
+    );
+    m_registry.emplace<TransformComponent>(
+        waterEntity,
+        Magnum::Vector3{0.0f, -1.0f, -3.0f} 
+    );
+    auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
+    waterMat.setHeightMap(waterHeightTexPtr);
+    waterMat.setAlbedo(waterAlbedoTexPtr);
+    m_registry.emplace<ShaderComponent>(
+        waterEntity,
+        shaderPtr
+    ); 
+    
+
+    // sun light en cours
+    auto sunEntity = m_registry.create();
+    m_registry.emplace<TransformComponent>(sunEntity, Vector3{50.0f, 100.0f, 50.0f});
+    m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
+    m_registry.emplace<DirectionalLightComponent>(sunEntity);
+    m_registry.emplace<ShadowCasterComponent>(sunEntity);  
 }
 
 WaterSimulation::Application::~Application() {
@@ -141,6 +221,7 @@ WaterSimulation::Application::~Application() {
 void WaterSimulation::Application::viewportEvent(ViewportEvent& event) {
     GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
 
+    m_renderSystem.resize(event.framebufferSize());
     m_imgui.relayout(Vector2{event.windowSize()}/event.dpiScaling(),
         event.windowSize(), event.framebufferSize());
 
@@ -166,9 +247,8 @@ void WaterSimulation::Application::drawEvent() {
 
     m_transform_System.update(m_registry);
 
-    auto view = m_camera->viewMatrix();
-    auto proj = m_camera->projectionMatrix();
-    m_renderSystem.render(m_registry, view, proj);
+
+    m_renderSystem.render(m_registry, *m_camera.get());
 
     m_UIManager->drawUI(*this);
 
@@ -194,6 +274,12 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
         setCursor(Platform::Sdl2Application::Cursor::Arrow);
         m_cursorLocked = false;
         Debug{} << "unlocked";
+        return;
+    }
+
+    if(event.key() == Key::N) {
+        m_renderSystem.m_renderDepthOnly = !m_renderSystem.m_renderDepthOnly;
+        Debug{} << "Depth Mode :" << m_renderSystem.m_renderDepthOnly;
         return;
     }
 

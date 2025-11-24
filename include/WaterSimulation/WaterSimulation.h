@@ -54,6 +54,15 @@ namespace WaterSimulation {
 			RenderSystem m_renderSystem;
 			
 			std::unique_ptr<Mesh> m_testMesh;
+			Magnum::GL::Texture2D m_testAlbedo;
+
+			std::unique_ptr<Mesh> m_waterMesh;
+
+			std::unique_ptr<Mesh> m_terrainMesh;
+			ShallowWater m_shallowWaterSimulation; // simulation de l'eau
+			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
+			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q
+			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
 			Magnum::Shaders::FlatGL3D m_testFlatShader{Magnum::NoCreate};
 			
 			ShallowWater m_shallowWaterSimulation; // Shallow water + airy waves simulation

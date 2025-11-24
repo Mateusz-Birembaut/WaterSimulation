@@ -2,7 +2,7 @@
 #include <WaterSimulation/Components/MeshComponent.h>
 
 #include <Magnum/GL/Buffer.h>
-#include <Magnum/Shaders/FlatGL.h>
+#include <Magnum/Shaders/GenericGL.h>
 #include <Magnum/Math/Vector3.h>
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Containers/ArrayView.h>
@@ -51,6 +51,7 @@ void MeshComponent::setupBuffers() {
     
     indexBuffer.setData(Containers::arrayView(activeMesh->triangles));
     glMesh.setIndexBuffer(indexBuffer, 0, GL::MeshIndexType::UnsignedInt);
+
 }
 
 void MeshComponent::clearBuffers() {
