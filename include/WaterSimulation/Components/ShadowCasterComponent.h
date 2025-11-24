@@ -1,13 +1,14 @@
 #pragma once
 
-#include <Magnum/Math/Color.h>
+#include <Magnum/Math/Vector2.h>
 
 namespace WaterSimulation
 {
-	struct LightComponent
+	struct ShadowCasterComponent
 	{
-		Magnum::Color3 color{1.0f, 1.0f, 1.0f};
-		float intensity = 1.0f;
+		Magnum::Vector2 projectionSize{256.0f, 256.0f};
+		float zNear = 1.0f;
+		float zFar = 500.0f;
 
 		void onAttach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};
     	void onDetach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};

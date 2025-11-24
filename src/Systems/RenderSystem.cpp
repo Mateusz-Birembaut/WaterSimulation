@@ -21,6 +21,8 @@ void RenderSystem::render(Registry& registry,
     auto viewMatrix = cam.viewMatrix();
     auto projectionMatrix = cam.projectionMatrix();
 
+    //m_shadowMapPass.render(registry, )
+
     m_opaquePass.render(registry, viewMatrix, projectionMatrix);
 
     if(m_renderDepthOnly){

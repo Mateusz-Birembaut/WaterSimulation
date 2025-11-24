@@ -1,15 +1,23 @@
+
+#include <WaterSimulation/Systems/RenderSystem.h>
+#include <WaterSimulation/Systems/TransformSystem.h>
+
 #include <WaterSimulation/Camera.h>
+#include <WaterSimulation/Mesh.h>
+#include <WaterSimulation/UIManager.h>
+#include <WaterSimulation/WaterSimulation.h>
+#include <WaterSimulation/ECS.h>
+
+#include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
+
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
-#include <WaterSimulation/Mesh.h>
-#include <WaterSimulation/Systems/RenderSystem.h>
-#include <WaterSimulation/Systems/TransformSystem.h>
-#include <WaterSimulation/UIManager.h>
-#include <WaterSimulation/WaterSimulation.h>
-#include <WaterSimulation/ECS.h>
-#include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
+#include <WaterSimulation/Components/LightComponent.h>
+#include <WaterSimulation/Components/ShadowCasterComponent.h>
+#include <WaterSimulation/Components/ShaderComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -34,8 +42,8 @@
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
-#include <memory>
 
+#include <memory>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -77,7 +85,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    importer->openFile("resources/heightmaps/h4.png");
+    importer->openFile("resources/heightmaps/h3.png");
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "256 256");
@@ -152,7 +160,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
                     .setSubImage(0, {}, Magnum::ImageView2D{*imageTest});   
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
-    /*
+    
+    /* test maillage
     Entity testEntity = m_registry.create();
     auto & mat = m_registry.emplace<MaterialComponent>(
         testEntity
@@ -213,6 +222,14 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         shaderPtr
     ); 
+    
+
+    // sun light en cours
+    auto sunEntity = m_registry.create();
+    m_registry.emplace<TransformComponent>(sunEntity, Vector3{50.0f, 100.0f, 50.0f});
+    m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
+    m_registry.emplace<DirectionalLightComponent>(sunEntity);
+    m_registry.emplace<ShadowCasterComponent>(sunEntity);  
 }
 
 WaterSimulation::Application::~Application() {

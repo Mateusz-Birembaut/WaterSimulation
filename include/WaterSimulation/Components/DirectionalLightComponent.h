@@ -1,12 +1,13 @@
 #pragma once
 
-#include <Magnum/Math/Color.h>
+#include <WaterSimulation/ECS.h>
+#include <Magnum/Math/Vector3.h>
 
 namespace WaterSimulation
 {
-	struct LightComponent
+	struct DirectionalLightComponent
 	{
-		Magnum::Color3 color{1.0f, 1.0f, 1.0f};
+		Magnum::Vector3 direction{1.0f, 1.0f, 1.0f};
 		float intensity = 1.0f;
 
 		void onAttach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};

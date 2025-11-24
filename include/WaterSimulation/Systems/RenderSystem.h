@@ -3,6 +3,7 @@
 
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Rendering/OpaquePass.h>
+#include <WaterSimulation/Rendering/ShadowMapPass.h>
 #include <WaterSimulation/Rendering/CustomShader/FullscreenTextureShader.h>
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Camera.h>
@@ -35,11 +36,12 @@ namespace WaterSimulation {
 
 		private:
 			OpaquePass m_opaquePass;
+			ShadowMapPass m_shadowMapPass;
+
 			FullscreenTextureShader m_fullScreenTextureShader;
-
 			Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};
-
 			void drawFullscreenTexture(Magnum::GL::Texture2D& texture, float, float);
+
 
 			Magnum::GL::Mesh createFullscreenTriangle()
 			{
@@ -71,7 +73,6 @@ namespace WaterSimulation {
 
 				return mesh;
 			}
-
 
 
 	};
