@@ -27,7 +27,7 @@ namespace WaterSimulation {
 			Magnum::GL::Framebuffer m_fb{Magnum::NoCreate};
 			Magnum::GL::Texture2D m_depthTexture{Magnum::NoCreate}; // pour refraction ?
 			Magnum::GL::Texture2D m_colorTexture{Magnum::NoCreate};
-			DepthShader m_depthShader{};
+			
 			OpaqueShader m_opaqueShader{};
 	};
 	

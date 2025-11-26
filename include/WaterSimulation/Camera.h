@@ -121,7 +121,7 @@ namespace WaterSimulation
 
 	private:
 		float m_near{0.1f};
-		float m_far{1000.0f};
+		float m_far{500.0f};
 
 		float m_speed{1.0f};
 		float m_rotationSpeed{1.0f};

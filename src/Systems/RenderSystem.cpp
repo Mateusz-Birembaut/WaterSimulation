@@ -1,7 +1,12 @@
 #include "Corrade/Utility/Debug.h"
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Components/TransformComponent.h>
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
+#include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Camera.h>
+
+#include <WaterSimulation/FrustumVisualizer.h>
+#include <WaterSimulation/DebugDraw.h>
 
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/PhongGL.h>
@@ -25,18 +30,100 @@ void RenderSystem::render(Registry& registry,
     auto viewMatrix = cam.viewMatrix();
     auto projectionMatrix = cam.projectionMatrix();
 
-    //m_shadowMapPass.render(registry, )
+    m_shadowMapPass.render(registry, cam);
+    
+    if(m_renderShadowMapOnly){
+        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+
+	    if (sunView.begin() != sunView.end()) {
+            Entity sunEntity = *sunView.begin();
+            auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
+            drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData.near, shadowCastData.far, true);
+            return;
+        }
+    }
+
+    if(m_renderWaterMaskOnly){
+        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+
+	    if (sunView.begin() != sunView.end()) {
+            Entity sunEntity = *sunView.begin();
+            auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
+            drawFullscreenTexture(m_shadowMapPass.getColorTexture(), shadowCastData.near, shadowCastData.far);
+            return;
+        }
+    }
 
     m_opaquePass.render(registry, viewMatrix, projectionMatrix);
 
+    /*
+    auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+    if(sunView.begin() != sunView.end()) {
+        Entity sunEntity = *sunView.begin();
+		auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
+		auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
+
+        float maxFarCam = 50.0f;
+        float minFarCam = 1.0f;
+
+		Magnum::Vector3 p_mid{cam.position() + (((cam.near() + std::clamp(cam.far(), minFarCam, maxFarCam))/2.0f) * cam.direction())};
+        Magnum::Vector3 lightPos {p_mid - sunDirection.direction.normalized() * sunDirection.offset};
+
+        Vector3 forward = (p_mid - lightPos).normalized();
+
+        Vector3 up = Magnum::Vector3::yAxis().normalized();
+        Vector3 right = Magnum::Math::cross(forward, up).normalized();
+
+        up = Magnum::Math::cross(right, forward).normalized();
+
+        Matrix4 lightView = Matrix4::lookAt(lightPos, p_mid, up);
+        lightView = lightView.invertedRigid();
+
+		const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
+			shadowCastData.projectionSize, 
+			shadowCastData.near,                    
+			shadowCastData.far                       
+		);
+
+        float len = 2.0f;
+        DebugDraw::instance().addPoint(lightPos, Color3{0.0f, 0.0f, 0.0f}, 0.5f);
+        DebugDraw::instance().addPoint(p_mid, Color3{1.0f, 1.0f, 0.0f}, 0.5f);
+        DebugDraw::instance().addLine(p_mid, p_mid + (forward * len), Color3{0.0f, 0.0f, 1.0f});
+        DebugDraw::instance().addLine(p_mid, p_mid + (up * len), Color3{0.0f, 1.0f, 0.0f});
+        DebugDraw::instance().addLine(p_mid, p_mid + (right * len), Color3{1.0f, 0.0f, 0.0f});
+        FrustumVisualizer::draw(lightView, lightProj, Color3{1.0f, 1.0f, 0.0f});
+    }
+
+    DebugDraw::instance().draw(viewMatrix, projectionMatrix);
+    */
+
+
     if(m_renderDepthOnly){
-        drawFullscreenTexture(m_opaquePass.getDepthTexture(), cam.near(), cam.far());
+        drawFullscreenTextureDebugDepth(m_opaquePass.getDepthTexture(), cam.near(), cam.far(), false);
         return;
     }
 
     drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
     return;
 }
+
+
+// rend la profondeur avec shader adapté
+void RenderSystem::drawFullscreenTextureDebugDepth(Magnum::GL::Texture2D& texture, float near, float far, bool isOrtho) {
+    // TODO : si ortho modifier pour avoir un rendu 1:1
+    GL::defaultFramebuffer.bind();
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    m_depthDebugShader
+        .setMVP(Matrix4{})
+        .setDepthTexture(texture)
+        .setNear(near)
+        .setFar(far)
+        .setOrthographic(isOrtho)
+        .setLinearize(m_linearizeRange)
+        .draw(m_fullscreenTriangle);
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+}
+
 
 
 void RenderSystem::drawFullscreenTexture(Magnum::GL::Texture2D& texture, float near, float far) {
@@ -50,26 +137,7 @@ void RenderSystem::drawFullscreenTexture(Magnum::GL::Texture2D& texture, float n
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
 }
-void RenderSystem::renderMesh(
-    MeshComponent& meshComp,
-    const Matrix4& mvp) {
-    
-    if (!meshComp.shader) return;
-    
-    if (auto* flatShader = dynamic_cast<Shaders::FlatGL3D*>(meshComp.shader)) {
-        flatShader->setTransformationProjectionMatrix(mvp)
-                  .setColor(0x2f83cc_rgbf)
-                  .draw(meshComp.glMesh);
-    }
-    // Custom Shader
-    else if (auto* displayShader = dynamic_cast<DisplayShader*>(meshComp.shader)) {
-        displayShader->setTransformationMatrix(mvp)
-                     .draw(meshComp.glMesh);
-    }
 
-    // TODO: ajouter notre shader par exemple
-    // if (auto* shaderPerso =  dynamic_cast<Shaders::ClasseDeNotreSahder*>(meshComp.shader))....
-}
 
 
 DisplayShader::DisplayShader(const char * vertex_shader_file, const char * fragment_shader_file ) {
@@ -78,8 +146,8 @@ DisplayShader::DisplayShader(const char * vertex_shader_file, const char * fragm
     GL::Shader vert{GL::Version::GL430, GL::Shader::Type::Vertex};
     GL::Shader frag{GL::Version::GL430, GL::Shader::Type::Fragment};
 
-    vert.addSource(rs.get(vertex_shader_file));
-    frag.addSource(rs.get(fragment_shader_file));
+    vert.addSource(rs.getString(vertex_shader_file));
+    frag.addSource(rs.getString(fragment_shader_file));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(vert.compile());
     CORRADE_INTERNAL_ASSERT_OUTPUT(frag.compile());

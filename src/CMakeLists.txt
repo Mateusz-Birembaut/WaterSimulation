@@ -14,6 +14,9 @@ add_executable(WaterSimulation
     Systems/RenderSystem.cpp
     Systems/TransformSystem.cpp
     Rendering/OpaquePass.cpp
+    Rendering/ShadowMapPass.cpp
+    FrustumVisualizer.cpp
+    DebugDraw.cpp
     ${WaterSimulation_RESOURCES}
 )
 

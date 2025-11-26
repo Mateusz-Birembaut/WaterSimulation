@@ -40,6 +40,10 @@ namespace WaterSimulation {
 			bool simulationPaused = false;
 			ShallowWater& shallowWaterSimulation() { return m_shallowWaterSimulation; }
 
+			Registry & registry(){ return m_registry; };
+
+			RenderSystem m_renderSystem;
+
 		private:
 			Magnum::Timeline m_timeline;
 			float m_deltaTime{};
@@ -51,7 +55,7 @@ namespace WaterSimulation {
 			// ECS registry and systems 
 			Registry m_registry;
 			TransformSystem m_transform_System;
-			RenderSystem m_renderSystem;
+
 			
 			std::unique_ptr<Mesh> m_testMesh;
 			Magnum::GL::Texture2D m_testAlbedo;

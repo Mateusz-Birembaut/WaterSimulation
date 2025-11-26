@@ -57,7 +57,7 @@ class ShallowWater {
                                        Magnum::GL::Shader::Type::Compute);
 
             Corrade::Utility::Resource rs{"WaterSimulationResources"};
-            compute.addSource(rs.get(filepath));
+            compute.addSource(rs.getString(filepath));
 
             CORRADE_INTERNAL_ASSERT_OUTPUT(compute.compile());
 

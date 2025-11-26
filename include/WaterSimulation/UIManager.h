@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WaterSimulation/Camera.h>
+#include <WaterSimulation/ECS.h>
 
 #include <Magnum/Platform/Sdl2Application.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
@@ -14,6 +15,7 @@ namespace WaterSimulation {
 
     private:
 
+        void sunWindow(Registry & registry);
         void paramWindow(Magnum::Platform::Sdl2Application & app);
         void sceneGraph();
         void cameraWindow(Camera & cam);

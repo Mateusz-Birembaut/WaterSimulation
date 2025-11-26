@@ -25,25 +25,33 @@ namespace WaterSimulation {
 		public:
 			void init(const Magnum::Vector2i& windowSize){
 				   m_opaquePass.init(windowSize);
+				   m_shadowMapPass.init(windowSize);
 			}
 
 			void resize(const Magnum::Vector2i& windowSize){
 				   m_opaquePass.resize(windowSize);
+				   m_shadowMapPass.resize(windowSize);
 			}
 
 			void render(Registry & registry, Camera & cam);
 
 			bool m_renderDepthOnly{false};
+			bool m_renderShadowMapOnly{false};
+			bool m_renderWaterMaskOnly{false};
 
-		private:
-			OpaquePass m_opaquePass;
-			ShadowMapPass m_shadowMapPass;
+			float m_linearizeRange = 50.0f; 
 
-			FullscreenTextureShader m_fullScreenTextureShader;
-			Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};
-			void drawFullscreenTexture(Magnum::GL::Texture2D& texture, float, float);
+		   private:
+			   OpaquePass m_opaquePass;
+			   ShadowMapPass m_shadowMapPass;
 
-			void renderMesh(MeshComponent& meshComp,const Magnum::Matrix4& mvp);
+			   FullscreenTextureShader m_fullScreenTextureShader;
+			   Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};
+			   void drawFullscreenTexture(Magnum::GL::Texture2D& texture, float, float);
+
+			// Shader debug depth
+			WaterSimulation::DepthDebugShader m_depthDebugShader;
+			void drawFullscreenTextureDebugDepth(Magnum::GL::Texture2D& texture, float near, float far, bool isOrtho);
 
 			Magnum::GL::Mesh createFullscreenTriangle()
 			{
