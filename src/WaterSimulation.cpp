@@ -86,20 +86,20 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h6.png");
+    auto heightmapData = rs.getRaw("h7.png");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
-    converter->configuration().setValue("size", "512 512");
+    converter->configuration().setValue("size", "1024 1024");
     auto resized = converter->convert(*image);
     auto allo = resized->format();
     Debug{} << "FORMAT IS : " << allo;
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/30.0f);
+    m_shallowWaterSimulation = ShallowWater(1023,1023, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 10.0f);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 7.0f);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -196,7 +196,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
 
 
-    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
+    m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(1024, 1024, scale)); 
     Entity waterEntity = m_registry.create();
     m_registry.emplace<MeshComponent>(
         waterEntity,

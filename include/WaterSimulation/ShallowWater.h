@@ -47,7 +47,10 @@ class ShallowWater {
     Magnum::GL::Texture2D m_terrainTexture;   // Terrain R 32f texture
 
     Magnum::GL::Texture2D m_bulkTexture; // Bulk water where Shallow water is applied
-    Magnum::GL::Texture2D m_surfaceTexture; // Surface water where Airy Waves is applied 
+    Magnum::GL::Texture2D m_surfaceTexture; // Surface water where Airy Waves is applied
+    Magnum::GL::Texture2D m_fftTexture;
+
+    Magnum::GL::Texture2D m_tempTexture;    
 
 
     int groupx, groupy;
@@ -86,7 +89,7 @@ class ShallowWater {
 
         ComputeProgram &bindDecompose(Magnum::GL::Texture2D *stateIn,
                                    Magnum::GL::Texture2D *terrain,Magnum::GL::Texture2D *bulk,
-                                   Magnum::GL::Texture2D *surface){
+                                   Magnum::GL::Texture2D *surface, Magnum::GL::Texture2D *temp ){
 
             stateIn->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
                              Magnum::GL::ImageFormat::RGBA32F);
@@ -95,6 +98,8 @@ class ShallowWater {
             bulk->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
                              Magnum::GL::ImageFormat::RGBA32F);
             surface->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            temp->bindImage(4, 0, Magnum::GL::ImageAccess::ReadWrite,
                               Magnum::GL::ImageFormat::RGBA32F);
             return *this;
         }
@@ -175,19 +180,21 @@ class ShallowWater {
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
-        m_updateFluxesProgram =
-            ComputeProgram("updateFluxes.comp");
-        m_updateWaterHeightProgram =
-            ComputeProgram("updateWaterHeight.comp");
-        m_initProgram = ComputeProgram("init.comp");
+        m_fftTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
 
-        m_decompositionProgram = ComputeProgram("decompose.comp");
+        m_tempTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+        
 
-        m_updateFluxesProgram.setParametersUniforms(*this);
-        m_updateWaterHeightProgram.setParametersUniforms(*this);
+        compilePrograms();
     }
 
     void step();
+
+    void compilePrograms();
 
     // helper functions
     int getnx() const { return nx; }
@@ -206,6 +213,7 @@ class ShallowWater {
     // initialisation
     void initBump();
     void initDamBreak();
+    void initTsunami();
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f);

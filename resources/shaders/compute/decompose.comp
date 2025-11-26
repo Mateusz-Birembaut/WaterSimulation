@@ -4,72 +4,92 @@ layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
 layout(binding = 1, r32f) readonly uniform highp image2D terrain;
 layout(binding = 2, rgba32f) writeonly uniform highp image2D bulkFlow;
 layout(binding = 3, rgba32f) writeonly uniform highp image2D surfaceFlow;
+layout(binding = 4, rgba32f) uniform image2D tempBuffer;
 
 uniform float dx;
 uniform float dt;
-uniform float gravity;
-uniform float dryEps;
-uniform float friction_coef;
+uniform int diffusionSteps;
 
 void main() {
-    uvec3 globalID = gl_GlobalInvocationID;
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(stateIn);
 
-    vec4 outValues = vec4(0.0);
-
-    if (globalID.x >= (uint(gridSize.x) - 1u) ||
-        globalID.y >= (uint(gridSize.y) - 1u)) {
+    if (pos.x >= (uint(gridSize.x) - 1u) ||
+        pos.y >= (uint(gridSize.y) - 1u) || pos.x <= 1 || pos.y <= 1) {
         return;
     }
 
-    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
-    vec4 statel = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(-1, 0));
-    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
-    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
-    vec4 stateb = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, -1));
+    vec4 statec = imageLoad(stateIn, pos);
+    vec4 statel = imageLoad(stateIn, pos + ivec2(-1, 0));
+    vec4 stater = imageLoad(stateIn, pos + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, pos + ivec2(0, 1));
+    vec4 stateb = imageLoad(stateIn, pos + ivec2(0, -1));
 
-    float terrainc = imageLoad(terrain, ivec2(globalID.xy)).r;
-    float terrainl = imageLoad(terrain, ivec2(globalID.xy) + ivec2(-1, 0)).r;
-    float terrainr = imageLoad(terrain, ivec2(globalID.xy) + ivec2(1, 0)).r;
-    float terraint = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, 1)).r;
-    float terrainb = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, -1)).r;
+    float terrainc = imageLoad(terrain, pos).r;
+    float terrainl = imageLoad(terrain, pos + ivec2(-1, 0)).r;
+    float terrainr = imageLoad(terrain, pos + ivec2(1, 0)).r;
+    float terraint = imageLoad(terrain, pos + ivec2(0, 1)).r;
+    float terrainb = imageLoad(terrain, pos + ivec2(0, -1)).r;
 
-    float Hc = statec.x + terrainc;
-    float Hl = statel.x + terrainl;
-    float Hr = stater.x + terrainr;
-    float Ht = statet.x + terraint;
-    float Hb = stateb.x + terrainb;
+    float h = statec.x;
+    float qx = statec.y;
+    float qy = statec.z;
 
-    float blurredH = (Hc + (Hl+Hr+Ht+Hb) * 0.25) * 0.5;
+    float H = h + terrainc;
 
+    vec2 gradH = vec2(
+        (stater.x + terrainr - statel.x - terrainl) / (2.0 * dx),
+        (statet.x + terraint - stateb.x - terrainb) / (2.0 * dx)
+    );
+    float gradMag = length(gradH);
 
     float d = 1.0/100.0;
+    float alpha = (h * h) / 64.0;
+    alpha *= exp(-d * gradMag * gradMag);
 
-    float alpha = ((statec.x * statec.x ) / 64.0) * exp(-d * abs(blurredH*blurredH));
-    alpha = 0.5;
-    blurredH *= alpha;
+    imageStore(tempBuffer, pos, vec4(H, qx, qy, 0));
 
-    float bulkh = (blurredH - terrainc);
-    float surfaceh = (statec.x - bulkh) * 2.0; 
+    barrier();
+    memoryBarrierImage();
 
-    //same for qx and qy 
+    float H_filtered = H;
+    float qx_filtered = qx;
+    float qy_filtered = qy;
 
-    float blurredqx = (statec.y + (statel.y + stater.y + statet.y + stateb.y) * 0.25) * 0.5;
-    float blurredqy = (statec.z + (statel.z + stater.z + statet.z + stateb.z) * 0.25) * 0.5;
+    float diffusion_dt = 0.1;
 
-    float bulkqx = blurredqx;
-    float bulkqy = blurredqy;
+    for (int i = 0; i < 128; i++) {
+        vec4 temp_c = imageLoad(tempBuffer, pos);
+        vec4 temp_l = imageLoad(tempBuffer, pos + ivec2(-1, 0));
+        vec4 temp_r = imageLoad(tempBuffer, pos + ivec2(1, 0));
+        vec4 temp_t = imageLoad(tempBuffer, pos + ivec2(0, 1));
+        vec4 temp_b = imageLoad(tempBuffer, pos + ivec2(0, -1));
 
-    float surfaceqx = statec.y - bulkqx;
-    float surfaceqy = statec.z - bulkqy;
+        float laplacian_H = (temp_l.x + temp_r.x + temp_t.x + temp_b.x - 4.0 * temp_c.x) / (dx * dx);
+        float laplacian_qx = (temp_l.y + temp_r.y + temp_t.y + temp_b.y - 4.0 * temp_c.y) / (dx * dx);
+        float laplacian_qy = (temp_l.z + temp_r.z + temp_t.z + temp_b.z - 4.0 * temp_c.z) / (dx * dx);
 
-    bulkqx = 0.0;
-    bulkqy = 0.0;
-    surfaceqx = 0.0;
-    surfaceqy = 0.0;
+        H_filtered = temp_c.x + alpha * laplacian_H * diffusion_dt;
+        qx_filtered = temp_c.y + alpha * laplacian_qx * diffusion_dt;
+        qy_filtered = temp_c.z + alpha * laplacian_qy * diffusion_dt;
 
-    imageStore(bulkFlow, ivec2(globalID.xy), vec4(bulkh, bulkqx, bulkqy, 1.0));
-    imageStore(surfaceFlow, ivec2(globalID.xy), vec4(surfaceh, surfaceqx, surfaceqy, 1.0));
-    
+        barrier();
+        memoryBarrierImage();
 
+        imageStore(tempBuffer, pos, vec4(H_filtered, qx_filtered, qy_filtered, 0));
+
+        barrier();
+        memoryBarrierImage();
+    }
+
+    float bulk_h = H_filtered - terrainc;
+    float surface_h = h - bulk_h;
+
+    float bulk_qx = qx_filtered;
+    float bulk_qy = qy_filtered;
+    float surface_qx = qx - bulk_qx;
+    float surface_qy = qy - bulk_qy;
+
+    imageStore(bulkFlow, pos, vec4(bulk_h, bulk_qx, bulk_qy, 1.0));
+    imageStore(surfaceFlow, pos, vec4(surface_h, surface_qx, surface_qy, 1.0));
 }

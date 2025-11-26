@@ -85,6 +85,18 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
             simulation->initBump();
         }
 
+        if (ImGui::Button("Init Tsunami")) {
+            simulation->initTsunami();
+        }
+
+        ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
+        
+        /* ne marche pas car ils sont compilés en tant que ressource par magnum  
+        if (ImGui::Button("Recompile Compute Shaders")) {
+            simulation->compilePrograms();
+            simulation->initDamBreak();
+        } */
+
         ImGui::Text("State and Terrain Texture");
         ImGui::Image(reinterpret_cast<void*>(simulation->getStateTexture().id()), ImVec2(256, 256));
         //ImGui::SameLine();
@@ -107,7 +119,7 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
                         auto image = app->importer()->image2D(0);
                         simulation->loadTerrainHeightMap(&*image, 10.0f);  } */
 
-        ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
+        
 
     }
 }

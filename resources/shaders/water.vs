@@ -21,7 +21,7 @@ void main() {
 
     vec4 finalPosition = position;
     float total_height = (height.r) + heightWater.r;
-    finalPosition.y = finalPosition.y + total_height * 2.0;
+    finalPosition.y = finalPosition.y + total_height * 1.5;
     
 
     gl_Position = uMVP * finalPosition;
