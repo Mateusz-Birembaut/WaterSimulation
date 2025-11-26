@@ -46,7 +46,7 @@ void main() {
 
     } else if (init_type == 1) { // init dam break
 
-        float waterLevel = 1.0;
+        float waterLevel = 2.0;
         int damPosition = gridSize.y / 6;
 
         float terrainHeight = imageLoad(terrain, ivec2(globalID.xy)).r;

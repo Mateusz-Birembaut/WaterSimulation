@@ -85,6 +85,20 @@ void WaterSimulation::UIManager::paramWindow(Magnum::Platform::Sdl2Application &
             simulation->initBump();
         }
 
+        ImGui::Text("State and Terrain Texture");
+        ImGui::Image(reinterpret_cast<void*>(simulation->getStateTexture().id()), ImVec2(256, 256));
+        //ImGui::SameLine();
+        ImGui::Image(reinterpret_cast<void*>(simulation->getTerrainTexture().id()), ImVec2(256, 256));
+        
+
+        ImGui::Text("Bulk and Surface Texture");
+        ImGui::Image(reinterpret_cast<void*>(simulation->getBulkTexture().id()), ImVec2(256, 256));
+        //ImGui::SameLine();
+        ImGui::Image(reinterpret_cast<void*>(simulation->getSurfaceTexture().id()), ImVec2(256, 256));
+
+
+        
+
         /* const char* items[] = { "h3.png", "h6.png" };
         static int currentItem = 0;
         if (ImGui::Combo("Texture", &currentItem, items, IM_ARRAYSIZE(items))) {

@@ -96,8 +96,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "FORMAT IS : " << allo;
     Debug{} << "SIZE IS : " << resized->size();
     
-    //ImageView2D resized_converted_heightmap = ImageView2D{PixelFormat::R8Unorm, resized->size(), resized->data()};
-    
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/30.0f);
     

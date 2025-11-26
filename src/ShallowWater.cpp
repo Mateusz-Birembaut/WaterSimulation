@@ -44,6 +44,8 @@ void ShallowWater::step() {
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
+    m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, &m_surfaceTexture).run(groupx, groupy);
+
     // ping = !ping;
 }
 

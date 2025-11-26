@@ -1,0 +1,75 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
+layout(binding = 1, r32f) readonly uniform highp image2D terrain;
+layout(binding = 2, rgba32f) writeonly uniform highp image2D bulkFlow;
+layout(binding = 3, rgba32f) writeonly uniform highp image2D surfaceFlow;
+
+uniform float dx;
+uniform float dt;
+uniform float gravity;
+uniform float dryEps;
+uniform float friction_coef;
+
+void main() {
+    uvec3 globalID = gl_GlobalInvocationID;
+    ivec2 gridSize = imageSize(stateIn);
+
+    vec4 outValues = vec4(0.0);
+
+    if (globalID.x >= (uint(gridSize.x) - 1u) ||
+        globalID.y >= (uint(gridSize.y) - 1u)) {
+        return;
+    }
+
+    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
+    vec4 statel = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(-1, 0));
+    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
+    vec4 stateb = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, -1));
+
+    float terrainc = imageLoad(terrain, ivec2(globalID.xy)).r;
+    float terrainl = imageLoad(terrain, ivec2(globalID.xy) + ivec2(-1, 0)).r;
+    float terrainr = imageLoad(terrain, ivec2(globalID.xy) + ivec2(1, 0)).r;
+    float terraint = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, 1)).r;
+    float terrainb = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, -1)).r;
+
+    float Hc = statec.x + terrainc;
+    float Hl = statel.x + terrainl;
+    float Hr = stater.x + terrainr;
+    float Ht = statet.x + terraint;
+    float Hb = stateb.x + terrainb;
+
+    float blurredH = (Hc + (Hl+Hr+Ht+Hb) * 0.25) * 0.5;
+
+
+    float d = 1.0/100.0;
+
+    float alpha = ((statec.x * statec.x ) / 64.0) * exp(-d * abs(blurredH*blurredH));
+    alpha = 0.5;
+    blurredH *= alpha;
+
+    float bulkh = (blurredH - terrainc);
+    float surfaceh = (statec.x - bulkh) * 2.0; 
+
+    //same for qx and qy 
+
+    float blurredqx = (statec.y + (statel.y + stater.y + statet.y + stateb.y) * 0.25) * 0.5;
+    float blurredqy = (statec.z + (statel.z + stater.z + statet.z + stateb.z) * 0.25) * 0.5;
+
+    float bulkqx = blurredqx;
+    float bulkqy = blurredqy;
+
+    float surfaceqx = statec.y - bulkqx;
+    float surfaceqy = statec.z - bulkqy;
+
+    bulkqx = 0.0;
+    bulkqy = 0.0;
+    surfaceqx = 0.0;
+    surfaceqy = 0.0;
+
+    imageStore(bulkFlow, ivec2(globalID.xy), vec4(bulkh, bulkqx, bulkqy, 1.0));
+    imageStore(surfaceFlow, ivec2(globalID.xy), vec4(surfaceh, surfaceqx, surfaceqy, 1.0));
+    
+
+}
