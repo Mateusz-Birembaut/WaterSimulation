@@ -46,7 +46,9 @@ void ShallowWater::step() {
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-    //m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, &m_surfaceTexture, &m_tempTexture).run(groupx, groupy);
+    m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
+        &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, &m_tempTexture)
+        .run(groupx, groupy);
 
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
@@ -70,16 +72,21 @@ void ShallowWater::compilePrograms(){
 }
 
 void ShallowWater::loadTerrainHeightMap(Magnum::Trade::ImageData2D* img,
-                                        float scaling)
+                                        float scaling, int channels)
 {
-    CORRADE_INTERNAL_ASSERT(img->format() == Magnum::PixelFormat::R8Unorm);
+    CORRADE_INTERNAL_ASSERT(channels >= 1 && channels <= 4);
+    //CORRADE_INTERNAL_ASSERT(img->format() == Magnum::PixelFormat::R8Unorm);
 
     Magnum::Vector2i size = img->size();
     const unsigned char* data = reinterpret_cast<const unsigned char*>(img->data().data());
-    Corrade::Containers::Array<float> scaled{std::size_t(size.x()*size.y())};
+    Corrade::Containers::Array<float> scaled{std::size_t(size.x() * size.y())};
 
-    for(std::size_t i = 0; i < scaled.size(); ++i) {
-        float h = data[i] / 255.0f;
+    for (std::size_t i = 0; i < scaled.size(); ++i) {
+        float h = 0.0f;
+        for (int c = 0; c < channels; ++c) {
+            h += data[i * channels + c] / 255.0f;
+        }
+        h /= channels;
         scaled[i] = h * scaling;
     }
 

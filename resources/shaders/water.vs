@@ -20,7 +20,7 @@ void main() {
     vec4 heightWater = texture(uAlbedoTexture,uv);
 
     vec4 finalPosition = position;
-    float total_height = (height.r) + heightWater.r;
+    float total_height = (height.r) + heightWater.r ;
     finalPosition.y = finalPosition.y + total_height * 1.5;
     
 

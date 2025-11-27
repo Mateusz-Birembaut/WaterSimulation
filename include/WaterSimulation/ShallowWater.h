@@ -46,8 +46,12 @@ class ShallowWater {
     Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup // texture final
     Magnum::GL::Texture2D m_terrainTexture;   // Terrain R 32f texture
 
-    Magnum::GL::Texture2D m_bulkTexture; // Bulk water where Shallow water is applied
-    Magnum::GL::Texture2D m_surfaceTexture; // Surface water where Airy Waves is applied
+    //
+    Magnum::GL::Texture2D m_bulkTexture; 
+    Magnum::GL::Texture2D m_surfaceTexture; 
+    Magnum::GL::Texture2D m_surfaceHeightTexture;
+    Magnum::GL::Texture2D m_surfaceQxTexture;
+    Magnum::GL::Texture2D m_surfaceQyTexture;
     Magnum::GL::Texture2D m_fftTexture;
 
     Magnum::GL::Texture2D m_tempTexture;    
@@ -64,7 +68,7 @@ class ShallowWater {
                                        Magnum::GL::Shader::Type::Compute);
 
             Corrade::Utility::Resource rs{"WaterSimulationResources"};
-            compute.addSource(rs.get(filepath));
+            compute.addSource(rs.getString(filepath));
 
             CORRADE_INTERNAL_ASSERT_OUTPUT(compute.compile());
 
@@ -89,17 +93,24 @@ class ShallowWater {
 
         ComputeProgram &bindDecompose(Magnum::GL::Texture2D *stateIn,
                                    Magnum::GL::Texture2D *terrain,Magnum::GL::Texture2D *bulk,
-                                   Magnum::GL::Texture2D *surface, Magnum::GL::Texture2D *temp ){
+                                   Magnum::GL::Texture2D *surfaceHeight, 
+                                   Magnum::GL::Texture2D *surfaceQx,
+                                   Magnum::GL::Texture2D *surfaceQy,
+                                   Magnum::GL::Texture2D *temp ){
 
             stateIn->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
                              Magnum::GL::ImageFormat::RGBA32F);
             terrain->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
+                              Magnum::GL::ImageFormat::R32F);
             bulk->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
                              Magnum::GL::ImageFormat::RGBA32F);
-            surface->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
-            temp->bindImage(4, 0, Magnum::GL::ImageAccess::ReadWrite,
+            surfaceHeight->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::R32F);
+            surfaceQx->bindImage(4, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::R32F);
+            surfaceQy->bindImage(5, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::R32F);
+            temp->bindImage(6, 0, Magnum::GL::ImageAccess::ReadWrite,
                               Magnum::GL::ImageFormat::RGBA32F);
             return *this;
         }
@@ -180,6 +191,18 @@ class ShallowWater {
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
+        m_surfaceHeightTexture.setStorage(1, Magnum::GL::TextureFormat::R32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_surfaceQxTexture.setStorage(1, Magnum::GL::TextureFormat::R32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_surfaceQyTexture.setStorage(1, Magnum::GL::TextureFormat::R32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
         m_fftTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
@@ -208,6 +231,9 @@ class ShallowWater {
 
     Magnum::GL::Texture2D &getBulkTexture() { return m_bulkTexture; }
     Magnum::GL::Texture2D &getSurfaceTexture() { return m_surfaceTexture; }
+    Magnum::GL::Texture2D &getSurfaceHeightTexture() { return m_surfaceHeightTexture; }
+    Magnum::GL::Texture2D &getSurfaceQxTexture() { return m_surfaceQxTexture; }
+    Magnum::GL::Texture2D &getSurfaceQyTexture() { return m_surfaceQyTexture; }
 
 
     // initialisation
@@ -216,7 +242,7 @@ class ShallowWater {
     void initTsunami();
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
-                              float scaling = 1.0f);
+                              float scaling = 1.0f, int channels = 1);
 
     // debug
     float minh;
