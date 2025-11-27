@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Matrix4.h>
 
 namespace WaterSimulation
 {

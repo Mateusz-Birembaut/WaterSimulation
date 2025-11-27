@@ -112,53 +112,20 @@ void WaterSimulation::ShadowMapPass::rendeWaterMask(Registry& registry, const Ma
 	}
 }
 
-void WaterSimulation::ShadowMapPass::render(Registry& registry, Camera& mainCamera) {
+void WaterSimulation::ShadowMapPass::render(Registry& registry, Camera& mainCamera, Matrix4& lightViewProj) {
     m_fb.bind();
 	using namespace Math::Literals;
 	Magnum::GL::Renderer::setClearColor(0x000000_rgbf);
     m_fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
-	auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
 
-	if (sunView.begin() != sunView.end()) {
-        Entity sunEntity = *sunView.begin();
-		auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-		auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
-
-        float maxFarCam = 50.0f;
-        float minFarCam = 1.0f;
-
-		Magnum::Vector3 p_mid{mainCamera.position() + (((mainCamera.near() + std::clamp(mainCamera.far(), minFarCam, maxFarCam))/2.0f) * mainCamera.direction())};
-        Magnum::Vector3 lightPos {p_mid - sunDirection.direction.normalized() * sunDirection.offset};
-
-        Vector3 forward = (p_mid - lightPos).normalized();
-
-        Vector3 up = Magnum::Vector3::yAxis().normalized();
-        Vector3 right = Magnum::Math::cross(forward, up).normalized();
-
-        up = Magnum::Math::cross(right, forward).normalized();
-
-		Matrix4 lightTransform = Matrix4::lookAt(lightPos, p_mid, up);
-        Matrix4 lightView = lightTransform.invertedRigid();
-        
-		const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
-			shadowCastData.projectionSize, 
-			shadowCastData.near,                    
-			shadowCastData.far                       
-		);
-
-		const Matrix4 viewProj = lightProj * lightView;
-
-		renderDepth(registry, viewProj);
-		rendeWaterMask(registry, viewProj);
-			
+	renderDepth(registry, lightViewProj);
+	rendeWaterMask(registry, lightViewProj);
 		
-        glDepthMask(GL_TRUE);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glEnable(GL_DEPTH_TEST);
-		Magnum::GL::Renderer::setClearColor(0xa5c9ea_rgbf);
-	} else {
-		Debug {} << "pas de lumière soleil";
-		std::exit(EXIT_FAILURE);
-	}
+	
+	glDepthMask(GL_TRUE);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glEnable(GL_DEPTH_TEST);
+	Magnum::GL::Renderer::setClearColor(0xa5c9ea_rgbf);
+
 }

@@ -5,6 +5,8 @@
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
+
 
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/GL/Framebuffer.h>
@@ -61,6 +63,9 @@ void WaterSimulation::OpaquePass::render(Registry & registry, const Magnum::Matr
     auto view = registry.view<MeshComponent, TransformComponent>();
 
 	for (Entity entity : view) {
+
+        if(registry.has<WaterComponent>(entity)) continue; // rend pas l'eau ici
+
         MeshComponent& meshComp = registry.get<MeshComponent>(entity);
         TransformComponent& transformComp = registry.get<TransformComponent>(entity);
         MaterialComponent& materialComp = registry.get<MaterialComponent>(entity);

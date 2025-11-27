@@ -20,6 +20,7 @@
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
+#include <WaterSimulation/Components/TerrainComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -174,7 +175,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & matTerrain = m_registry.emplace<MaterialComponent>(
         testTerrain
     );
-
     auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     matTerrain.setAlbedo(albedoPtr);
     matTerrain.setHeightMap(heightmapPtr);
@@ -192,6 +192,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         testTerrain,
         shaderPtr
     ); 
+    m_registry.emplace<TerrainComponent>(testTerrain);
 
     //visu eau rapide
     auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
@@ -221,7 +222,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         waterShader
     ); 
-    m_registry.emplace<WaterComponent>(waterEntity);
+    m_registry.emplace<WaterComponent>(waterEntity, scale);
     
  
     // sun light en cours
@@ -310,6 +311,11 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
     if(event.key() == Key::V) {
         m_renderSystem.m_renderWaterMaskOnly = !m_renderSystem.m_renderWaterMaskOnly;
         Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderWaterMaskOnly;
+        return;
+    }
+    if(event.key() == Key::C) {
+        m_renderSystem.m_renderCausticMapOnly = !m_renderSystem.m_renderCausticMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderCausticMapOnly;
         return;
     }
 
