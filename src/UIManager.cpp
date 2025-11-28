@@ -162,7 +162,7 @@ void WaterSimulation::UIManager::sunWindow(Registry & registry){
             if (ImGui::DragFloat3("Direction", sunDirection.direction.data(), 0.01f, -1.0f, 1.0f)) {
                 sunDirection.direction = sunDirection.direction.normalized();
             }
-            ImGui::DragFloat("Offset", &sunDirection.offset, 0.1f, -100.0f, 100.0f);
+            ImGui::DragFloat("Offset", &sunDirection.offset, 0.1f, 0.1f, 10000.0f);
             
 
             ImGui::Text("Shadow Map:");

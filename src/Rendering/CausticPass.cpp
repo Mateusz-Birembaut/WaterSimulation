@@ -105,6 +105,7 @@ void WaterSimulation::CausticPass::render(
 						.setVPLight(lightViewProj)
 						.setVPCamera(camViewProj)
 						.setCameraPos(camera.position())
+						.setLightPos(lightPosition)
 						.setMatrixWorldPosToWaterUV(transform.inverseGlobalModel)
 						.draw(m_photonGrid);
 	}else {

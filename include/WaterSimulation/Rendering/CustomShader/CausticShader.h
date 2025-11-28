@@ -29,7 +29,7 @@ namespace WaterSimulation {
 		Magnum::Int m_uTerrainHeightSamplerLoc;
 
 
-		//Magnum::Int m_uLightPosLoc;
+		Magnum::Int m_uLightPosLoc;
 		//Magnum::Int m_uDepthMapSamplerLoc;
 
 	      public:
@@ -81,7 +81,7 @@ namespace WaterSimulation {
 
 
 			//m_uDepthMapSamplerLoc = uniformLocation("uDepthMap");
-			//m_uLightPosLoc = uniformLocation("uLightPos");
+			m_uLightPosLoc = uniformLocation("uLightPos");
 
 		}
 
@@ -104,12 +104,12 @@ namespace WaterSimulation {
 			setUniform(m_uCameraPosLoc, camPos);
 			return *this;
 		}
-/* 
+
 		CausticShader& setLightPos(const Magnum::Vector3& lightPos) {
 			setUniform(m_uLightPosLoc, lightPos);
 			return *this;
 		}
- */
+ 
 		CausticShader& bindWaterHeightTexture(Magnum::GL::Texture2D& waterHeight) {
 			waterHeight.bind(0);
 			setUniform(m_uWaterHeightSamplerLoc, 0);

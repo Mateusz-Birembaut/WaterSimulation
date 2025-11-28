@@ -3,6 +3,7 @@
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Rendering/CustomShader/DepthShader.h>
 #include <WaterSimulation/Rendering/CustomShader/DepthDebugShader.h>
+#include <WaterSimulation/Rendering/CustomShader/WaterPosShader.h>
 #include<WaterSimulation/Camera.h>
 
 #include <Magnum/Math/Vector2.h>
@@ -33,6 +34,8 @@ namespace WaterSimulation {
 			void rendeWaterMask(Registry& registry, const Magnum::Matrix4& viewProj);
 
 			DepthShader m_depthShader{};
+			WaterPosShader m_waterPosShader{};
+
 			
 	};
 	

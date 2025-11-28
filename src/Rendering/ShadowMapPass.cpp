@@ -32,9 +32,9 @@ void WaterSimulation::ShadowMapPass::recreateTextures(const Magnum::Vector2i& wi
         .setWrapping(GL::SamplerWrapping::ClampToEdge);
 
     m_colorTexture = GL::Texture2D{};
-    m_colorTexture.setStorage(1, GL::TextureFormat::RGBA8, windowSize)
-        .setMinificationFilter(GL::SamplerFilter::Linear)
-        .setMagnificationFilter(GL::SamplerFilter::Linear)
+    m_colorTexture.setStorage(1, GL::TextureFormat::RGBA32F, windowSize)
+        .setMinificationFilter(GL::SamplerFilter::Nearest)
+        .setMagnificationFilter(GL::SamplerFilter::Nearest)
         .setWrapping(GL::SamplerWrapping::ClampToEdge);
 }
 
@@ -90,32 +90,25 @@ void WaterSimulation::ShadowMapPass::rendeWaterMask(Registry& registry, const Ma
 	glDepthMask(GL_FALSE);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-	auto view = registry.view<MeshComponent, TransformComponent>();
-	for (Entity entity : view) {
-
-		if (!registry.has<WaterComponent>(entity)) continue; // draw  juste l'eau dans la couleur
-
+	auto view = registry.view<MeshComponent, TransformComponent, WaterComponent>();
+	if (view.begin() != view.end()) {
+		auto entity = *view.begin();
 		MeshComponent& meshComp = registry.get<MeshComponent>(entity);
 		TransformComponent& transformComp = registry.get<TransformComponent>(entity);
 		MaterialComponent& materialComp = registry.get<MaterialComponent>(entity);
 
-		Matrix4 mvp = viewProj * transformComp.globalModel;
+		m_waterPosShader.bindHeightMapTexture(*materialComp.heightmap)
+						.setLightVP(viewProj)
+						.setModel(transformComp.globalModel)
+						.draw(meshComp.glMesh);
 
-		m_depthShader.setMVP(mvp);
-		if (materialComp.heightmap) {
-			m_depthShader.bindHeightMapTexture(*materialComp.heightmap);
-			m_depthShader.setHasHeightMap(true);
-		} else {
-			m_depthShader.setHasHeightMap(false);
-		}
-		m_depthShader.draw(meshComp.glMesh);
 	}
 }
 
 void WaterSimulation::ShadowMapPass::render(Registry& registry, Camera& mainCamera, Matrix4& lightViewProj) {
     m_fb.bind();
 	using namespace Math::Literals;
-	Magnum::GL::Renderer::setClearColor(0x000000_rgbf);
+	Magnum::GL::Renderer::setClearColor(Magnum::Color4{0.0f, 0.0f, 0.0f, 0.0f}); // si on met pas alpha a 0 on avait un petit soucis dans la passe de caustic
     m_fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
 

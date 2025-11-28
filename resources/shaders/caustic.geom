@@ -1,103 +1,63 @@
-layout(points) in;
-layout(points, max_vertices = 1) out; 
+layout (points) in;
+layout (points, max_vertices = 1) out;
 
-in vec2 v_gridCoords[];
+in vec2 v_gridPos[]; 
+
+uniform sampler2D uWaterMask; // voir pour réduire la taille de la texture si besoin
+uniform sampler2D uShadowMap;
+
 
 uniform mat4 uVPLight;   
-uniform mat4 uInvVPLight; 
 uniform mat4 uVPCamera;   
-uniform mat4 uMatrixWorldPosToWaterUV; 
-uniform float uWaterSize; 
+uniform vec3 uCamPos;     
+uniform vec3 uLightPos;   
 
-uniform sampler2D uHeightWater;      
-uniform sampler2D uTerrainHeightMap; 
-uniform sampler2D uWaterMask;        
-uniform sampler2D uShadowMap;       
 
-//voir pour ajouter matrice worldpostoterrainuv
+const float IOR_AIR = 1.0;
+const float IOR_WATER = 1.33;
+const float ETA = IOR_AIR / IOR_WATER;
 
-float getTotalHeight(vec2 uv) {
-    float h_terrain = texture(uTerrainHeightMap, uv).r; 
-    float h_water = texture(uHeightWater, uv).r;
-    return h_terrain + h_water;
+
+out float vIntensity; 
+out vec3 vNs;
+
+
+vec3 getWaterNormal(vec2 uv, vec3 currentPos) {
+    //vec2 texSize = textureSize(uWaterMask, 0);
+    //vec2 offset = vec2(1.0, 1.0) / texSize;
+
+    vec3 posRight = texture(uWaterMask, uv + vec2(0.01, 0.0)).rgb;
+    vec3 posUp = texture(uWaterMask, uv + vec2(0.0, 0.01)).rgb;
+
+    vec3 v1 = posRight - currentPos;
+    vec3 v2 = posUp - currentPos;
+
+    return normalize(cross(v2, v1));
 }
 
-vec3 getWaterNormal(vec2 uv) { 
-    vec2 E = vec2(0.01, 0.0); // TODO modif pour utiliser scale
-    float h0 = getTotalHeight(uv);
-    float h1 = getTotalHeight(uv + E.xy);
-    float h2 = getTotalHeight(uv + E.yx); 
 
-    vec3 p0 = vec3(0.0, h0, 0.0);
-    vec3 p1 = vec3(E.x, h1, 0.0);
-    vec3 p2 = vec3(0.0, h2, E.x);
 
-    return normalize(cross(p2 - p0, p1 - p0));
-}
-
-vec3 unproject(vec2 gridCoord, float z){
-    vec4 clipPos = vec4(gridCoord, z, 1.0);
-    vec4 worldPos = uInvVPLight * clipPos;
-    return worldPos.xyz / worldPos.w; 
-}
-
-vec3 findWaterSurface(vec3 rayOrigin, vec3 rayDir) {
-    vec3 p = rayOrigin;
+void main() {
+    vec2 uv = v_gridPos[0] * 0.5 + 0.5;
+    vec4 worldPos = texture(uWaterMask, uv);
     
-    for(int i = 0; i < 30; i++) {
-        vec4 localPos4 = uMatrixWorldPosToWaterUV * vec4(p, 1.0);
-        vec3 localPos = localPos4.xyz;
-
-        float u = (localPos.x + uWaterSize * 0.5) / uWaterSize;
-        float v = (localPos.z + uWaterSize * 0.5) / uWaterSize;
-
-        float heightAtUV = getTotalHeight(vec2(u,v));
-
-        // nul mais normal
-        if(p.y > heightAtUV) {
-            p = p + rayOrigin * 1.0;
-        }else if(p.y < heightAtUV){
-            p = p - rayOrigin * 0.1;
-        }
-    }
-
-    return p;
-}
-
-/*
-void emit(vec3 position){
-    gl_PointSize = 5.0;
-    gl_Position = vec4(position, 1.0);
-    EmitVertex();
-    EndPrimitive();
-}
-*/
+    if (worldPos.a < 0.5) return;
+    
+    vec3 Ps = worldPos.rgb; // ok
 
 
-void main(){
-    vec2 grid = v_gridCoords[0]; 
-    vec2 texCoord = grid * 0.5 + 0.5; 
+    vec3 Ns = getWaterNormal(uv, Ps);
+    vec3 incident = normalize(Ps - uLightPos);
+    vec3 refractDir = refract(incident, Ns, ETA);
 
-    float isWater = texture(uWaterMask, texCoord).r;
-    if (isWater < 0.5) return; 
-
-
-    vec3 p_near = unproject(grid, -1.0);
-    vec3 p_far = unproject(grid, 1.0);
-    vec3 ray_dir = normalize(p_far - p_near);
-
-    vec3 p = unproject(grid, -1.0);
-
-    vec3 Ps = findWaterSurface(p_near, ray_dir);
-    gl_PointSize = 5.0;
     gl_Position = uVPCamera * vec4(Ps, 1.0);
+    gl_PointSize = 5.0;
+    vNs = incident; 
+    vIntensity = 1.0; 
     EmitVertex();
     EndPrimitive();
-
-
-
     return;
+    
+    //if (length(refractDir) == 0.0) return;
 
 }
-
-
