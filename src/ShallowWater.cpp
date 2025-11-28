@@ -20,18 +20,60 @@ void ShallowWater::step() {
     Magnum::GL::Texture2D *inputTex;
     Magnum::GL::Texture2D *outputTex;
 
-    int groupx = (nx + 15) / 16;
-    int groupy = (ny + 15) / 16;
 
-    if (ping) {
-        inputTex = &m_stateTexturePing;
-        outputTex = &m_stateTexturePong;
-    } else {
-        inputTex = &m_stateTexturePong;
-        outputTex = &m_stateTexturePing;
+    runSW(&m_stateTexture);
+    
+    runDecomposition(&m_stateTexture);
+
+    auto ffth = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1, 1.0f );
+    
+    auto iffth = runFFT(ffth, ffth == &m_surfaceHeightTexture ? &m_surfaceHeightPong : &m_surfaceHeightTexture, -1, 1.0/static_cast<float>(nx+1));
+
+    ping = !ping;
+}
+
+void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex){
+    // Initialisation
+    m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
+        &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, 
+        &m_tempTexture, &m_tempTexture2)
+        .setIntUniform("stage", 0)
+        .run(groupx, groupy);
+
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
+    // Diffusion
+    const int diffusionIterations = 64;
+    Magnum::GL::Texture2D* tempIn = &m_tempTexture2;
+    Magnum::GL::Texture2D* tempOut = &m_tempTexture;
+
+    for (int i = 0; i < diffusionIterations; i++) {
+        m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
+            &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, 
+            tempIn, tempOut)
+            .setIntUniform("stage", 1)
+            .run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
+        std::swap(tempIn, tempOut);
     }
 
-    m_updateFluxesProgram.bindStates(inputTex, outputTex)
+    //Calcul des valeurs finales
+    m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
+        &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, 
+        tempIn, tempOut)
+        .setIntUniform("stage", 2)
+        .run(groupx, groupy);
+
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+}
+
+void ShallowWater::runSW(Magnum::GL::Texture2D *inputTex){
+    m_updateFluxesProgram.bindStates(inputTex, &m_tempTexture)
         .bindTerrain(&m_terrainTexture)
         .run(groupx, groupy);
 
@@ -39,23 +81,69 @@ void ShallowWater::step() {
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-    m_updateWaterHeightProgram.bindStates(outputTex, inputTex)
+    m_updateWaterHeightProgram.bindStates(&m_tempTexture, inputTex)
         .bindTerrain(&m_terrainTexture)
         .run(groupx, groupy);
 
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-
-    m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
-        &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, &m_tempTexture)
-        .run(groupx, groupy);
-
-    Magnum::GL::Renderer::setMemoryBarrier(
-        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-    
-
-    // ping = !ping;
 }
+
+Magnum::GL::Texture2D* ShallowWater::runFFT(Magnum::GL::Texture2D* pingTex, Magnum::GL::Texture2D* pongTex, int direction, float normalization) {
+    int N = nx + 1;
+    int numStages = static_cast<int>(std::log2(N));
+    Corrade::Utility::Debug{} << "Number of stages: " << numStages;
+        
+    Magnum::GL::Texture2D* input = pingTex;
+    Magnum::GL::Texture2D* output = pongTex;
+
+    for (int stage = 0; stage < numStages; stage++) {
+        int subseqCount = 1 << stage;
+        
+        m_fftHorizontalProgram
+            .bindFFT(input, output)
+            .setIntUniform("u_total_count", N)
+            .setIntUniform("u_subseq_count", subseqCount)
+            .setIntUniform("u_direction", direction)
+            .setFloatUniform("u_normalization", normalization)
+            .run(N, 1);
+        
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        
+        std::swap(input, output);
+    }
+    
+    for (int stage = 0; stage < numStages; stage++) {
+        int subseqCount = 1 << stage;
+        
+        m_fftVerticalProgram
+            .bindFFT(input, output)
+            .setIntUniform("u_total_count", N)
+            .setIntUniform("u_subseq_count", subseqCount)
+            .setIntUniform("u_direction", direction)
+            .setFloatUniform("u_normalization", normalization)
+            .run(N, 1);
+        
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        
+        std::swap(input, output);
+    }
+    
+    if (output == pongTex) {
+        Corrade::Utility::Debug{} << "OUTPUT IS PONG";
+    } else if (output == pingTex) {
+        Corrade::Utility::Debug{} << "OUTPUT IS PING";
+    } else {
+        Corrade::Utility::Debug{} << "OUTPUT IS UNKNOWN";
+    }
+
+    return (numStages % 2 == 0) ? input : output;
+    
+}
+
+
 
 void ShallowWater::compilePrograms(){
     m_updateFluxesProgram =
@@ -65,6 +153,9 @@ void ShallowWater::compilePrograms(){
         m_initProgram = ComputeProgram("init.comp");
 
         m_decompositionProgram = ComputeProgram("decompose.comp");
+
+        m_fftHorizontalProgram = ComputeProgram("CS_FFTHorizontal.comp");
+        m_fftVerticalProgram = ComputeProgram("CS_FFTVertical.comp");
 
         m_updateFluxesProgram.setParametersUniforms(*this);
         m_updateWaterHeightProgram.setParametersUniforms(*this);
@@ -112,7 +203,7 @@ void ShallowWater::loadTerrainHeightMap(Magnum::Trade::ImageData2D* img,
 void ShallowWater::initBump() {
     ping = false;
 
-    m_initProgram.bindStates(&m_stateTexturePing, &m_stateTexturePong)
+    m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)
         .setFloatUniform("dryEps", dryEps)
         .setIntUniform("init_type", 0)
@@ -125,7 +216,7 @@ void ShallowWater::initBump() {
 void ShallowWater::initDamBreak() {
     ping = false;
 
-    m_initProgram.bindStates(&m_stateTexturePing, &m_stateTexturePong)
+    m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)
         .setFloatUniform("dryEps", dryEps)
         .setIntUniform("init_type", 1)
@@ -138,7 +229,7 @@ void ShallowWater::initDamBreak() {
 void ShallowWater::initTsunami(){
     ping = false;
 
-    m_initProgram.bindStates(&m_stateTexturePing, &m_stateTexturePong)
+    m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)
         .setFloatUniform("dryEps", dryEps)
         .setIntUniform("init_type", 3)

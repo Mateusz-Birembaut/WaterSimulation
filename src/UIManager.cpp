@@ -77,6 +77,9 @@ void WaterSimulation::UIManager::paramWindow(
         if (ImGui::Button(app->simulationPaused ? "Resume" : "Pause")) {
             app->simulationPaused = !app->simulationPaused;
         }
+        if (ImGui::Button("Step")) {
+            simulation->step();
+        }
 
         if (ImGui::Button("Init Dam Break")) {
             simulation->initDamBreak();
