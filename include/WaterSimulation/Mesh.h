@@ -56,6 +56,26 @@ namespace WaterSimulation
 			}
 			return mesh;
 		}
+
+		static std::pair<Magnum::Vector3, Magnum::Vector3> computeAABBFromMesh(const Mesh& mesh)
+		{
+			if(mesh.vertices.empty()) return {Magnum::Vector3{0.0f}, Magnum::Vector3{0.0f}};
+			Magnum::Vector3 min = mesh.vertices[0];
+			Magnum::Vector3 max = mesh.vertices[0];
+			for(const auto& v : mesh.vertices) {
+				min = Magnum::Vector3{
+					std::min(min.x(), v.x()),
+					std::min(min.y(), v.y()),
+					std::min(min.z(), v.z())
+				};
+				max = Magnum::Vector3{
+					std::max(max.x(), v.x()),
+					std::max(max.y(), v.y()),
+					std::max(max.z(), v.z())
+				};
+			}
+			return {min, max};
+		}
 		
 	};
 

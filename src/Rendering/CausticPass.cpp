@@ -7,7 +7,7 @@
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
 #include <WaterSimulation/Systems/RenderSystem.h>
-#include <WaterSimulation/Mesh.h>
+#include <WaterSimulation/Mesh.h> 
 
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Mesh.h>
@@ -27,7 +27,7 @@ using namespace Magnum;
 
 void WaterSimulation::CausticPass::recreateTextures(const Magnum::Vector2i& windowSize){
     m_causticMap = GL::Texture2D{};
-    m_causticMap.setStorage(1, GL::TextureFormat::RGBA8, windowSize)
+    m_causticMap.setStorage(1, GL::TextureFormat::RGBA16F, windowSize)
         .setMinificationFilter(GL::SamplerFilter::Linear)
         .setMagnificationFilter(GL::SamplerFilter::Linear)
         .setWrapping(GL::SamplerWrapping::ClampToEdge);
@@ -53,7 +53,7 @@ void WaterSimulation::CausticPass::resize(const Magnum::Vector2i& windowSize){
 }
 
 void WaterSimulation::CausticPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(200, 200, 2.0);
+	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
 	// gridMeshComp = MeshComponent({{0.0f, &gridData}});
 
 	m_photonBuffer = Magnum::GL::Buffer{};
@@ -77,12 +77,17 @@ void WaterSimulation::CausticPass::render(
 	Vector3 & lightPosition,
 	Matrix4 & lightViewProj
 ){
+	GL::Renderer::setClearColor(Color4{0.0f, 0.0f, 0.0f, 0.0f});
 	m_fb.clear(GL::FramebufferClear::Color).bind();
 
 	glDepthMask(GL_FALSE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE); // Désactive le face culling
+
+	glEnable(GL_DEPTH_TEST); 
+    glDepthFunc(GL_LESS);
+
+	glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+
 	glEnable(GL_PROGRAM_POINT_SIZE);
 
 
@@ -112,8 +117,7 @@ void WaterSimulation::CausticPass::render(
 		Debug {} << "Water entity not found, couldn't compute caustics";
 	}
 
-	glDepthMask(GL_TRUE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE); // Réactive le face culling
+	glDisable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_TRUE);
 }

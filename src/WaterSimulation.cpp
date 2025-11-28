@@ -1,11 +1,13 @@
 
+#include <WaterSimulation/WaterSimulation.h>
+
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
+#include <WaterSimulation/Systems/PhysicsSystem.h>
 
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/UIManager.h>
-#include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/ECS.h>
 
 #include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
@@ -21,6 +23,7 @@
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
 #include <WaterSimulation/Components/TerrainComponent.h>
+#include <WaterSimulation/Components/BuoyancyComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -159,14 +162,19 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & testTransform = m_registry.emplace<TransformComponent>(
         testEntity
     );
-    testTransform.position = Magnum::Vector3(0.0f, 5.0f, -15.0f);
+    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
     testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    m_registry.emplace<MeshComponent>(
+    auto& testMeshComp = m_registry.emplace<MeshComponent>(
         testEntity,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
-    
+    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
+    rigidBody.mass = 1.0f;
+    rigidBody.mesh = testMeshComp.activeMesh;
+    rigidBody.addCollider(new SphereCollider(10.0f));
+    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
+    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
 
     float scale = 250.0f;
     
@@ -267,7 +275,7 @@ void WaterSimulation::Application::drawEvent() {
     if(!simulationPaused) m_shallowWaterSimulation.step();
 
     m_transform_System.update(m_registry);
-
+    m_physicSystem.update(m_registry, m_deltaTime);
 
     m_renderSystem.render(m_registry, *m_camera.get());
 
