@@ -35,8 +35,8 @@ layout (binding = 1, rg32f) uniform writeonly image2D u_output;
 
 uniform int u_total_count;
 uniform int u_subseq_count;
-uniform int u_direction;      // 1 for FFT, -1 for IFFT
-uniform float u_normalization; // 1.0 for FFT, 1/N for IFFT (applied per 1D pass)
+uniform int u_direction;      // 1 for FFT -1 for inverse
+uniform float u_normalization; // 1.0 for FFT, 1/N for IFFT 
 
 vec2 MultiplyComplex(vec2 a, vec2 b)
 {

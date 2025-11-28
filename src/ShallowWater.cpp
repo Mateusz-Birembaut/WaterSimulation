@@ -21,13 +21,27 @@ void ShallowWater::step() {
     Magnum::GL::Texture2D *outputTex;
 
 
+
     runSW(&m_stateTexture);
     
     runDecomposition(&m_stateTexture);
 
-    auto ffth = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1, 1.0f );
+    //m_fftOutput = &m_surfaceHeightTexture;
+    //m_ifftOutput = &m_surfaceHeightTexture;
+
+    Corrade::Utility::Debug{} << "running fft pass";
+    m_fftOutput = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1, 1.0f );
+    Corrade::Utility::Debug{} << "FFT output : " << m_fftOutput;
+
     
-    auto iffth = runFFT(ffth, ffth == &m_surfaceHeightTexture ? &m_surfaceHeightPong : &m_surfaceHeightTexture, -1, 1.0/static_cast<float>(nx+1));
+
+    Corrade::Utility::Debug{} << "\n running ifft pass";
+    m_ifftOutput = runFFT(m_fftOutput, &m_surfaceHeightPing, -1, 1.0/static_cast<float>(nx+1));
+    Corrade::Utility::Debug{} << "IFFT output : " << m_ifftOutput;
+    //
+    m_debugAlphaProgram.bindReadWrite(m_ifftOutput).run(groupx, groupy); // removing this has no real effect, this is not the issue 
+
+    Corrade::Utility::Debug{} << "-----------------------";
 
     ping = !ping;
 }
@@ -61,7 +75,7 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex){
         std::swap(tempIn, tempOut);
     }
 
-    //Calcul des valeurs finales
+    // Compute final values
     m_decompositionProgram.bindDecompose(inputTex, &m_terrainTexture, &m_bulkTexture, 
         &m_surfaceHeightTexture, &m_surfaceQxTexture, &m_surfaceQyTexture, 
         tempIn, tempOut)
@@ -77,7 +91,7 @@ void ShallowWater::runSW(Magnum::GL::Texture2D *inputTex){
         .bindTerrain(&m_terrainTexture)
         .run(groupx, groupy);
 
-    // wait for all imageStore to be done before continuing
+    // Wait for all imageStore to be done before continuing
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
@@ -90,57 +104,85 @@ void ShallowWater::runSW(Magnum::GL::Texture2D *inputTex){
 }
 
 Magnum::GL::Texture2D* ShallowWater::runFFT(Magnum::GL::Texture2D* pingTex, Magnum::GL::Texture2D* pongTex, int direction, float normalization) {
+
+    bool temp_as_input = false;
+
     int N = nx + 1;
     int numStages = static_cast<int>(std::log2(N));
-    Corrade::Utility::Debug{} << "Number of stages: " << numStages;
-        
+    Corrade::Utility::Debug{} << "N : "<< N << ", Number of stages: " << numStages;
+    
+    Corrade::Utility::Debug{} << "Horizontal";
+    Corrade::Utility::Debug{} << "Input : " << pingTex;
+    Corrade::Utility::Debug{} << "Output : " << pongTex;
+    
     Magnum::GL::Texture2D* input = pingTex;
     Magnum::GL::Texture2D* output = pongTex;
 
-    for (int stage = 0; stage < numStages; stage++) {
-        int subseqCount = 1 << stage;
-        
-        m_fftHorizontalProgram
-            .bindFFT(input, output)
-            .setIntUniform("u_total_count", N)
-            .setIntUniform("u_subseq_count", subseqCount)
+    for (int p = 1; p < N; p <<= 1) {
+
+        if(temp_as_input){
+            m_fftHorizontalProgram.bindFFT(pongTex, pingTex);
+        }else{
+            m_fftHorizontalProgram.bindFFT(pingTex, pongTex);
+        }
+
+        m_fftHorizontalProgram.setIntUniform("u_total_count", N)
+            .setIntUniform("u_subseq_count", p)
             .setIntUniform("u_direction", direction)
             .setFloatUniform("u_normalization", normalization)
-            .run(N, 1);
+            .run(N,1);
         
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
         
-        std::swap(input, output);
+        //std::swap(input, output);
+
+        temp_as_input = !temp_as_input;
     }
-    
-    for (int stage = 0; stage < numStages; stage++) {
-        int subseqCount = 1 << stage;
+    Corrade::Utility::Debug{} << "Vertical";
+    Corrade::Utility::Debug{} << "Input : " << input;
+    Corrade::Utility::Debug{} << "Output : " << output;
+
+    //return (numStages % 2 == 0) ? input : output;
+
+    for (int p = 1; p < N; p <<= 1) {
+
+        if(temp_as_input){
+            m_fftVerticalProgram.bindFFT(pongTex, pingTex);
+            //Corrade::Utility::Debug{} << "output is ping ";
+        }else{
+            m_fftVerticalProgram.bindFFT(pingTex, pongTex);
+            //Corrade::Utility::Debug{} << "output is pong";
+        }
         
         m_fftVerticalProgram
-            .bindFFT(input, output)
             .setIntUniform("u_total_count", N)
-            .setIntUniform("u_subseq_count", subseqCount)
+            .setIntUniform("u_subseq_count", p)
             .setIntUniform("u_direction", direction)
             .setFloatUniform("u_normalization", normalization)
-            .run(N, 1);
+            .run(N,1);
         
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-        
-        std::swap(input, output);
-    }
-    
-    if (output == pongTex) {
-        Corrade::Utility::Debug{} << "OUTPUT IS PONG";
-    } else if (output == pingTex) {
-        Corrade::Utility::Debug{} << "OUTPUT IS PING";
-    } else {
-        Corrade::Utility::Debug{} << "OUTPUT IS UNKNOWN";
-    }
 
-    return (numStages % 2 == 0) ? input : output;
+        temp_as_input = !temp_as_input;
+        
+        
+        /* Corrade::Utility::Debug{} << "Before last swap";
+        Corrade::Utility::Debug{} << "Input : " << input;
+        Corrade::Utility::Debug{} << "Output : " << output; */
+        //std::swap(input, output);
+        /* Corrade::Utility::Debug{} << "After last swap";
+        Corrade::Utility::Debug{} << "Input : " << input;
+        Corrade::Utility::Debug{} << "Output : " << output; */
+
+        //Corrade::Utility::Debug{} << "use temp as input ? " << temp_as_input;
+        //Corrade::Utility::Debug{} << temp_as_input;
+    }
     
+    //return (numStages % 2 == 1) ? input : output;
+    Magnum::GL::Texture2D* lastOutput = temp_as_input ? pongTex : pingTex;
+    return lastOutput;
 }
 
 
@@ -156,6 +198,8 @@ void ShallowWater::compilePrograms(){
 
         m_fftHorizontalProgram = ComputeProgram("CS_FFTHorizontal.comp");
         m_fftVerticalProgram = ComputeProgram("CS_FFTVertical.comp");
+
+        m_debugAlphaProgram = ComputeProgram("debugAlpha.comp");
 
         m_updateFluxesProgram.setParametersUniforms(*this);
         m_updateWaterHeightProgram.setParametersUniforms(*this);

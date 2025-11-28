@@ -109,10 +109,30 @@ void WaterSimulation::UIManager::paramWindow(
             ImVec2(256, 256));
 
 
-        ImGui::Text("Surface Components (Height, Qx, Qy)");
+        Magnum::GL::Texture2D * fftoutput = simulation->getFFTOutput();
+        Magnum::GL::Texture2D * ifftoutput = simulation->getIFFTOutput();
+
+        ImGui::Text("Surface Height, FFT, IFFT, Qx and Qy");
         ImGui::Image(
             reinterpret_cast<void *>(simulation->getSurfaceHeightTexture().id()),
             ImVec2(256, 256));
+        ImGui::SameLine();
+        if(fftoutput){
+            ImGui::Image(
+            reinterpret_cast<void *>(fftoutput->id()),
+            ImVec2(256, 256));
+            
+        }else{
+            ImGui::Text("no fftoutput");
+        }
+        ImGui::SameLine();
+        if (ifftoutput) {
+            ImGui::Image(
+                reinterpret_cast<void *>(ifftoutput->id()),
+                ImVec2(256, 256));
+        } else {
+            ImGui::Text("no ifftoutput");
+        }  
         ImGui::SameLine();
         ImGui::Image(
             reinterpret_cast<void *>(simulation->getSurfaceQxTexture().id()),
