@@ -1,87 +1,210 @@
 layout (points) in;
-layout (points, max_vertices = 1) out;
+layout (points, max_vertices = 2) out;
 
-in vec2 v_gridPos[]; 
+in vec2 v_gridPos[];
 
-uniform sampler2D uWaterMask; // voir pour réduire la taille de la texture si besoin
+uniform sampler2D uWaterMask;
 uniform sampler2D uShadowMap;
 
+uniform mat4 uVPLight;
+uniform mat4 uVPCamera;
 
-uniform mat4 uVPLight;   
-uniform mat4 uVPCamera;   
-uniform vec3 uCamPos;     
-uniform vec3 uLightPos;   
+uniform vec3 uCamPos;
+uniform vec3 uLightPos;
 
-//TODO : ajouter uniform cam near et far
+uniform float uTime;
 
-const float IOR_AIR = 1.0;
+// ajouter uniform pour le far de la cam du soleil
+
+const float IOR_AIR   = 1.0;
 const float IOR_WATER = 1.33;
-const float ETA = IOR_AIR / IOR_WATER;
+const float ETA       = IOR_AIR / IOR_WATER;
 
-const float POINT_SIZE_MIN = 5.0;
-const float POINT_SIZE_MAX = 20.0; // a changer en fonction de la taille de grid ect.
-const float POINT_SCALE_FACTOR = 150.0;
+const float NORMAL_LENGTH  = 1.0;
+const float INCIDENT_LENGTH = 1.0;
+const float REFRACT_LENGTH  = 1.0;
 
-out float vIntensity; 
 out vec3 vNs;
+out float vIntensity;
 
-
-vec3 getWaterNormal(vec2 uv, vec3 posCenter) {
-    vec2 texSize = vec2(textureSize(uWaterMask, 0));
-    vec2 off = vec2(0.01,0.01); 
+vec3 getWaterNormal(vec2 uv, vec3 posCenter)
+{
+    vec2 off = vec2(0.01, 0.01);
 
     vec3 tX;
     vec4 rawRight = texture(uWaterMask, uv + vec2(off.x, 0.0));
     vec4 rawLeft  = texture(uWaterMask, uv - vec2(off.x, 0.0));
 
-    if (rawRight.a > 0.9 && distance(rawRight.rgb, posCenter) > 0.001) {
+    if (rawRight.a > 0.9 && distance(rawRight.rgb, posCenter) > 0.001)
         tX = rawRight.rgb - posCenter;
-    } 
-    else if (rawLeft.a > 0.9 && distance(rawLeft.rgb, posCenter) > 0.001) {
-        tX = posCenter - rawLeft.rgb; 
-    }
-    else {
+    else if (rawLeft.a > 0.9 && distance(rawLeft.rgb, posCenter) > 0.001)
+        tX = posCenter - rawLeft.rgb;
+    else
         tX = vec3(1.0, 0.0, 0.0);
-    }
 
     vec3 tZ;
     vec4 rawUp   = texture(uWaterMask, uv + vec2(0.0, off.y));
     vec4 rawDown = texture(uWaterMask, uv - vec2(0.0, off.y));
 
-    if (rawUp.a > 0.9 && distance(rawUp.rgb, posCenter) > 0.001) {
+    if (rawUp.a > 0.9 && distance(rawUp.rgb, posCenter) > 0.001)
         tZ = rawUp.rgb - posCenter;
-    } 
-    else if (rawDown.a > 0.9 && distance(rawDown.rgb, posCenter) > 0.001) {
+    else if (rawDown.a > 0.9 && distance(rawDown.rgb, posCenter) > 0.001)
         tZ = posCenter - rawDown.rgb;
-    }
-    else {
-        tZ = vec3(0.0, 0.0, 1.0); 
-    }
+    else
+        tZ = vec3(0.0, 0.0, 1.0);
 
-    return normalize(cross(tZ, tX)); 
+    vec3 n = normalize(cross(tX, tZ));
+    if(n.y < 0.0) n = -n;
+    return n;
+}
+
+void emitLine(vec3 p0, vec3 p1, vec3 color)
+{
+    vNs = color;
+    gl_Position = uVPCamera * vec4(p0, 1.0);
+    EmitVertex();
+
+    vNs = color;
+    gl_Position = uVPCamera * vec4(p1, 1.0);
+    EmitVertex();
+
+    EndPrimitive();
+}
+
+void emitPoint (vec3 p, vec3 color, float size)
+{
+    gl_Position = uVPCamera * vec4(p, 1.0);
+    vNs = color;
+    gl_PointSize = size;
+    EmitVertex();
+    EndPrimitive();
+}
+
+void emitPointColorless (vec3 p, float size)
+{
+    gl_Position = uVPCamera * vec4(p, 1.0);
+    gl_PointSize = size;
+    EmitVertex();
+    EndPrimitive();
+}
+
+float getWaveHeight(vec2 p, float time) {
+    float h = 0.0;
+    // Amplitude 0.5, Fréquence 1.0
+    // Note : On utilise p.y ici car "p" est le vecteur "uv" ou "xz" passé en paramètre
+    h += sin(p.x * 1.0 + time) * cos(p.y * 1.0 + time) * 0.5; 
+    return h;
+}
+
+// Correction 2 : Recalculer h_center localement pour être cohérent
+vec3 getProceduralNormal(vec2 p, float time) {
+    vec2 e = vec2(0.01, 0.0);
+    
+    // On recalcule les 3 hauteurs avec la MÊME fonction
+    // p est déjà Ps.xz
+    float h_center = getWaveHeight(p, time);
+    float h_right  = getWaveHeight(p + e.xy, time);
+    float h_up     = getWaveHeight(p + e.yx, time);
+    
+    // Maintenant la différence est juste (ex: 0.11 - 0.10 = 0.01)
+    vec3 v1 = vec3(e.x, h_right - h_center, 0.0);
+    vec3 v2 = vec3(0.0, h_up - h_center, e.x);
+    
+    return normalize(cross(v2, v1)); 
 }
 
 
-void main() {
+vec3 findFloor(vec3 position, vec3 direction){
+    vec3 p = position;
+    float farPlane = 1000.0; // TODO : passer en uniform
+    int MAX_ITER = 30;
+
+    for(int i = 0; i < MAX_ITER; i++){
+
+        vec4 lightClip = uVPLight * vec4(p, 1.0);
+        vec3 lightNDC = lightClip.xyz / lightClip.w; // -1 1
+        vec2 shadowUV = lightNDC.xy * 0.5 + 0.5;
+
+        if(shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1) break;
+
+        float currentRayDepth = lightNDC.z * 0.5 + 0.5; // 0 1
+        float currentUVDepth = texture(uShadowMap, shadowUV).r; // 0 1 
+        float diff = currentUVDepth - currentRayDepth;
+
+        if (abs(diff) < 0.0001) break;
+
+        float displacementDist = diff * farPlane;
+
+        p += direction * displacementDist;
+
+        // TODO ajouter le fait de partir dans l'autre sens pour des height maps plus complexe mais pour l'instant ok
+
+    }
+    return p;
+}
+
+
+void main()
+{
     vec2 uv = v_gridPos[0] * 0.5 + 0.5;
     vec4 worldPos = texture(uWaterMask, uv);
-    
     if (worldPos.a < 0.5) return;
-    
+
     vec3 Ps = worldPos.rgb;
-    vec3 Ns = getWaterNormal(uv, Ps);
+
+    float waveH = getWaveHeight(Ps.xz, uTime);
+    Ps.y += waveH; 
+    vec3 Ns = getProceduralNormal(Ps.xz, uTime);
+    
+    //vec3 Ns = getWaterNormal(uv, Ps);
+
     vec3 Ri = normalize(uLightPos - Ps);
     vec3 Rt = refract(Ri, Ns, ETA);
 
-    if (length(Rt) == 0.0) return;
+    if (length(Rt) == 0.0)
+        return;
 
-    gl_Position = uVPCamera * vec4(Ps, 1.0);
-    vNs = Ns;
-    gl_PointSize = 5.0;
-    EmitVertex();
-    EndPrimitive();
-    return;
+    // normal bleu
+    //emitLine(Ps, Ps + Ns * NORMAL_LENGTH, vec3(0.0, 0.4, 1.0));
 
-    
+    // 2) incident rouge
+    //emitLine(Ps, Ps + Ri * INCIDENT_LENGTH, vec3(1.0, 0.0, 0.0));
+
+    // 3) refracté vert
+    //emitLine(Ps, Ps + Rt * REFRACT_LENGTH, vec3(0.0, 1.0, 0.0));
+
+    vec3 Pi = findFloor(Ps, Rt);
+
+    //emitPoint(Ps, vec3(1.0, 0.0, 0.0), 5.0);
+    //emitPoint(Pi, vec3(0.0, 1.0, 0.0), 5.0);
+
+    // pi jaune
+    //emitLine(Pi, Pi + vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0));
+
+    float distInWater = distance(Ps, Pi);
+    float distToCam = distance(Ps, uCamPos);
+
+    float photonIntensity = 0.5;
+    float attenuation = 5.0;
+
+    vIntensity = photonIntensity * exp(-attenuation * distInWater);
+
+    float sMin = 5.0;
+    float sMax = 20.0;
+
+    // Récupère les plans de ta caméra actuelle
+    float zNear = 5.0;
+    float zFar = 100.0;   // ex: 100.0 ou 1000.0
+
+    float b = (zNear * zFar * (sMax - sMin)) / (zFar - zNear);
+    float a = sMin - (b / zFar);
+    float sfinal = a + b/distToCam;
+
+    vec3 color= vec3(1.0,1.0,1.0);
+
+    emitPointColorless(Pi, sfinal);
+
 
 }
+
+

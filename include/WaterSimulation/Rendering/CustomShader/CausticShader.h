@@ -28,6 +28,7 @@ namespace WaterSimulation {
 
 		Magnum::Int m_uTerrainHeightSamplerLoc;
 
+		Magnum::Int m_uTimeLoc;
 
 		Magnum::Int m_uLightPosLoc;
 		//Magnum::Int m_uDepthMapSamplerLoc;
@@ -79,6 +80,7 @@ namespace WaterSimulation {
 
 			m_uTerrainHeightSamplerLoc = uniformLocation("uTerrainHeightMap");
 
+			m_uTimeLoc = uniformLocation("uTime");
 
 			//m_uDepthMapSamplerLoc = uniformLocation("uDepthMap");
 			m_uLightPosLoc = uniformLocation("uLightPos");
@@ -141,6 +143,11 @@ namespace WaterSimulation {
 
 		CausticShader& setWaterSize(float size){
 			setUniform(m_uWaterSizeLoc, size);
+			return *this;
+		}
+
+		CausticShader& setUtime(float time){
+			setUniform(m_uTimeLoc, time);
 			return *this;
 		}
 

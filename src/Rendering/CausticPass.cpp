@@ -21,6 +21,7 @@
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/GL/Renderer.h>
 
+#include <chrono>
 
 
 using namespace Magnum;
@@ -53,7 +54,7 @@ void WaterSimulation::CausticPass::resize(const Magnum::Vector2i& windowSize){
 }
 
 void WaterSimulation::CausticPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
+	Mesh gridData = Mesh::createGrid(1000, 1000, 2.0);
 	// gridMeshComp = MeshComponent({{0.0f, &gridData}});
 
 	m_photonBuffer = Magnum::GL::Buffer{};
@@ -79,6 +80,11 @@ void WaterSimulation::CausticPass::render(
 ){
 	GL::Renderer::setClearColor(Color4{0.0f, 0.0f, 0.0f, 0.0f});
 	m_fb.clear(GL::FramebufferClear::Color).bind();
+
+	// Chrono pour uTime
+	static auto startTime = std::chrono::steady_clock::now();
+	auto now = std::chrono::steady_clock::now();
+	float uTime = std::chrono::duration<float>(now - startTime).count();
 
 	glDepthMask(GL_FALSE);
 
@@ -112,6 +118,7 @@ void WaterSimulation::CausticPass::render(
 						.setCameraPos(camera.position())
 						.setLightPos(lightPosition)
 						.setMatrixWorldPosToWaterUV(transform.inverseGlobalModel)
+						.setUtime(uTime)
 						.draw(m_photonGrid);
 	}else {
 		Debug {} << "Water entity not found, couldn't compute caustics";

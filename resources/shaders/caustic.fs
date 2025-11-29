@@ -1,18 +1,20 @@
-in float vIntensity;
-in vec3 vNs;
+in float vIntensity; 
 
 out vec4 FragColor;
 
-
 void main() {
-    vec2 circCoord = 2.0 * gl_PointCoord - 1.0; 
-    
-    float dist = dot(circCoord, circCoord); 
-    
-    if (dist > 1.0) discard;
+    vec2 coord = gl_PointCoord * 2.0 - 1.0;
 
-    //vec3 color = vec3(1.0, 1.0, 1.0) * vIntensity;
-    vec3 color = normalize(vNs) * 0.5 + 0.5;
+    float distSquared = dot(coord, coord);
 
-    FragColor = vec4(color, 1.0);
+    if (distSquared > 1.0) {
+        discard;
+    }
+
+    float alpha = exp(-distSquared * 4.0);
+    vec3 lightColor = vec3(1.0, 1.0, 1.0); 
+
+    vec3 finalRGB = lightColor * vIntensity * alpha;
+
+    FragColor = vec4(finalRGB, 1.0);
 }
