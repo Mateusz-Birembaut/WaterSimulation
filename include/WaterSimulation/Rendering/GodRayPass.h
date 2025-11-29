@@ -4,7 +4,7 @@
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Rendering/CausticUtil.h>
-#include <WaterSimulation/Rendering/CustomShader/CausticShader.h>
+#include <WaterSimulation/Rendering/CustomShader/GodRayShader.h>
 #include <WaterSimulation/Rendering/CustomShader/DepthShader.h>
 #include <WaterSimulation/Rendering/CustomShader/OpaqueShader.h>
 
@@ -20,14 +20,13 @@
 #include <Corrade/Containers/ArrayViewStl.h>
 
 namespace WaterSimulation {
-	class CausticPass {
+	class GodRayPass {
 
 	      public:
 
-		float m_S_MIN = 5.0f;
-		float m_S_MAX = 20.0f;
-		float m_photonIntensity = 0.5f;
-		float m_waterAttenuation = 3.0f;
+		float m_g = 0.8f;
+		float m_fogDensity = 3.0f;
+
 
 		void init();
 
@@ -42,26 +41,26 @@ namespace WaterSimulation {
 			    float cameraFar,
 			    float sunFar);
 
-		Magnum::GL::Texture2D& getCausticTexture() {
-			return m_causticMap;
+		Magnum::GL::Texture2D& getGodRayTexture() {
+			return m_godrayTexture;
 		}
 
 		void setupPhotonGrid();
 
-		CausticPass() {
+		GodRayPass() {
 			setupPhotonGrid();
 		}
 
 	      private:
 		Magnum::GL::Framebuffer m_fb{Magnum::NoCreate};
-		Magnum::GL::Texture2D m_causticMap{Magnum::NoCreate};
+		Magnum::GL::Texture2D m_godrayTexture{Magnum::NoCreate};
 
 		Magnum::GL::Buffer m_photonBuffer{Magnum::NoCreate};
 		Magnum::GL::Mesh m_photonGrid{Magnum::NoCreate};
 
-		CausticShader m_causticShader;
+		GodRayShader m_godrayShader;
 
-		CausticUtil m_utils;
+		//CausticUtil m_utils;
 
 
 	};

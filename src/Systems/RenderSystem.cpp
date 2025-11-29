@@ -40,26 +40,30 @@ void RenderSystem::render(Registry& registry,
     Magnum::Vector3 lightPosition = lightViewProjPair.first;
     m_lightViewProjMatrix = lightViewProjPair.second;
 
+    auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+
+    ShadowCasterComponent* shadowCastData = nullptr;
+
+    if (sunView.begin() != sunView.end()) {
+
+        Entity sunEntity = *sunView.begin();
+        shadowCastData = &sunView.get<ShadowCasterComponent>(sunEntity);
+
+    } else {
+        Debug{} << "No sun entity found with DirectionalLightComponent and ShadowCasterComponent";
+    }
+
     m_shadowMapPass.render(registry, cam, m_lightViewProjMatrix);
     
     if(m_renderShadowMapOnly){
-        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
-
-	    if (sunView.begin() != sunView.end()) {
-            Entity sunEntity = *sunView.begin();
-            auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
-            drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData.near, shadowCastData.far, true);
-            return;
+        if (shadowCastData) {
+            drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData->near, shadowCastData->far, true);
         }
     }
 
-    if(m_renderWaterMaskOnly){
-        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
-
-	    if (sunView.begin() != sunView.end()) {
-            Entity sunEntity = *sunView.begin();
-            auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
-            drawFullscreenTexture(m_shadowMapPass.getColorTexture(), shadowCastData.near, shadowCastData.far);
+    if(m_renderShadowMapOnly){
+        if (shadowCastData) {
+            drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData->near, shadowCastData->far, true);
             return;
         }
     }
@@ -71,19 +75,37 @@ void RenderSystem::render(Registry& registry,
         return;
     }
 
-    auto & terrainHeightMapText = terrainHeightMap(registry);
-
     m_causticPass.render(registry, 
         cam, 
         m_shadowMapPass.getDepthTexture(), 
         m_shadowMapPass.getColorTexture(),
-        terrainHeightMapText, 
+        m_opaquePass.getDepthTexture(),
         lightPosition,
-        m_lightViewProjMatrix
+        m_lightViewProjMatrix,
+        cam.near(),
+        cam.far(),
+        shadowCastData->far
     );
 
     if(m_renderCausticMapOnly){
         drawFullscreenTexture(m_causticPass.getCausticTexture(), cam.near(), cam.far());
+        return;
+    }
+
+    m_godrayPass.render(registry, 
+        cam, 
+        m_shadowMapPass.getDepthTexture(), 
+        m_shadowMapPass.getColorTexture(),
+        m_opaquePass.getDepthTexture(),
+        lightPosition,
+        m_lightViewProjMatrix,
+        cam.near(),
+        cam.far(),
+        shadowCastData->far
+    );
+
+    if(m_renderGodRayMapOnly){
+        drawFullscreenTexture(m_godrayPass.getGodRayTexture(), cam.near(), cam.far());
         return;
     }
 
@@ -123,39 +145,35 @@ void RenderSystem::drawFullscreenTexture(Magnum::GL::Texture2D& texture, float n
 }
 
 std::pair<Magnum::Vector3, Magnum::Matrix4> RenderSystem::computeLightViewProj(WaterSimulation::Registry& registry, WaterSimulation::Camera& cam){
-	auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
-	if (sunView.begin() != sunView.end()) {
+    auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+    if (sunView.begin() != sunView.end()) {
         Entity sunEntity = *sunView.begin();
-		auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-		auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
+        auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
+        auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
 
         float maxFarCam = 50.0f;
         float minFarCam = 1.0f;
 
-		Magnum::Vector3 p_mid{cam.position() + (((cam.near() + std::clamp(cam.far(), minFarCam, maxFarCam))/2.0f) * cam.direction())};
+
+        Magnum::Vector3 p_mid{cam.position() + (((cam.near() + std::clamp(cam.far(), minFarCam, maxFarCam))/2.0f) * cam.direction())};
+        
         Magnum::Vector3 lightPos {p_mid - sunDirection.direction.normalized() * sunDirection.offset};
 
-        Vector3 forward = (p_mid - lightPos).normalized();
+        Vector3 cameraUp = cam.up();
 
-        Vector3 up = Magnum::Vector3::yAxis().normalized();
-        Vector3 right = Magnum::Math::cross(forward, up).normalized();
-
-        up = Magnum::Math::cross(right, forward).normalized();
-
-		//TODO : ajouter rotation ? 
-
-		Matrix4 lightTransform = Matrix4::lookAt(lightPos, p_mid, up);
+        Matrix4 lightTransform = Matrix4::lookAt(lightPos, p_mid, cameraUp);
         Matrix4 lightView = lightTransform.invertedRigid();
         
-		const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
-			shadowCastData.projectionSize, 
-			shadowCastData.near,                    
-			shadowCastData.far                       
-		);
+        // -----------------------
 
-        // Début modif : retourne une pair (position, matrice)
+        const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
+            shadowCastData.projectionSize, 
+            shadowCastData.near,                    
+            shadowCastData.far                       
+        );
+
         return std::make_pair(lightPos, lightProj * lightView);
-    }else {
+    } else {
         Debug {} << "pas de soleil, calcul shadow map impossible";
         return std::make_pair(Magnum::Vector3{}, Matrix4{Math::IdentityInit});
     }

@@ -39,6 +39,7 @@ void WaterSimulation::UIManager::drawUI(Application & app){
 
 
     paramWindow(app);
+    causticsWindow(app);
     sunWindow(app.registry());
     cameraWindow(app.camera());
     //perfWindow();
@@ -172,6 +173,23 @@ void WaterSimulation::UIManager::sunWindow(Registry & registry){
 
         }
 
+        ImGui::End();
+    }
+}
+
+void WaterSimulation::UIManager::causticsWindow(Magnum::Platform::Sdl2Application & _app){
+
+    auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
+    
+    {   
+        ImGui::Begin("Caustics");
+        auto & simulation = (app->m_renderSystem.causticPass());
+
+        ImGui::Text("Caustic Parameters:");
+        ImGui::DragFloat("S Min", &app->m_renderSystem.causticPass().m_S_MIN, 0.1f);
+        ImGui::DragFloat("S Max", &app->m_renderSystem.causticPass().m_S_MAX, 0.1f);
+        ImGui::DragFloat("Photon Intensity", &app->m_renderSystem.causticPass().m_photonIntensity, 0.01f);
+        ImGui::DragFloat("Water Attenuation", &app->m_renderSystem.causticPass().m_waterAttenuation, 0.01f);
         ImGui::End();
     }
 }

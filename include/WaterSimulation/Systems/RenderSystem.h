@@ -9,6 +9,7 @@
 #include <WaterSimulation/Rendering/CustomShader/FullscreenTextureShader.h>
 #include <WaterSimulation/Rendering/OpaquePass.h>
 #include <WaterSimulation/Rendering/ShadowMapPass.h>
+#include <WaterSimulation/Rendering/GodRayPass.h>
 
 
 #include <Magnum/GL/AbstractShaderProgram.h>
@@ -30,13 +31,13 @@ namespace WaterSimulation {
 		void init(const Magnum::Vector2i& windowSize) {
 			m_opaquePass.init(windowSize);
 			m_shadowMapPass.init(windowSize);
-			m_causticPass.init(windowSize);
+			m_causticPass.init();
+			m_godrayPass.init();
 		}
 
 		void resize(const Magnum::Vector2i& windowSize) {
 			m_opaquePass.resize(windowSize);
 			m_shadowMapPass.resize(windowSize);
-			m_causticPass.resize(windowSize);
 		}
 
 		void render(Registry& registry, Camera& cam);
@@ -45,13 +46,20 @@ namespace WaterSimulation {
 		bool m_renderShadowMapOnly{false};
 		bool m_renderWaterMaskOnly{false};
 		bool m_renderCausticMapOnly{false};
+		bool m_renderGodRayMapOnly{false};
 
 		float m_linearizeRange = 50.0f;
+
+		CausticPass & causticPass(){
+			return m_causticPass;
+		}
 
 	      private:
 		OpaquePass m_opaquePass;
 		ShadowMapPass m_shadowMapPass;
 		CausticPass m_causticPass;
+		GodRayPass m_godrayPass;
+
 
 		FullscreenTextureShader m_fullScreenTextureShader;
 		Magnum::GL::Mesh m_fullscreenTriangle{createFullscreenTriangle()};

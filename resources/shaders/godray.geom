@@ -1,5 +1,5 @@
 layout (points) in;
-layout (points, max_vertices = 2) out;
+layout (line_strip, max_vertices = 2) out;
 
 in vec2 v_gridPos[];
 
@@ -11,21 +11,21 @@ uniform mat4 uVPCamera;
 uniform vec3 uCamPos;
 uniform vec3 uLightPos;
 
-uniform float uAttenuation;
-uniform float uIntensity;
-uniform float uA;
-uniform float uB;
+uniform float uG;
 uniform float uLightFar;
 
-uniform float uTime;
 
+uniform float uTime;
 
 const float IOR_AIR   = 1.0;
 const float IOR_WATER = 1.33;
 const float ETA       = IOR_AIR / IOR_WATER;
 
-out float vIntensity;
-out vec4 vClipPos;
+out float gDistFromSurface;
+out float gDistFromViewer; 
+out vec3 gViewDir;          
+out vec3 gLightDir;         
+out vec4 gClipPos;
 
 
 vec3 getWaterNormal(vec2 uv, vec3 posCenter)
@@ -59,27 +59,6 @@ vec3 getWaterNormal(vec2 uv, vec3 posCenter)
     return n;
 }
 
-void emitLine(vec3 p0, vec3 p1, vec3 color)
-{
-    //vNs = color;
-    gl_Position = uVPCamera * vec4(p0, 1.0);
-    EmitVertex();
-
-    //vNs = color;
-    gl_Position = uVPCamera * vec4(p1, 1.0);
-    EmitVertex();
-
-    EndPrimitive();
-}
-
-void emitPoint (vec3 p, vec3 color, float size)
-{
-    gl_Position = uVPCamera * vec4(p, 1.0);
-    //vNs = color;
-    gl_PointSize = size;
-    EmitVertex();
-    EndPrimitive();
-}
 
 
 float getWaveHeight(vec2 p, float time) {
@@ -169,17 +148,28 @@ void main()
 
     vec3 Pi = findFloor(Ps, Rt);
 
-    float distInWater = distance(Ps, Pi);
-    float distToCam = distance(Ps, uCamPos);
-
-    float sfinal = uA + uB/distToCam;
-
-    vIntensity = uIntensity * exp(-uAttenuation * distInWater);
-    gl_Position = uVPCamera * vec4(Pi, 1.0);
-    vClipPos = gl_Position;
-    gl_PointSize = sfinal;
+	gl_Position = uVPCamera * vec4(Ps, 1.0);
+	gClipPos = gl_Position;
+    gDistFromSurface = 0.0;                 
+    gDistFromViewer = distance(Ps, uCamPos);
+    gViewDir = normalize(uCamPos - Ps);
+    gLightDir = Ri;                
+    
     EmitVertex();
+
+
+    gl_Position = uVPCamera * vec4(Pi, 1.0);
+    gClipPos = gl_Position;
+    gDistFromSurface = distance(Ps, Pi);     
+    gDistFromViewer  = distance(Pi, uCamPos);
+    gViewDir = normalize(uCamPos - Pi);
+    gLightDir = Ri;                   
+    
+    EmitVertex();
+
+
     EndPrimitive();
+
 
 }
 

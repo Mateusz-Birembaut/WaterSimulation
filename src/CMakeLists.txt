@@ -18,6 +18,7 @@ add_executable(WaterSimulation
     Rendering/OpaquePass.cpp
     Rendering/ShadowMapPass.cpp
     Rendering/CausticPass.cpp
+    Rendering/GodRayPass.cpp
 
     FrustumVisualizer.cpp
     DebugDraw.cpp

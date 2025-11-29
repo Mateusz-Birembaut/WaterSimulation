@@ -10,7 +10,7 @@
 #include <Magnum/Shaders/GenericGL.h>
 
 namespace WaterSimulation {
-	class CausticShader : public Magnum::GL::AbstractShaderProgram {
+	class GodRayShader : public Magnum::GL::AbstractShaderProgram {
 
 	      private:
 		Magnum::Int m_uLightViewProjLoc;
@@ -21,32 +21,31 @@ namespace WaterSimulation {
 		Magnum::Int m_uCamDepthBufferLoc;
 		Magnum::Int m_uTimeLoc;
 		Magnum::Int m_uLightPosLoc;
-		Magnum::Int m_uAttenuationLoc;
 		Magnum::Int m_uIntensityLoc;
-		Magnum::Int m_uALoc;
-		Magnum::Int m_uBLoc;
+		Magnum::Int m_uGLoc;
+		Magnum::Int m_uFogDensityLoc;
 		Magnum::Int m_uLightFarLoc;
 
 	      public:
-		explicit CausticShader() {
+		explicit GodRayShader() {
 			Corrade::Utility::Resource rs{"WaterSimulationResources"};
 
 			Magnum::GL::Shader vert{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Vertex};
 			Magnum::GL::Shader frag{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Fragment};
 			Magnum::GL::Shader geom{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Geometry};
 
-			vert.addSource(Corrade::Containers::StringView{rs.getString("caustic.vs")});
-			frag.addSource(Corrade::Containers::StringView{rs.getString("caustic.fs")});
-			geom.addSource(Corrade::Containers::StringView{rs.getString("caustic.geom")});
+			vert.addSource(Corrade::Containers::StringView{rs.getString("godray.vs")});
+			frag.addSource(Corrade::Containers::StringView{rs.getString("godray.fs")});
+			geom.addSource(Corrade::Containers::StringView{rs.getString("godray.geom")});
 
 			if (!vert.compile()) {
-				Corrade::Utility::Error{} << "causticShader: vertex shader compilation failed:\n";
+				Corrade::Utility::Error{} << "godray: vertex shader compilation failed:\n";
 			}
 			if (!geom.compile()) {
-				Corrade::Utility::Error{} << "causticShader: geom shader compilation failed:\n";
+				Corrade::Utility::Error{} << "godray: geom shader compilation failed:\n";
 			}
 			if (!frag.compile()) {
-				Corrade::Utility::Error{} << "causticShader: fragment shader compilation failed:\n";
+				Corrade::Utility::Error{} << "godray: fragment shader compilation failed:\n";
 			}
 
 			CORRADE_INTERNAL_ASSERT_OUTPUT(vert.compile());
@@ -74,81 +73,75 @@ namespace WaterSimulation {
 
 			m_uLightPosLoc = uniformLocation("uLightPos");
 
-			m_uAttenuationLoc = uniformLocation("uAttenuation");
-
 			m_uIntensityLoc = uniformLocation("uIntensity");
 
-			m_uALoc = uniformLocation("uA");
+			m_uGLoc = uniformLocation("uG");
 
-			m_uBLoc = uniformLocation("uB");
+			m_uFogDensityLoc = uniformLocation("uFogDensity");
 
 			m_uLightFarLoc = uniformLocation("uLightFar");
 		}
 
-		CausticShader& setVPLight(const Magnum::Matrix4& VPLight) {
+		GodRayShader& setVPLight(const Magnum::Matrix4& VPLight) {
 			setUniform(m_uLightViewProjLoc, VPLight);
 			return *this;
 		}
 
-		CausticShader& setVPCamera(const Magnum::Matrix4& uVPCamera) {
+		GodRayShader& setVPCamera(const Magnum::Matrix4& uVPCamera) {
 			setUniform(m_uCameraViewProjLoc, uVPCamera);
 			return *this;
 		}
 
-		CausticShader& setCameraPos(const Magnum::Vector3& camPos) {
+		GodRayShader& setCameraPos(const Magnum::Vector3& camPos) {
 			setUniform(m_uCameraPosLoc, camPos);
 			return *this;
 		}
 
-		CausticShader& setLightPos(const Magnum::Vector3& lightPos) {
+		GodRayShader& setLightPos(const Magnum::Vector3& lightPos) {
 			setUniform(m_uLightPosLoc, lightPos);
 			return *this;
 		}
 
-		CausticShader& bindWaterMaskTexture(Magnum::GL::Texture2D& waterMask) {
+		GodRayShader& bindWaterMaskTexture(Magnum::GL::Texture2D& waterMask) {
 			waterMask.bind(1);
 			setUniform(m_uWaterMaskSamplerLoc, 1);
 			return *this;
 		}
 
-		CausticShader& bindShadowMapTexture(Magnum::GL::Texture2D& shadowMap) {
+		GodRayShader& bindShadowMapTexture(Magnum::GL::Texture2D& shadowMap) {
 			shadowMap.bind(2);
 			setUniform(m_uShadowMapSamplerLoc, 2);
 			return *this;
 		}
 
-		CausticShader& bindCamDepthBufferTexture(Magnum::GL::Texture2D& CamDepthBuffer) {
+		GodRayShader& bindCamDepthBufferTexture(Magnum::GL::Texture2D& CamDepthBuffer) {
 			CamDepthBuffer.bind(4);
 			setUniform(m_uCamDepthBufferLoc, 4);
 			return *this;
 		}
 
-		CausticShader& setUtime(float time) {
+		GodRayShader& setUtime(float time) {
 			setUniform(m_uTimeLoc, time);
 			return *this;
 		}
 
-		CausticShader& setAttenuation(float attenuation) {
-			setUniform(m_uAttenuationLoc, attenuation);
-			return *this;
-		}
 
-		CausticShader& setIntensity(float intensity) {
+		GodRayShader& setIntensity(float intensity) {
 			setUniform(m_uIntensityLoc, intensity);
 			return *this;
 		}
 
-		CausticShader& setA(float a) {
-			setUniform(m_uALoc, a);
+		GodRayShader& setG(float g) {
+			setUniform(m_uGLoc, g);
 			return *this;
 		}
 
-		CausticShader& setB(float b) {
-			setUniform(m_uBLoc, b);
+		GodRayShader& setFogDensity(float fogI) {
+			setUniform(m_uFogDensityLoc, fogI);
 			return *this;
 		}
 
-		CausticShader& setLightFar(float lightFar) {
+		GodRayShader& setLightFar(float lightFar) {
 			setUniform(m_uLightFarLoc, lightFar);
 			return *this;
 		}

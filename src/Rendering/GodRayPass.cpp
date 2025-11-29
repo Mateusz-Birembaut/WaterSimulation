@@ -1,4 +1,4 @@
-#include <WaterSimulation/Rendering/CausticPass.h>
+#include <WaterSimulation/Rendering/GodRayPass.h>
 
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/MeshComponent.h>
@@ -27,24 +27,24 @@
 using namespace Magnum;
 
 
-void WaterSimulation::CausticPass::init() {
-	const Magnum::Vector2i causticResolution = {512, 512};
+void WaterSimulation::GodRayPass::init() {
+	const Magnum::Vector2i causticResolution = {128, 128};
 	m_fb = GL::Framebuffer{{{}, causticResolution}};
 
-	m_causticMap = GL::Texture2D{};
-	m_causticMap.setStorage(1, GL::TextureFormat::RGBA16F, causticResolution)
+	m_godrayTexture = GL::Texture2D{};
+	m_godrayTexture.setStorage(1, GL::TextureFormat::RGBA16F, causticResolution)
 	    .setMinificationFilter(GL::SamplerFilter::Linear)
 	    .setMagnificationFilter(GL::SamplerFilter::Linear)
 	    .setWrapping(GL::SamplerWrapping::ClampToEdge);
 
-	m_fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_causticMap, 0);
+	m_fb.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_godrayTexture, 0);
 	m_fb.setViewport({{}, causticResolution});
 	m_fb.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
 }
 
 
 
-void WaterSimulation::CausticPass::setupPhotonGrid() {
+void WaterSimulation::GodRayPass::setupPhotonGrid() {
 	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
@@ -54,11 +54,12 @@ void WaterSimulation::CausticPass::setupPhotonGrid() {
 	m_photonGrid.setPrimitive(Magnum::GL::MeshPrimitive::Points);
 
 	Corrade::Utility::Debug{} << "Creating vertex buffer...";
-	m_photonBuffer.setData(Corrade::Containers::arrayView(gridData.vertices)); // Containers::arrayView permet
+	m_photonBuffer.setData(Corrade::Containers::arrayView(gridData.vertices)); 
 	m_photonGrid.addVertexBuffer(m_photonBuffer, 0, DisplayShader::Position{});
 }
 
-void WaterSimulation::CausticPass::render(
+
+void WaterSimulation::GodRayPass::render(
     Registry& registry,
     Camera& camera,
     GL::Texture2D& shadowMap,
@@ -101,11 +102,7 @@ void WaterSimulation::CausticPass::render(
 		float zNear = std::clamp(cameraNear, 1.0f, cameraFar);
 		float zFar = cameraFar;
 
-		float b_calc = (cameraNear * zFar * (m_S_MAX - m_S_MIN)) / (zFar - cameraNear);
-		float a_calc = m_S_MIN - (b_calc / zFar);
-
-
-		m_causticShader.bindShadowMapTexture(shadowMap)
+		m_godrayShader.bindShadowMapTexture(shadowMap)
 		    .bindWaterMaskTexture(waterWorldPos)
 		    .setVPLight(lightViewProj)
 		    .setVPCamera(camViewProj)
@@ -113,10 +110,8 @@ void WaterSimulation::CausticPass::render(
 		    .setLightPos(lightPosition)
 		    .setUtime(uTime)
 		    .bindCamDepthBufferTexture(opaquePassDepth)
-		    .setAttenuation(m_waterAttenuation)
-		    .setIntensity(m_photonIntensity)
-		    .setA(a_calc)
-		    .setB(b_calc)
+			.setFogDensity(m_fogDensity)
+			.setG(m_g)
 		    .setLightFar(sunFar)
 		    .draw(m_photonGrid);
 	} else {
@@ -124,10 +119,9 @@ void WaterSimulation::CausticPass::render(
 	}
 
 	
-	m_utils.blurTexture(m_causticMap);
+	//m_utils.blurTexture(m_causticMap);
 
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask(GL_TRUE);
 }
-

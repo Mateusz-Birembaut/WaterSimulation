@@ -326,6 +326,11 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
         Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderCausticMapOnly;
         return;
     }
+    if(event.key() == Key::X) {
+        m_renderSystem.m_renderGodRayMapOnly = !m_renderSystem.m_renderGodRayMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderGodRayMapOnly;
+        return;
+    }
 
     m_keysPressed.insert(event.key());
 }
