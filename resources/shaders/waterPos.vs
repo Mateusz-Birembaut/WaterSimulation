@@ -20,6 +20,4 @@ void main() {
     vWorldPos = worldPos4.xyz;
     gl_Position = uLightVP * worldPos4;
 
-
-    //TODO ; peut etre encodé la normale dans l'alpha channel pour pas avoir a la recalculé dans le geom shader ? 
 }
