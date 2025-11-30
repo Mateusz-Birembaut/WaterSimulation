@@ -17,7 +17,7 @@ void main() {
     float shadowMapDepth = texture(uShadowMap, projCoords.xy).r;
 
     float depthBias = 0.005; 
-    float shadow = currentDepth - depthBias > shadowMapDepth ? 0.7 : 1.0;
+    float shadow = currentDepth - depthBias > shadowMapDepth ? 0.8 : 1.0;
 
     FragColor = texture(uAlbedoTexture, frag_UV) * shadow;
 }

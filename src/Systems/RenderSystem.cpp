@@ -61,9 +61,9 @@ void RenderSystem::render(Registry& registry,
         }
     }
 
-    if(m_renderShadowMapOnly){
+    if(m_renderWaterMaskOnly){
         if (shadowCastData) {
-            drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData->near, shadowCastData->far, true);
+            drawFullscreenTexture(m_shadowMapPass.getColorTexture(), shadowCastData->near, shadowCastData->far);
             return;
         }
     }

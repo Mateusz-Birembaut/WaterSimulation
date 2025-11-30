@@ -205,7 +205,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     //visu eau rapide
     auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
-
     
     auto waterShader = std::make_shared<DebugShader>();
     m_registry.emplace<ShaderComponent>(

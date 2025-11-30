@@ -31,7 +31,7 @@ namespace WaterSimulation {
 			
 			void recreateTextures(const Magnum::Vector2i& windowSize);
 			void renderDepth(Registry& registry, const Magnum::Matrix4& viewProj);
-			void rendeWaterMask(Registry& registry, const Magnum::Matrix4& viewProj);
+			void rendeWaterPosTexture(Registry& registry, const Magnum::Matrix4& viewProj);
 
 			DepthShader m_depthShader{};
 			WaterPosShader m_waterPosShader{};

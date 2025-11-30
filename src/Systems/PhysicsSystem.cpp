@@ -4,6 +4,8 @@
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/BuoyancyComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
+#include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/PhysicsUtils.h>
 
 #include <Corrade/Utility/Debug.h>
@@ -473,6 +475,16 @@ void PhysicsSystem::collisionResolutionLinear(Registry& registry) {
 }
 
 void PhysicsSystem::applyBuoyancy(Registry& registry) {
+
+    auto waterView = registry.view<MeshComponent, TransformComponent, WaterComponent>();
+    auto waterEntity = *waterView.begin();
+    TransformComponent& transformComp = registry.get<TransformComponent>(waterEntity);
+    MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
+
+    auto * heightmap = materialComp.heightmap.get();
+
+    // calculer pos localPoint dans le repere local de l'eau => trouver les uv => trouver hauteur
+
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
 		auto& transform = view.get<TransformComponent>(entity);
@@ -486,7 +498,9 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
         int pointsUnderwater = 0;
 
         for (const auto& localPoint : b.localTestPoints) {
-            Magnum::Vector3 worldPoint = transformMatrix.transformPoint(localPoint);
+            Magnum::Vector4 worldPoint = {transformMatrix.transformPoint(localPoint), 1.0};
+
+            Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * worldPoint).xyz();
 
 			//check la hauter de l'eau
 			float waterHeight = 5.0f;
@@ -499,7 +513,7 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 				// voir formule pour ajouter force 
 
 				Corrade::Utility::Debug{} << "ajout force a un point";
-                rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint);
+                rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
             }
         }
         

@@ -61,18 +61,6 @@ namespace WaterSimulation
 			}
 		}
 
-					// Définit la rotation à partir de target, up et right
-		void lookAt2(const Magnum::Vector3& target, const Magnum::Vector3& up, const Magnum::Vector3& right) {
-			Magnum::Vector3 forward = (target - position).normalized();
-			Magnum::Vector3 upOrtho = Magnum::Math::cross(right, forward).normalized();
-			Magnum::Vector3 rightOrtho = Magnum::Math::cross(forward, upOrtho).normalized();
-			Magnum::Matrix3 rotMat{
-				rightOrtho,
-				upOrtho,
-				-forward
-			};
-			rotation = Magnum::Quaternion::fromMatrix(rotMat);
-		}
 
 		void onAttach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};
     	void onDetach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};

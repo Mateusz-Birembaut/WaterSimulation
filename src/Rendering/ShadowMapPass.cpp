@@ -86,7 +86,7 @@ void WaterSimulation::ShadowMapPass::renderDepth(Registry& registry, const Matri
 	}
 }
 
-void WaterSimulation::ShadowMapPass::rendeWaterMask(Registry& registry, const Matrix4& viewProj) {
+void WaterSimulation::ShadowMapPass::rendeWaterPosTexture(Registry& registry, const Matrix4& viewProj) {
 	glDepthMask(GL_FALSE);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -113,7 +113,7 @@ void WaterSimulation::ShadowMapPass::render(Registry& registry, Camera& mainCame
 
 
 	renderDepth(registry, lightViewProj);
-	rendeWaterMask(registry, lightViewProj);
+	rendeWaterPosTexture(registry, lightViewProj);
 		
 	
 	glDepthMask(GL_TRUE);
