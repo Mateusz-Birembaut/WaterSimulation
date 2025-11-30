@@ -19,6 +19,8 @@ namespace WaterSimulation
 		Magnum::Int m_uMVPLoc;
         Magnum::Int m_uHeightMapSamplerLoc;
 		Magnum::Int m_uAlbedoSamplerLoc;
+		Magnum::Int m_uLightVPLoc;
+		Magnum::Int m_uShadowMapSamplerLoc;
 	public:
 		explicit TerrainShader(){
 			Corrade::Utility::Resource rs{"WaterSimulationResources"};
@@ -49,13 +51,19 @@ namespace WaterSimulation
 			m_uMVPLoc = uniformLocation("uMVP");
             m_uHeightMapSamplerLoc = uniformLocation("uHeightMap"); 
 			m_uAlbedoSamplerLoc = uniformLocation("uAlbedoTexture"); 
-
+			m_uLightVPLoc = uniformLocation("uLightVP");
+			m_uShadowMapSamplerLoc = uniformLocation("uShadowMap");
 		}
 
 		TerrainShader& setMVP(const Magnum::Matrix4& mvp) {
             setUniform(m_uMVPLoc, mvp);
             return *this;
         }
+
+		TerrainShader& setLightVP(const Magnum::Matrix4& lightVP) {
+			setUniform(m_uLightVPLoc, lightVP);
+			return *this;
+		}
 
 		TerrainShader& bindHeightMapTexture(Magnum::GL::Texture2D & heigthmap){
             heigthmap.bind(0);
@@ -69,12 +77,26 @@ namespace WaterSimulation
             return *this;
         }
 
+		TerrainShader& bindShadowMap(Magnum::GL::Texture2D & shadowMap){
+			shadowMap.bind(2);
+			setUniform(m_uShadowMapSamplerLoc, 2);
+			return *this;
+		}
+
+/* 		TerrainShader& bindShadowMap(Magnum::GL::Texture2D & shadowMap){
+            albedo.bind(2);
+            setUniform(, 2);
+            return *this;
+        }
+ */
 
 
 		void draw(  Magnum::GL::Mesh& mesh, 
-					const Magnum::Matrix4& mvp, 
-					MaterialComponent& material, 
-					const std::vector<LightComponent>& lights) override {
+			    const Magnum::Matrix4& mvp, 
+			    MaterialComponent& material, 
+			    Magnum::Matrix4 lightVP,
+			    Magnum::GL::Texture2D & shadowMap,
+			    const std::vector<LightComponent>& lights) override{
 
 				//TODO gerer lights
 
@@ -85,7 +107,10 @@ namespace WaterSimulation
 				if(albedoTex) bindAlbedoTexture(*albedoTex); // TODO : remettre albedoTex
 				if(heightMapTex) bindHeightMapTexture(*heightMapTex);
 
-				Magnum::GL::AbstractShaderProgram::draw(mesh);
+				bindShadowMap(shadowMap);
+				setLightVP(lightVP);
+
+		    	Magnum::GL::AbstractShaderProgram::draw(mesh);
 		}
 	};
 	

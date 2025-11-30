@@ -68,7 +68,7 @@ void RenderSystem::render(Registry& registry,
         }
     }
 
-    m_opaquePass.render(registry, viewMatrix, projectionMatrix); // TODO : calculer const Matrix4 viewProj = projMatrix * viewMatrix; pour la passer aux deux render
+    m_opaquePass.render(registry, viewMatrix, projectionMatrix, m_lightViewProjMatrix, m_shadowMapPass.getDepthTexture()); // TODO : calculer const Matrix4 viewProj = projMatrix * viewMatrix; pour la passer aux deux render
 
     if(m_renderDepthOnly){
         drawFullscreenTextureDebugDepth(m_opaquePass.getDepthTexture(), cam.near(), cam.far(), false);

@@ -170,9 +170,9 @@ void main()
     vec3 Pi = findFloor(Ps, Rt);
 
     float distInWater = distance(Ps, Pi);
-    float distToCam = distance(Ps, uCamPos);
-
-    float sfinal = uA + uB/distToCam;
+    float distToCam = length((uVPCamera * vec4(Ps,1.0)).xyz);
+    
+    float sfinal = uA + uB / distToCam;
 
     vIntensity = uIntensity * exp(-uAttenuation * distInWater);
     gl_Position = uVPCamera * vec4(Pi, 1.0);
