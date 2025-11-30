@@ -25,6 +25,7 @@ namespace WaterSimulation {
 		Magnum::Int m_uGLoc;
 		Magnum::Int m_uFogDensityLoc;
 		Magnum::Int m_uLightFarLoc;
+		Magnum::Int m_uRayWidthLoc;
 
 	      public:
 		explicit GodRayShader() {
@@ -77,9 +78,11 @@ namespace WaterSimulation {
 
 			m_uGLoc = uniformLocation("uG");
 
-			m_uFogDensityLoc = uniformLocation("uFogDensity");
+			m_uFogDensityLoc = uniformLocation("uGamma");
 
 			m_uLightFarLoc = uniformLocation("uLightFar");
+
+			m_uRayWidthLoc = uniformLocation("uRayWidth");
 		}
 
 		GodRayShader& setVPLight(const Magnum::Matrix4& VPLight) {
@@ -143,6 +146,11 @@ namespace WaterSimulation {
 
 		GodRayShader& setLightFar(float lightFar) {
 			setUniform(m_uLightFarLoc, lightFar);
+			return *this;
+		}
+
+		GodRayShader& setRayWidth(float rayWidth) {
+			setUniform(m_uRayWidthLoc, rayWidth);
 			return *this;
 		}
 	};

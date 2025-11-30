@@ -1,5 +1,5 @@
 layout (points) in;
-layout (line_strip, max_vertices = 2) out;
+layout (line_strip, max_vertices = 2) out; // TODO line width modifialb => faire des triangles strip
 
 in vec2 v_gridPos[];
 
@@ -13,7 +13,7 @@ uniform vec3 uLightPos;
 
 uniform float uG;
 uniform float uLightFar;
-
+uniform float uRaywidth;
 
 uniform float uTime;
 

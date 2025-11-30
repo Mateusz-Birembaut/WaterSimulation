@@ -82,6 +82,8 @@ void WaterSimulation::GodRayPass::render(
 	auto now = std::chrono::steady_clock::now();
 	float uTime = std::chrono::duration<float>(now - startTime).count();
 
+	glDisable(GL_CULL_FACE);
+
 	glDepthMask(GL_FALSE);
 	glEnable(GL_DEPTH_TEST);
 
@@ -110,18 +112,21 @@ void WaterSimulation::GodRayPass::render(
 		    .setLightPos(lightPosition)
 		    .setUtime(uTime)
 		    .bindCamDepthBufferTexture(opaquePassDepth)
-			.setFogDensity(m_fogDensity)
+			.setFogDensity(m_gamma)
 			.setG(m_g)
 		    .setLightFar(sunFar)
+			.setIntensity(m_intensity)
+			.setRayWidth(m_rayWidth)
 		    .draw(m_photonGrid);
 	} else {
 		Debug{} << "Water entity not found, couldn't compute caustics";
 	}
 
 	
-	//m_utils.blurTexture(m_causticMap);
+	m_utils.blurTexture(m_godrayTexture);
 
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask(GL_TRUE);
+	glEnable(GL_CULL_FACE);
 }

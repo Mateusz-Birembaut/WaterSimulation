@@ -19,6 +19,6 @@ namespace WaterSimulation {
         void paramWindow(Magnum::Platform::Sdl2Application & app);
         void sceneGraph();
         void cameraWindow(Camera & cam);
-        void causticsWindow(Magnum::Platform::Sdl2Application & app);
+        void visualWindow(Magnum::Platform::Sdl2Application & app);
     };
-} // namespace WaterSimulation
+} // namespace WaterSimulationa

@@ -25,7 +25,9 @@ namespace WaterSimulation {
 	      public:
 
 		float m_g = 0.8f;
-		float m_fogDensity = 3.0f;
+		float m_gamma = 1.3f;
+		float m_intensity = 10.0f;
+		float m_rayWidth = 2.0f;
 
 
 		void init();
@@ -60,7 +62,7 @@ namespace WaterSimulation {
 
 		GodRayShader m_godrayShader;
 
-		//CausticUtil m_utils;
+		CausticUtil m_utils;
 
 
 	};

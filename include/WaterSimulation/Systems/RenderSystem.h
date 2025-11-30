@@ -54,6 +54,10 @@ namespace WaterSimulation {
 			return m_causticPass;
 		}
 
+		GodRayPass & godrayPass(){
+			return m_godrayPass;
+		}
+
 	      private:
 		OpaquePass m_opaquePass;
 		ShadowMapPass m_shadowMapPass;

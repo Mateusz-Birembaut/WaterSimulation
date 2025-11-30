@@ -39,7 +39,7 @@ void WaterSimulation::UIManager::drawUI(Application & app){
 
 
     paramWindow(app);
-    causticsWindow(app);
+    visualWindow(app);
     sunWindow(app.registry());
     cameraWindow(app.camera());
     //perfWindow();
@@ -177,21 +177,34 @@ void WaterSimulation::UIManager::sunWindow(Registry & registry){
     }
 }
 
-void WaterSimulation::UIManager::causticsWindow(Magnum::Platform::Sdl2Application & _app){
+void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application & _app){
 
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
-    
+    ImGui::Begin("Visuals");
     {   
-        ImGui::Begin("Caustics");
-        auto & simulation = (app->m_renderSystem.causticPass());
+
+        auto & causticPass = (app->m_renderSystem.causticPass());
 
         ImGui::Text("Caustic Parameters:");
-        ImGui::DragFloat("S Min", &app->m_renderSystem.causticPass().m_S_MIN, 0.1f);
-        ImGui::DragFloat("S Max", &app->m_renderSystem.causticPass().m_S_MAX, 0.1f);
-        ImGui::DragFloat("Photon Intensity", &app->m_renderSystem.causticPass().m_photonIntensity, 0.01f);
-        ImGui::DragFloat("Water Attenuation", &app->m_renderSystem.causticPass().m_waterAttenuation, 0.01f);
-        ImGui::End();
+        ImGui::DragFloat("S Min", &causticPass.m_S_MIN, 0.1f);
+        ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
+        ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
+        ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
+
     }
+
+    {   
+
+        auto & godrayPass = (app->m_renderSystem.godrayPass());
+
+        ImGui::Text("God Rays Parameters:");
+        ImGui::DragFloat("G", &godrayPass.m_g, 0.1f);
+        ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.1f);
+        ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
+        ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
+
+    }
+    ImGui::End();
 }
 
 

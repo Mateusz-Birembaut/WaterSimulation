@@ -1,18 +1,17 @@
-
 in float gDistFromSurface; 
 in float gDistFromViewer; 
-in vec3 gViewDir;       
-in vec3 gLightDir;  
-in vec4 gClipPos;  
+in vec3 gViewDir;
+in vec3 gLightDir;
+in vec4 gClipPos;
 
 out vec4 FragColor;
 
 
 uniform sampler2D uCamDepthBuffer;
 
-uniform float uG;          
-uniform float uIntensity;   
-uniform float uFogDensity;
+uniform float uG;
+uniform float uIntensity;
+uniform float uGamma;
 
 
 float computeMie(float dotViewLight, float g) {
@@ -24,24 +23,26 @@ float computeMie(float dotViewLight, float g) {
 
 void main() {
 
-    vec3 ndc = gClipPos.xyz / gClipPos.w;   
-    vec2 screenUV = ndc.xy * 0.5 + 0.5;   
-    
+    vec3 ndc = gClipPos.xyz / gClipPos.w;
+    vec2 screenUV = ndc.xy * 0.5 + 0.5;
+
     float sceneDepth = texture(uCamDepthBuffer, screenUV).r;
 
     if (gl_FragCoord.z > sceneDepth) {
         discard;
     }
-    
-    float dotVL = dot(normalize(gViewDir), normalize(gLightDir));
+
+    float dotVL = dot(normalize(-gViewDir), normalize(gLightDir));
     float mie = computeMie(dotVL, uG);
 
-    float attenuation = exp(-uFogDensity * (gDistFromSurface + gDistFromViewer));
+    float f1 = exp(-uGamma * gDistFromViewer);
+    float f2 = exp(-uGamma * gDistFromSurface);
 
+    float attenuation = f1 * f2;
 
-    vec3 rayColor = vec3(0.8, 0.9, 1.0);
-    
+    vec3 rayColor = vec3(1.0, 1.0, 1.0);
+
     float finalAlpha = uIntensity * mie * attenuation;
-    
+
     FragColor = vec4(rayColor * finalAlpha, 1.0);
 }
