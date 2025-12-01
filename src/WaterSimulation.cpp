@@ -86,7 +86,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h3.png");
+    auto heightmapData = rs.getRaw("h7.png");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -96,12 +96,10 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "FORMAT IS : " << allo;
     Debug{} << "SIZE IS : " << resized->size();
     
-    //ImageView2D resized_converted_heightmap = ImageView2D{PixelFormat::R8Unorm, resized->size(), resized->data()};
-    
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/30.0f);
+    m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 10.0f);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 8.0f);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -164,7 +162,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     */
 
-    float scale = 25.0f;
+    float scale = 75.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();
@@ -194,14 +192,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
     //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
 
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
 
-    auto waterShader = std::make_shared<DebugShader>();
-    m_registry.emplace<ShaderComponent>(
-        testTerrain,
-        shaderPtr
-    ); 
 
     m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
     Entity waterEntity = m_registry.create();
@@ -213,13 +206,24 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         Magnum::Vector3{0.0f, -1.0f, -3.0f} 
     );
+
+    auto waterShader = std::make_shared<DebugShader>();
     auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
     waterMat.setHeightMap(waterHeightTexPtr);
     waterMat.setAlbedo(waterAlbedoTexPtr);
+
     m_registry.emplace<ShaderComponent>(
         waterEntity,
         waterShader
     ); 
+
+    //Debug Quad
+
+    /* m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    m_registry.emplace<MeshComponent>(
+        testEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+    ); */
     
 
     // sun light en cours
@@ -259,7 +263,11 @@ void WaterSimulation::Application::drawEvent() {
     debugShader.bind(&m_shallowWaterSimulation.getTerrainTexture(), 1);
     
 
-    if(!simulationPaused) m_shallowWaterSimulation.step();
+    if(!simulationPaused) {
+        for(int i = 0; i < step_number; ++i){
+            m_shallowWaterSimulation.step();
+        }
+    }
 
     m_transform_System.update(m_registry);
 

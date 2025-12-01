@@ -21,8 +21,8 @@ void main() {
     if (init_type == 0) { // init flat with bump
         int centerX = gridSize.x / 2;
         int centerY = gridSize.y / 2;
-        float bumpHeight = 1.0;
-        float baseLevel = 0.5;
+        float bumpHeight = 3.0;
+        float baseLevel = 1.0;
 
         float distance = length(vec2(globalID.xy) - vec2(centerX, centerY));
         float radius = 16.0;
@@ -61,6 +61,40 @@ void main() {
 
         state.g = 0.0; // qx
         state.b = 0.0; // qy
+        state.a = 1.0;
+
+        imageStore(stateOut, ivec2(globalID.xy), state);
+    }else if (init_type == 3){
+        int centerX = gridSize.x / 2;
+        int centerY = gridSize.y / 2;
+        float bumpHeight = 3.0;
+        float baseLevel = 1.25;
+        float waterLevel = 3.0;
+        int damPosition = gridSize.y / 6;
+
+        float distance = length(vec2(globalID.xy) - vec2(centerX, centerY));
+        float radius = 16.0;
+        float terrainHeight = imageLoad(terrain, ivec2(globalID.xy)).r;
+        vec4 state = vec4(0.0);
+
+        if (globalID.y < uint(damPosition) && globalID.y > gridSize.y / 8) {
+            float depth = waterLevel - terrainHeight;
+            state.r = max(0.0, depth);
+            state.g = 0.0; // qx
+            state.b = 5.0; // qy
+        } else {
+            float totalHeight = baseLevel - terrainHeight;
+            if (totalHeight > dryEps) {
+            state.r = totalHeight;
+            if (distance < radius) {
+                state.r += bumpHeight * (1.0 - distance / radius);
+            }
+            }
+            state.g = 0.0; // qx
+            state.b = 0.0; // qy
+        }
+
+        
         state.a = 1.0;
 
         imageStore(stateOut, ivec2(globalID.xy), state);

@@ -9,6 +9,8 @@ uniform sampler2D uAlbedoTexture;
 out vec2 frag_UV;
 out vec3 frag_Normal;
 
+
+
 void main() {
     frag_UV = uv;
     frag_Normal = normal;
@@ -18,7 +20,9 @@ void main() {
     vec4 heightWater = texture(uAlbedoTexture,uv);
 
     vec4 finalPosition = position;
-    finalPosition.y = finalPosition.y + (height.r) + heightWater.r;
+    float total_height = (height.r) + heightWater.r ;
+    finalPosition.y = finalPosition.y + total_height * 1.5;
+    
 
     gl_Position = uMVP * finalPosition;
 }
