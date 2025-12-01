@@ -55,6 +55,7 @@ using namespace Magnum;
 using namespace Math::Literals;
 using namespace Corrade::Utility;
 
+
 WaterSimulation::Application::Application(const Arguments& arguments): 
     Platform::Application{arguments, Configuration{}
         .setTitle("Water Simulation App")
@@ -91,7 +92,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h7.png");
+    auto heightmapData = rs.getRaw("h3.png");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -104,7 +105,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 8.0f);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 8.0f, 4);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -135,7 +136,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_camera.get()->setPos({0.0, 1.0, 0.0f});
     m_camera.get()->setSpeed(10.0f);
     m_camera.get()->setRotSpeed(5.0f);
-    m_camera.get()->setFar(500.0f);
     
     // test ECS et rendu avec shader de base
     // test sphere avec texture
@@ -151,30 +151,22 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
     
-    //test maillage
+    /* test maillage
     Entity testEntity = m_registry.create();
     auto & mat = m_registry.emplace<MaterialComponent>(
         testEntity
     );
     mat.setAlbedo(albedoPtr);
-    auto & testTransform = m_registry.emplace<TransformComponent>(
-        testEntity
+    m_registry.emplace<TransformComponent>(
+        testEntity,
+        Magnum::Vector3{0.0f, 2.0f, -3.0f}
     );
-    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
-    testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    auto& testMeshComp = m_registry.emplace<MeshComponent>(
+    m_registry.emplace<MeshComponent>(
         testEntity,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
-  
-    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
-    rigidBody.mass = 1.0f;
-    rigidBody.mesh = testMeshComp.activeMesh;
-    rigidBody.addCollider(new SphereCollider(10.0f));
-    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
-    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
-
+    */
 
     float scale = 75.0f;
     
@@ -183,6 +175,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & matTerrain = m_registry.emplace<MaterialComponent>(
         testTerrain
     );
+
     auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     matTerrain.setAlbedo(albedoPtr);
     matTerrain.setHeightMap(heightmapPtr);
@@ -200,17 +193,14 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         testTerrain,
         shaderPtr
     ); 
-    m_registry.emplace<TerrainComponent>(testTerrain);
 
     //visu eau rapide
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
+
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
-    
-    auto waterShader = std::make_shared<DebugShader>();
-    m_registry.emplace<ShaderComponent>(
-        testTerrain,
-        shaderPtr
-    ); 
+
 
     m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
     Entity waterEntity = m_registry.create();
@@ -222,6 +212,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         Magnum::Vector3{0.0f, -1.0f, -3.0f} 
     );
+    m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
     auto waterShader = std::make_shared<DebugShader>();
     auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
@@ -232,7 +223,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         waterShader
     ); 
-    m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
     //Debug Quad
 
@@ -242,16 +232,38 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     ); */
     
- 
-    // sun light en cours
-    Magnum::Vector3 sunPos{50.0f, 100.0f, 100.0f};
-    Magnum::Vector3 target{128.0f, 0.0f, 128.0f};
+    Entity testEntity = m_registry.create();
+    auto & mat = m_registry.emplace<MaterialComponent>(
+        testEntity
+    );
+    mat.setAlbedo(albedoPtr);
+    auto & testTransform = m_registry.emplace<TransformComponent>(
+        testEntity
+    );
+    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
+    testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
+    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    auto& testMeshComp = m_registry.emplace<MeshComponent>(
+        testEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+    );
 
+    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
+    rigidBody.mass = 1.0f;
+    rigidBody.mesh = testMeshComp.activeMesh;
+    rigidBody.addCollider(new SphereCollider(10.0f));
+    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
+    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
+
+
+    // sun light en cours
     auto sunEntity = m_registry.create();
+    m_registry.emplace<TransformComponent>(sunEntity, Vector3{50.0f, 100.0f, 50.0f});
     m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
     m_registry.emplace<DirectionalLightComponent>(sunEntity);
-    m_registry.emplace<ShadowCasterComponent>(sunEntity);
+    m_registry.emplace<ShadowCasterComponent>(sunEntity);  
 }
+    
 
 WaterSimulation::Application::~Application() {
     m_registry.clear(); 

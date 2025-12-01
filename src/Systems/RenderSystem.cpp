@@ -58,6 +58,7 @@ void RenderSystem::render(Registry& registry,
     if(m_renderShadowMapOnly){
         if (shadowCastData) {
             drawFullscreenTextureDebugDepth(m_shadowMapPass.getDepthTexture(), shadowCastData->near, shadowCastData->far, true);
+            return;
         }
     }
 

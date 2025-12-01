@@ -478,6 +478,11 @@ void PhysicsSystem::collisionResolutionLinear(Registry& registry) {
 void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
     auto waterView = registry.view<MeshComponent, TransformComponent, WaterComponent>();
+
+    if (waterView.begin() == waterView.end()) {
+        return; 
+    }
+
     auto waterEntity = *waterView.begin();
     TransformComponent& transformComp = registry.get<TransformComponent>(waterEntity);
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
@@ -489,7 +494,6 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, wC.pbo);
     glBindTexture(GL_TEXTURE_2D, heightmap->id());
-
 
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, 0);
     
@@ -503,6 +507,8 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     }
 
     glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); 
+    // restore texture binding to avoid interfering with subsequent render passes
+    glBindTexture(GL_TEXTURE_2D, 0);
 
 
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
@@ -538,14 +544,17 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 			//check la hauter de l'eau
 			float waterHeight = wC.heightData[index];
 
-            if (worldPoint.y() < waterHeight) {
+            float displaced_volumes = 0.0f;
+
+            //if (worldPoint.y() < waterHeight) {
+            if (waterSpacePoint.y()  < waterHeight) {
                 pointsUnderwater++;
 
                 float depth = waterHeight - worldPoint.y();
 
 				// voir formule pour ajouter force 
 
-				//Corrade::Utility::Debug{} << "ajout force a un point à la hauteur" << waterHeight;
+				///Corrade::Utility::Debug{} << "ajout force au point" << worldPoint.xyz() << "à la hauteur" << waterHeight;
                 rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
             }
         }

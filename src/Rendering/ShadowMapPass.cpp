@@ -91,18 +91,22 @@ void WaterSimulation::ShadowMapPass::rendeWaterPosTexture(Registry& registry, co
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 	auto view = registry.view<MeshComponent, TransformComponent, WaterComponent>();
+	int drawnCount = 0;
 	if (view.begin() != view.end()) {
+
 		auto entity = *view.begin();
 		MeshComponent& meshComp = registry.get<MeshComponent>(entity);
 		TransformComponent& transformComp = registry.get<TransformComponent>(entity);
 		MaterialComponent& materialComp = registry.get<MaterialComponent>(entity);
 
-		m_waterPosShader.bindHeightMapTexture(*materialComp.heightmap)
+		m_waterPosShader.bindHeightMapTexture(*materialComp.albedo)
 						.setLightVP(viewProj)
 						.setModel(transformComp.globalModel)
 						.draw(meshComp.glMesh);
-
+		drawnCount++;
 	}
+
+	Debug {} << "Rendering water position texture for shadow map pass. Drawn count:" << drawnCount;
 }
 
 void WaterSimulation::ShadowMapPass::render(Registry& registry, Camera& mainCamera, Matrix4& lightViewProj) {
