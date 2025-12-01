@@ -67,8 +67,8 @@ void WaterSimulation::OpaquePass::render(
 
 	for (Entity entity : view) {
 
-		if (registry.has<WaterComponent>(entity))
-			continue; // rend pas l'eau ici
+		//if (registry.has<WaterComponent>(entity))
+			//continue; // rend pas l'eau ici
 
 		MeshComponent& meshComp = registry.get<MeshComponent>(entity);
 		TransformComponent& transformComp = registry.get<TransformComponent>(entity);

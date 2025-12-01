@@ -229,7 +229,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         waterShader
     ); 
-    m_registry.emplace<WaterComponent>(waterEntity, scale);
+    m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
     
  
     // sun light en cours

@@ -11,6 +11,7 @@
 #include <Corrade/Utility/Debug.h>
 
 #include <limits>
+#include <cstring>
 
 namespace WaterSimulation
 {
@@ -480,10 +481,29 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     auto waterEntity = *waterView.begin();
     TransformComponent& transformComp = registry.get<TransformComponent>(waterEntity);
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
+    WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
     auto * heightmap = materialComp.heightmap.get();
 
-    // calculer pos localPoint dans le repere local de l'eau => trouver les uv => trouver hauteur
+    size_t dataSize = (wC.width) * (wC.height) * 4 * sizeof(float);
+
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, wC.pbo);
+    glBindTexture(GL_TEXTURE_2D, heightmap->id());
+
+
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, 0);
+    
+
+    void* ptr = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
+
+    if (ptr) {
+        std::memcpy(wC.heightData.data(), ptr, dataSize);
+
+        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+    }
+
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); 
+
 
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
@@ -500,11 +520,24 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
         for (const auto& localPoint : b.localTestPoints) {
             Magnum::Vector4 worldPoint = {transformMatrix.transformPoint(localPoint), 1.0};
 
+            
             Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * worldPoint).xyz();
 
-			//check la hauter de l'eau
-			float waterHeight = 5.0f;
+            float u = (waterSpacePoint.x() + wC.scale * 0.5f) / wC.scale ;
+            float v = (waterSpacePoint.z() + wC.scale  * 0.5f) / wC.scale ;
+
+            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) {
+                continue;
+            }
+
+            int px = int(u * (wC.width - 1));
+            int py = int(v * (wC.height - 1));
             
+            int index = (py * wC.width + px) * 4;
+
+			//check la hauter de l'eau
+			float waterHeight = wC.heightData[index];
+
             if (worldPoint.y() < waterHeight) {
                 pointsUnderwater++;
 
@@ -512,7 +545,7 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
 				// voir formule pour ajouter force 
 
-				Corrade::Utility::Debug{} << "ajout force a un point";
+				//Corrade::Utility::Debug{} << "ajout force a un point à la hauteur" << waterHeight;
                 rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
             }
         }

@@ -41,8 +41,7 @@ class ShallowWater {
 
     bool ping = false;
 
-    Magnum::GL::Texture2D
-        m_stateTexturePing; // RGB 32f texture that contains (h, qx, qy)
+    Magnum::GL::Texture2D m_stateTexturePing; // RGB 32f texture that contains (h, qx, qy)
     Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup
     Magnum::GL::Texture2D m_terrainTexture;   // Terrain R 32f texture
 
