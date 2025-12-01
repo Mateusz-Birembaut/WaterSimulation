@@ -30,13 +30,13 @@ void ShallowWater::step() {
     //m_ifftOutput = &m_surfaceHeightTexture;
 
     Corrade::Utility::Debug{} << "running fft pass";
-    m_fftOutput = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1, 1.0f );
+    m_fftOutput = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, -1, 1.0f );
     Corrade::Utility::Debug{} << "FFT output : " << m_fftOutput;
 
     
 
     Corrade::Utility::Debug{} << "\n running ifft pass";
-    m_ifftOutput = runFFT(m_fftOutput, &m_surfaceHeightPing, -1, 1.0/static_cast<float>(nx+1));
+    m_ifftOutput = runFFT(m_fftOutput, &m_surfaceHeightPing, 1, 1.0/static_cast<float>(nx+1));
     Corrade::Utility::Debug{} << "IFFT output : " << m_ifftOutput;
     //
     m_debugAlphaProgram.bindReadWrite(m_ifftOutput).run(groupx, groupy); // removing this has no real effect, this is not the issue 

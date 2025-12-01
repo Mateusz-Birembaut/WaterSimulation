@@ -22,7 +22,7 @@ void main() {
         int centerX = gridSize.x / 2;
         int centerY = gridSize.y / 2;
         float bumpHeight = 3.0;
-        float baseLevel = 1.0;
+        float baseLevel = 10.0;
 
         float distance = length(vec2(globalID.xy) - vec2(centerX, centerY));
         float radius = 16.0;

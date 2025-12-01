@@ -9,6 +9,7 @@
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
+#include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -60,6 +61,8 @@ void WaterSimulation::OpaquePass::render(Registry & registry, const Magnum::Matr
     
     auto view = registry.view<MeshComponent, TransformComponent>();
 
+    Magnum::GL::Renderer::setPolygonMode(Magnum::GL::Renderer::PolygonMode::Line);
+
 	for (Entity entity : view) {
         MeshComponent& meshComp = registry.get<MeshComponent>(entity);
         TransformComponent& transformComp = registry.get<TransformComponent>(entity);
@@ -79,5 +82,7 @@ void WaterSimulation::OpaquePass::render(Registry & registry, const Magnum::Matr
         }
 
 	} 
+
+    Magnum::GL::Renderer::setPolygonMode(Magnum::GL::Renderer::PolygonMode::Fill);
 }
 

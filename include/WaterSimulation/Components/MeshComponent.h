@@ -36,18 +36,18 @@ struct MeshComponent {
     
     MeshComponent(
         const std::vector<std::pair<float, Mesh*>>& lods,
-        Magnum::GL::AbstractShaderProgram* shaderProgram = nullptr
+         Magnum::GL::MeshPrimitive primitive = Magnum::GL::MeshPrimitive::Triangles
     ) : 
         meshLODs(lods), 
-        activeMesh(lods.empty() ? nullptr : lods[0].second),
-        shader(shaderProgram)
+        activeMesh(lods.empty() ? nullptr : lods[0].second)//,
+        //shader(shaderProgram)
     {
         if (activeMesh) {
-            setupBuffers();
+            setupBuffers(primitive);
         }
     }
     
-    void setupBuffers();
+    void setupBuffers(Magnum::GL::MeshPrimitive primitive);
     void clearBuffers();
     void checkLOD(const Magnum::Vector3& cameraPos, const Magnum::Vector3& entityPos);
     

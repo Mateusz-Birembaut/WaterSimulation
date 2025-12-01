@@ -25,20 +25,37 @@ namespace WaterSimulation
 
 			Magnum::GL::Shader vert{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Vertex};
 			Magnum::GL::Shader frag{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::Fragment};
+			Magnum::GL::Shader tcs{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::TessellationControl};
+			Magnum::GL::Shader tes{Magnum::GL::Version::GL430, Magnum::GL::Shader::Type::TessellationEvaluation};
+
 
 			vert.addSource(Corrade::Containers::StringView{rs.getString("water.vs")});
 			frag.addSource(Corrade::Containers::StringView{rs.getString("water.fs")});	
-					
+
+			tcs.addSource(Corrade::Containers::StringView{rs.getString("waterTesselationControl.tcs")});
+			tes.addSource(Corrade::Containers::StringView{rs.getString("waterTesselationEvaluation.tes")});
+
+
 			if(!vert.compile()) {
 				Corrade::Utility::Error{} << "DepthDebugShader: vertex shader compilation failed:\n" ;
 			}
+			
+
+			if(!tcs.compile()) {
+				Corrade::Utility::Error{} << "DepthDebugShader: tcs shader compilation failed:\n" ;
+			}
+
+			if(!tes.compile()) {
+				Corrade::Utility::Error{} << "DepthDebugShader: tes shader compilation failed:\n" ;
+			}
+
 			if(!frag.compile()) {
 				Corrade::Utility::Error{} << "DepthDebugShader: fragment shader compilation failed:\n" ;
 			}
 			CORRADE_INTERNAL_ASSERT_OUTPUT(vert.compile());
 			CORRADE_INTERNAL_ASSERT_OUTPUT(frag.compile());
 
-			attachShaders({vert, frag});	
+			attachShaders({vert, tcs,tes,frag});	
 			
 			bindAttributeLocation(Magnum::Shaders::GenericGL3D::Position::Location, "position");
 			bindAttributeLocation(Magnum::Shaders::GenericGL3D::Normal::Location, "normal");

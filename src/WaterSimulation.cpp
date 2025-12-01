@@ -200,7 +200,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Entity waterEntity = m_registry.create();
     m_registry.emplace<MeshComponent>(
         waterEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_waterMesh.get()}}
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_waterMesh.get()}},
+        Magnum::GL::MeshPrimitive::Patches
     );
     m_registry.emplace<TransformComponent>(
         waterEntity,
@@ -271,9 +272,11 @@ void WaterSimulation::Application::drawEvent() {
 
     m_transform_System.update(m_registry);
 
+    
 
     m_renderSystem.render(m_registry, *m_camera.get());
 
+    Magnum::GL::Renderer::setPolygonMode(Magnum::GL::Renderer::PolygonMode::Fill);
     m_UIManager->drawUI(*this);
 
     if(m_cursorLocked)
