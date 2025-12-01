@@ -38,7 +38,9 @@ namespace WaterSimulation {
 			Magnum::ImGuiIntegration::Context & getContext() {return m_imgui;};
 			bool cursorLocked() { return m_cursorLocked;};
 
-			bool simulationPaused = false;
+			bool simulationPaused = true;
+			int step_number = 1; //number of shallow water steps for a single time step, increasing this increases simulation speed
+
 			ShallowWater& shallowWaterSimulation() { return m_shallowWaterSimulation; }
 
 			Registry & registry(){ return m_registry; };
@@ -70,7 +72,7 @@ namespace WaterSimulation {
 			Magnum::GL::Texture2D m_terrainHeightmap; // heightmap du terrain
 			Magnum::Shaders::FlatGL3D m_testFlatShader{Magnum::NoCreate};
 			
-			DisplayShader debugShader; // 
+			DisplayShader debugShader; //
 
 			std::unordered_set<Magnum::Platform::Sdl2Application::Key> m_keysPressed;
 			void handleCameraInputs();

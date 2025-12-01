@@ -8,6 +8,8 @@ uniform sampler2D uShadowMap;
 
 out vec4 FragColor;
 
+vec3 water_color = vec3(144.0/255.0,213.0/255.0,1.0);
+
 void main() {
 
     vec3 projCoords = frag_posLightSpace.xyz / frag_posLightSpace.w;

@@ -17,7 +17,7 @@ void main() {
     vec4 height = texture(uHeightMap, uv);
 
     vec4 finalPosition = position;
-    finalPosition.y = finalPosition.y + (height.r);
+    finalPosition.y = finalPosition.y + (height.r) * 1.5;
 
     frag_posLightSpace = uLightVP * finalPosition;
 

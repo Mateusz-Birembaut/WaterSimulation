@@ -41,9 +41,30 @@ class ShallowWater {
 
     bool ping = false;
 
-    Magnum::GL::Texture2D m_stateTexturePing; // RGB 32f texture that contains (h, qx, qy)
-    Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup
+    Magnum::GL::Texture2D m_stateTexture; // RGB 32f texture that contains (h, qx, qy)
+    Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup // texture final
     Magnum::GL::Texture2D m_terrainTexture;   // Terrain R 32f texture
+
+    //
+    Magnum::GL::Texture2D m_bulkTexture; 
+    Magnum::GL::Texture2D m_surfaceTexture; 
+
+    Magnum::GL::Texture2D m_surfaceHeightTexture;
+    Magnum::GL::Texture2D m_surfaceQxTexture;
+    Magnum::GL::Texture2D m_surfaceQyTexture;
+
+    Magnum::GL::Texture2D m_surfaceHeightPing;
+    Magnum::GL::Texture2D m_surfaceHeightPong;
+    Magnum::GL::Texture2D m_surfaceQxPong;
+    Magnum::GL::Texture2D m_surfaceQyPong;
+
+    Magnum::GL::Texture2D m_tempTexture;
+    Magnum::GL::Texture2D m_tempTexture2;
+
+    Magnum::GL::Texture2D * m_fftOutput = nullptr;
+    Magnum::GL::Texture2D * m_ifftOutput = nullptr;
+    
+
 
     int groupx, groupy;
 
@@ -79,6 +100,47 @@ class ShallowWater {
             return *this;
         }
 
+        ComputeProgram &bindDecompose(Magnum::GL::Texture2D *stateIn,
+                                   Magnum::GL::Texture2D *terrain,Magnum::GL::Texture2D *bulk,
+                                   Magnum::GL::Texture2D *surfaceHeight, 
+                                   Magnum::GL::Texture2D *surfaceQx,
+                                   Magnum::GL::Texture2D *surfaceQy,
+                                   Magnum::GL::Texture2D *tempIn,
+                                   Magnum::GL::Texture2D *tempOut){
+
+            stateIn->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
+                             Magnum::GL::ImageFormat::RGBA32F);
+            terrain->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                              Magnum::GL::ImageFormat::R32F);
+            bulk->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
+                             Magnum::GL::ImageFormat::RGBA32F);
+            surfaceHeight->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            surfaceQx->bindImage(4, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            surfaceQy->bindImage(5, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            tempIn->bindImage(6, 0, Magnum::GL::ImageAccess::ReadOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            tempOut->bindImage(7, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
+        ComputeProgram &bindFFT(Magnum::GL::Texture2D *input,
+                                Magnum::GL::Texture2D *output) {
+            input->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
+                             Magnum::GL::ImageFormat::RGBA32F);
+            output->bindImage(1, 0, Magnum::GL::ImageAccess::WriteOnly,
+                              Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
+        ComputeProgram &bindReadWrite(Magnum::GL::Texture2D * input){
+            input->bindImage(0,0,Magnum::GL::ImageAccess::ReadWrite, Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
         ComputeProgram &setParametersUniforms(ShallowWater &sim) {
             setUniform(uniformLocation("dx"), sim.dx);
             setUniform(uniformLocation("dt"), sim.dt);
@@ -108,7 +170,14 @@ class ShallowWater {
     ComputeProgram m_updateFluxesProgram;
     ComputeProgram m_updateWaterHeightProgram;
 
+    ComputeProgram m_decompositionProgram;
+
+    ComputeProgram m_fftHorizontalProgram;
+    ComputeProgram m_fftVerticalProgram;
+
     ComputeProgram m_initProgram;
+
+    ComputeProgram m_debugAlphaProgram;
 
   public:
     ShallowWater() = default;
@@ -127,52 +196,114 @@ class ShallowWater {
 
         //
 
-        m_stateTexturePing
+        m_stateTexture
             .setStorage(
                 1, Magnum::GL::TextureFormat::RGBA32F,
                 {nx + 1, ny + 1}) // Store only 3 components but there a no
                                   // RGB32F image format for compute binding
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_stateTexturePong
             .setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_terrainTexture
             .setStorage(1, Magnum::GL::TextureFormat::R32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_bulkTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_surfaceTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        // Surface textures use RG32F for complex numbers (for FFT)
+        m_surfaceHeightTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setWrapping(Magnum::GL::SamplerWrapping::Repeat);
+
+        m_surfaceQxTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_surfaceQyTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_surfaceHeightPing.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setWrapping(Magnum::GL::SamplerWrapping::Repeat);
+
+        m_surfaceHeightPong.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setWrapping(Magnum::GL::SamplerWrapping::Repeat);;
+
+        m_surfaceQxPong.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
 
-        m_updateFluxesProgram =
-            ComputeProgram("updateFluxes.comp");
-        m_updateWaterHeightProgram =
-            ComputeProgram("updateWaterHeight.comp");
-        m_initProgram = ComputeProgram("init.comp");
+        m_surfaceQyPong.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
 
-        m_updateFluxesProgram.setParametersUniforms(*this);
-        m_updateWaterHeightProgram.setParametersUniforms(*this);
+        m_tempTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+
+        m_tempTexture2.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+        
+
+        compilePrograms();
     }
 
     void step();
+
+    void compilePrograms();
+
+    void runSW(Magnum::GL::Texture2D *inputTex);
+    void runDecomposition(Magnum::GL::Texture2D *inputTex);
+    Magnum::GL::Texture2D* runFFT(Magnum::GL::Texture2D* pingTex, Magnum::GL::Texture2D* pongTex, 
+                        int direction, float normalization);
+    void runIFFT();
 
     // helper functions
     int getnx() const { return nx; }
     int getny() const { return ny; }
 
     Magnum::GL::Texture2D &getStateTexture() {
-        return ping ? m_stateTexturePing : m_stateTexturePong;
+        return m_stateTexture;
     }
 
     Magnum::GL::Texture2D &getTerrainTexture() { return m_terrainTexture; }
 
+    Magnum::GL::Texture2D &getBulkTexture() { return m_bulkTexture; }
+    Magnum::GL::Texture2D &getSurfaceTexture() { return m_surfaceTexture; }
+    Magnum::GL::Texture2D &getSurfaceHeightTexture() { return m_surfaceHeightTexture; }
+    Magnum::GL::Texture2D &getSurfaceQxTexture() { return m_surfaceQxTexture; }
+    Magnum::GL::Texture2D &getSurfaceQyTexture() { return m_surfaceQyTexture; }
+
+    Magnum::GL::Texture2D *getFFTOutput() { return m_fftOutput; }
+    Magnum::GL::Texture2D *getIFFTOutput() { return m_ifftOutput; }
+    
+
+
     // initialisation
     void initBump();
     void initDamBreak();
+    void initTsunami();
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
-                              float scaling = 1.0f);
+                              float scaling = 1.0f, int channels = 1);
 
     // debug
     float minh;

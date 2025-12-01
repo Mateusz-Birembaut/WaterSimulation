@@ -1,0 +1,97 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
+layout(binding = 1, r32f) readonly uniform highp image2D terrain;
+layout(binding = 2, rgba32f) writeonly uniform highp image2D bulkFlow;
+layout(binding = 3, rgba32f) writeonly uniform highp image2D surfaceHeight;
+layout(binding = 4, rgba32f) writeonly uniform highp image2D surfaceQx;
+layout(binding = 5, rgba32f) writeonly uniform highp image2D surfaceQy;
+layout(binding = 6, rgba32f) readonly uniform highp image2D tempIn;
+layout(binding = 7, rgba32f) writeonly uniform highp image2D tempOut;
+
+uniform float dx;
+uniform float dt;
+uniform int stage;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(stateIn);
+
+    if (pos.x >= (uint(gridSize.x) - 1u) ||
+        pos.y >= (uint(gridSize.y) - 1u) || pos.x <= 1 || pos.y <= 1) {
+        return;
+    }
+
+    float terrainc = imageLoad(terrain, pos).r;
+
+    if (stage == 0) { // Initialisation
+        vec4 statec = imageLoad(stateIn, pos);
+        vec4 statel = imageLoad(stateIn, pos + ivec2(-1, 0));
+        vec4 stater = imageLoad(stateIn, pos + ivec2(1, 0));
+        vec4 statet = imageLoad(stateIn, pos + ivec2(0, 1));
+        vec4 stateb = imageLoad(stateIn, pos + ivec2(0, -1));
+
+        float terrainl = imageLoad(terrain, pos + ivec2(-1, 0)).r;
+        float terrainr = imageLoad(terrain, pos + ivec2(1, 0)).r;
+        float terraint = imageLoad(terrain, pos + ivec2(0, 1)).r;
+        float terrainb = imageLoad(terrain, pos + ivec2(0, -1)).r;
+
+        float h = statec.x;
+        float qx = statec.y;
+        float qy = statec.z;
+        float H = h + terrainc;
+
+        vec2 gradH = vec2(
+            (stater.x + terrainr - statel.x - terrainl) / (2.0 * dx),
+            (statet.x + terraint - stateb.x - terrainb) / (2.0 * dx)
+        );
+        float gradMag = length(gradH);
+
+        float d = 1.0/100.0;
+        float alpha = (h * h) / 64.0;
+        alpha *= exp(-d * gradMag * gradMag);
+
+        imageStore(tempOut, pos, vec4(H, qx, qy, alpha));
+    }
+    else if (stage == 1) { //Diffusion
+        vec4 temp_c = imageLoad(tempIn, pos);
+        vec4 temp_l = imageLoad(tempIn, pos + ivec2(-1, 0));
+        vec4 temp_r = imageLoad(tempIn, pos + ivec2(1, 0));
+        vec4 temp_t = imageLoad(tempIn, pos + ivec2(0, 1));
+        vec4 temp_b = imageLoad(tempIn, pos + ivec2(0, -1));
+
+        float alpha = temp_c.w;
+        float diffusion_dt = 0.1;
+
+        float laplacian_H = (temp_l.x + temp_r.x + temp_t.x + temp_b.x - 4.0 * temp_c.x) / (dx * dx);
+        float laplacian_qx = (temp_l.y + temp_r.y + temp_t.y + temp_b.y - 4.0 * temp_c.y) / (dx * dx);
+        float laplacian_qy = (temp_l.z + temp_r.z + temp_t.z + temp_b.z - 4.0 * temp_c.z) / (dx * dx);
+
+        float H_new = temp_c.x + alpha * laplacian_H * diffusion_dt;
+        float qx_new = temp_c.y + alpha * laplacian_qx * diffusion_dt;
+        float qy_new = temp_c.z + alpha * laplacian_qy * diffusion_dt;
+
+        imageStore(tempOut, pos, vec4(H_new, qx_new, qy_new, alpha));
+    }
+    else if (stage == 2) { // Final
+        vec4 statec = imageLoad(stateIn, pos);
+        vec4 filtered = imageLoad(tempIn, pos);
+
+        float h = statec.x;
+        float qx = statec.y;
+        float qy = statec.z;
+
+        float bulk_h = filtered.x - terrainc;
+        float surface_h = h - bulk_h;
+
+        float bulk_qx = filtered.y;
+        float bulk_qy = filtered.z;
+        float surface_qx = qx - bulk_qx;
+        float surface_qy = qy - bulk_qy;
+
+        imageStore(bulkFlow, pos, vec4(bulk_h, bulk_qx, bulk_qy, 1.0));
+        imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 0.0)* 1.0);
+        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0) * 100.0);
+        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0) *100.0);
+    }
+}
