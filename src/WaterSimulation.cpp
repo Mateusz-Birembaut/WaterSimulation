@@ -1,11 +1,13 @@
 
+#include <WaterSimulation/WaterSimulation.h>
+
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
+#include <WaterSimulation/Systems/PhysicsSystem.h>
 
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/UIManager.h>
-#include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/ECS.h>
 
 #include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
@@ -19,6 +21,9 @@
 #include <WaterSimulation/Components/LightComponent.h>
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
+#include <WaterSimulation/Components/TerrainComponent.h>
+#include <WaterSimulation/Components/BuoyancyComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -130,6 +135,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_camera.get()->setPos({0.0, 1.0, 0.0f});
     m_camera.get()->setSpeed(10.0f);
     m_camera.get()->setRotSpeed(5.0f);
+    m_camera.get()->setFar(500.0f);
     
     // test ECS et rendu avec shader de base
     // test sphere avec texture
@@ -145,22 +151,30 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
     
-    /* test maillage
+    //test maillage
     Entity testEntity = m_registry.create();
     auto & mat = m_registry.emplace<MaterialComponent>(
         testEntity
     );
     mat.setAlbedo(albedoPtr);
-    m_registry.emplace<TransformComponent>(
-        testEntity,
-        Magnum::Vector3{0.0f, 2.0f, -3.0f}
+    auto & testTransform = m_registry.emplace<TransformComponent>(
+        testEntity
     );
+    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
+    testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    m_registry.emplace<MeshComponent>(
+    auto& testMeshComp = m_registry.emplace<MeshComponent>(
         testEntity,
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     );
-    */
+  
+    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
+    rigidBody.mass = 1.0f;
+    rigidBody.mesh = testMeshComp.activeMesh;
+    rigidBody.addCollider(new SphereCollider(10.0f));
+    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
+    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
+
 
     float scale = 75.0f;
     
@@ -169,7 +183,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & matTerrain = m_registry.emplace<MaterialComponent>(
         testTerrain
     );
-
     auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     matTerrain.setAlbedo(albedoPtr);
     matTerrain.setHeightMap(heightmapPtr);
@@ -187,14 +200,17 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         testTerrain,
         shaderPtr
     ); 
+    m_registry.emplace<TerrainComponent>(testTerrain);
 
     //visu eau rapide
-    //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
-    //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
-
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
-
+    
+    auto waterShader = std::make_shared<DebugShader>();
+    m_registry.emplace<ShaderComponent>(
+        testTerrain,
+        shaderPtr
+    ); 
 
     m_waterMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale)); 
     Entity waterEntity = m_registry.create();
@@ -216,6 +232,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterEntity,
         waterShader
     ); 
+    m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
     //Debug Quad
 
@@ -225,13 +242,15 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     ); */
     
-
+ 
     // sun light en cours
+    Magnum::Vector3 sunPos{50.0f, 100.0f, 100.0f};
+    Magnum::Vector3 target{128.0f, 0.0f, 128.0f};
+
     auto sunEntity = m_registry.create();
-    m_registry.emplace<TransformComponent>(sunEntity, Vector3{50.0f, 100.0f, 50.0f});
     m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
     m_registry.emplace<DirectionalLightComponent>(sunEntity);
-    m_registry.emplace<ShadowCasterComponent>(sunEntity);  
+    m_registry.emplace<ShadowCasterComponent>(sunEntity);
 }
 
 WaterSimulation::Application::~Application() {
@@ -270,7 +289,7 @@ void WaterSimulation::Application::drawEvent() {
     }
 
     m_transform_System.update(m_registry);
-
+    m_physicSystem.update(m_registry, m_deltaTime);
 
     m_renderSystem.render(m_registry, *m_camera.get());
 
@@ -304,6 +323,26 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
     if(event.key() == Key::N) {
         m_renderSystem.m_renderDepthOnly = !m_renderSystem.m_renderDepthOnly;
         Debug{} << "Depth Mode :" << m_renderSystem.m_renderDepthOnly;
+        return;
+    }
+    if(event.key() == Key::B) {
+        m_renderSystem.m_renderShadowMapOnly = !m_renderSystem.m_renderShadowMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderShadowMapOnly;
+        return;
+    }
+    if(event.key() == Key::V) {
+        m_renderSystem.m_renderWaterMaskOnly = !m_renderSystem.m_renderWaterMaskOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderWaterMaskOnly;
+        return;
+    }
+    if(event.key() == Key::C) {
+        m_renderSystem.m_renderCausticMapOnly = !m_renderSystem.m_renderCausticMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderCausticMapOnly;
+        return;
+    }
+    if(event.key() == Key::X) {
+        m_renderSystem.m_renderGodRayMapOnly = !m_renderSystem.m_renderGodRayMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderGodRayMapOnly;
         return;
     }
 

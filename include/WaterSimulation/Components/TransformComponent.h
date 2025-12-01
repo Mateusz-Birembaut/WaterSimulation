@@ -51,6 +51,16 @@ namespace WaterSimulation
 			return rotation.transformVector(Magnum::Vector3::xAxis());
 		}
 
+		void lookAt(const Magnum::Vector3& target, const Magnum::Vector3& up = Magnum::Vector3::yAxis()) {
+			Magnum::Vector3 direction = target - position;
+			
+			if(!direction.isZero()) {
+				direction = direction.normalized();
+				Magnum::Matrix4 lookAtMatrix = Magnum::Matrix4::lookAt(position, target, up);
+				rotation = Magnum::Quaternion::fromMatrix(lookAtMatrix.rotationScaling().inverted());
+			}
+		}
+
 
 		void onAttach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};
     	void onDetach(Registry & registry [[maybe_unused]], Entity entity [[maybe_unused]]){};

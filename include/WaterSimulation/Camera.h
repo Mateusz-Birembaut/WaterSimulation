@@ -119,9 +119,13 @@ namespace WaterSimulation
 			return m_orientation.transformVector(Magnum::Vector3::zAxis(-1.0f)).normalized();
 		}
 
+		Magnum::Vector3 up() {
+			return m_orientation.transformVector(Magnum::Vector3::yAxis()).normalized();
+		}
+
 	private:
 		float m_near{0.1f};
-		float m_far{1000.0f};
+		float m_far{500.0f};
 
 		float m_speed{1.0f};
 		float m_rotationSpeed{1.0f};

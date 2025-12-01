@@ -10,10 +10,18 @@ add_executable(WaterSimulation
     ShallowWater.cpp
     UIManager.cpp
     Mesh.cpp
+    PhysicsUtils.cpp
     Components/MeshComponent.cpp
     Systems/RenderSystem.cpp
     Systems/TransformSystem.cpp
+    Systems/PhysicsSystem.cpp
     Rendering/OpaquePass.cpp
+    Rendering/ShadowMapPass.cpp
+    Rendering/CausticPass.cpp
+    Rendering/GodRayPass.cpp
+
+    FrustumVisualizer.cpp
+    DebugDraw.cpp
     ${WaterSimulation_RESOURCES}
 )
 

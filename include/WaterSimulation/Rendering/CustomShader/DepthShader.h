@@ -6,13 +6,17 @@
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Corrade/Utility/Resource.h>
+#include <Magnum/Shaders/GenericGL.h>
 
 namespace WaterSimulation
 {
-	class DepthShader : public Magnum::GL::AbstractShaderProgram
+	class DepthShader : public Magnum::GL::AbstractShaderProgram // TODO : renommer en shadow map shader truc comme ça 
 	{
 
 	private:
+		Magnum::Int m_uMVPLoc;
+		Magnum::Int m_uHeightMapSamplerLoc;
+		Magnum::Int m_uHasHeightMapLoc;
 
 	public:
 	
@@ -35,13 +39,33 @@ namespace WaterSimulation
 			CORRADE_INTERNAL_ASSERT_OUTPUT(frag.compile());
 
 			attachShaders({vert, frag});			
-			CORRADE_INTERNAL_ASSERT_OUTPUT(link());
+            bindAttributeLocation(Magnum::Shaders::GenericGL3D::Position::Location, "position");
+			bindAttributeLocation(Magnum::Shaders::GenericGL3D::TextureCoordinates::Location, "uv");
+            CORRADE_INTERNAL_ASSERT_OUTPUT(link());
+
+			   m_uMVPLoc = uniformLocation("mvp");
+			   m_uHeightMapSamplerLoc = uniformLocation("uHeightMap"); 
+			   m_uHasHeightMapLoc = uniformLocation("hasHeightMap");
 		}
 
-		DepthShader& setMVP(const Magnum::Matrix4& mvp) {
-			setUniform(0, mvp);
-			return *this;
-		}
+
+		   DepthShader& setMVP(const Magnum::Matrix4& mvp) {
+			   setUniform(m_uMVPLoc, mvp);
+			   return *this;
+		   }
+
+		   DepthShader& setHasHeightMap(bool has) {
+			   setUniform(m_uHasHeightMapLoc, Magnum::Int(has ? 1 : 0));
+			   return *this;
+		   }
+
+		DepthShader& bindHeightMapTexture(Magnum::GL::Texture2D & heigthmap){
+            heigthmap.bind(0);
+            setUniform(m_uHeightMapSamplerLoc, 0);
+            return *this;
+        }
+
+
 
 	};
 } // namespace WaterSimulation

@@ -72,9 +72,11 @@ namespace WaterSimulation
 
 
 		void draw(  Magnum::GL::Mesh& mesh, 
-					const Magnum::Matrix4& mvp, 
-					MaterialComponent& material, 
-					const std::vector<LightComponent>& lights) override {
+			    const Magnum::Matrix4& mvp, 
+			    MaterialComponent& material, 
+			    Magnum::Matrix4 lightVP,
+			    Magnum::GL::Texture2D & shadowMap,
+			    const std::vector<LightComponent>& lights) override {
 
 				//TODO gerer lights
 
