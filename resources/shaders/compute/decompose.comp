@@ -13,6 +13,8 @@ uniform float dx;
 uniform float dt;
 uniform int stage;
 
+// It would be better to split it into 3 shader for optimisation but this was easier
+
 void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(stateIn);
@@ -91,7 +93,7 @@ void main() {
 
         imageStore(bulkFlow, pos, vec4(bulk_h, bulk_qx, bulk_qy, 1.0));
         imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 0.0)* 1.0);
-        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0) * 100.0);
-        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0) *100.0);
+        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0) * 1.0);
+        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0) *1.0);
     }
 }

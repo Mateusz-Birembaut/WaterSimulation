@@ -21,17 +21,23 @@ void ShallowWater::step() {
     Magnum::GL::Texture2D *inputTex;
     Magnum::GL::Texture2D *outputTex;
 
-    // Shallow water pass
-
-    runSW(&m_stateTexture);
-
+    
 
     // Decompisition Bulk (shallow) + surface (airy) 
 
     runDecomposition(&m_stateTexture);
 
+    // Shallow water pass
+
+    runSW(&m_bulkTexture);
+
+
     // Airy Waves
     {   
+        float N = nx+1;
+        Magnum::GL::Texture2D * fftHeight; Magnum::GL::Texture2D * ifftHeight;
+        Magnum::GL::Texture2D * fftQx; Magnum::GL::Texture2D * ifftQx;
+        Magnum::GL::Texture2D * fftQy; Magnum::GL::Texture2D * ifftQy;
         /* m_copyProgram.bindCopy(&m_surfaceHeightTexture,&m_surfaceHeightPing).run(groupx,groupy);
 
         Magnum::GL::Renderer::setMemoryBarrier(
@@ -39,8 +45,29 @@ void ShallowWater::step() {
 
         Corrade::Utility::Debug{} << "running fft pass"; */
         // FFT pass
-        m_fftOutput = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1);
+        fftHeight = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1);
+        
+        fftQx = runFFT(&m_surfaceQxTexture, &m_surfaceQxPong, 1);
+        fftQy = runFFT(&m_surfaceQyTexture, &m_surfaceQyPong, 1);
 
+        //m_airywavesProgram.bindAiry(&m_bulkTexture, fftHeight, fftQx, fftQy );
+
+        // Turn qx and qy back into spatial domain
+        ifftQx = runFFT(fftQx, &m_surfaceQxPong, -1);
+        ifftQy = runFFT(fftQy, &m_surfaceQyPong, -1);
+
+        // Normalize the IFFT outputs
+        m_normalizedProgram.bindReadWrite(ifftQx, Magnum::GL::ImageFormat::RG32F)
+            .setFloatUniform("norm", 1.0f / (N * N))
+            .run(groupx, groupy);
+
+        m_normalizedProgram.bindReadWrite(ifftQy, Magnum::GL::ImageFormat::RG32F)
+            .setFloatUniform("norm", 1.0f / (N * N))
+            .run(groupx, groupy);
+
+        m_fftOutput = ifftQx;
+        m_ifftOutput = ifftQy;
+        //m_fftOutput = ifftQx;
         /* Magnum::GL::Texture2D* ifftPong = (m_fftOutput == &m_surfaceHeightPing) 
                                         ? &m_surfaceHeightPong 
                                         : &m_surfaceHeightPing;
@@ -53,12 +80,19 @@ void ShallowWater::step() {
 
         //runAiryWaves(m_fftOutput);
 
-        // IFFT pass 
-        m_ifftOutput = runFFT(m_fftOutput, &m_surfaceHeightPong, -1);
+        // IFFT pass, m_fftOutput can be surface Height pong, add an if 
+        ifftHeight = runFFT(fftHeight, &m_surfaceHeightPong, -1);
 
-        // IFFT output needs to be normalized
-        float N = nx+1;
-        m_normalizedProgram.bindReadWrite(m_ifftOutput, Magnum::GL::ImageFormat::RG32F).setFloatUniform("norm", 1.0f/(N*N)).run(groupx, groupy);
+        m_normalizedProgram.bindReadWrite(ifftHeight, Magnum::GL::ImageFormat::RG32F).setFloatUniform("norm", 1.0f/(N*N)).run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
+        m_recomposeProgram.bindRecompose(&m_stateTexture, &m_bulkTexture, ifftHeight, ifftQx, ifftQy)
+            .run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
     }
 
     ping = !ping;
@@ -223,6 +257,10 @@ void ShallowWater::compilePrograms() {
     m_debugAlphaProgram = ComputeProgram("debugAlpha.comp");
 
     m_copyProgram = ComputeProgram("copy.comp");
+
+    m_airywavesProgram = ComputeProgram("airywaves.comp");
+
+    m_recomposeProgram = ComputeProgram("recompose.comp");
 
     m_updateFluxesProgram.setParametersUniforms(*this);
     m_updateWaterHeightProgram.setParametersUniforms(*this);

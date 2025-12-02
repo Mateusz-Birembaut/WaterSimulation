@@ -1,14 +1,14 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(binding=0, rg32f) readonly uniform image2D u_input;
-layout(binding=1, rg32f) writeonly uniform image2D u_output;
+layout(binding=0, rg32f) readonly uniform image2D texin;
+layout(binding=1, rg32f) writeonly uniform image2D texout;
 
 void main() {
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(u_input);
+    ivec2 size = imageSize(texin);
     
     if (gid.x >= size.x || gid.y >= size.y) return;
-    vec4 v = imageLoad(u_input, gid);
+    vec4 v = imageLoad(texin, gid);
     
-    imageStore(u_output, gid, v);
+    imageStore(texout, gid, v);
 }

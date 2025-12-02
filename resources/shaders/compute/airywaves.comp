@@ -1,0 +1,87 @@
+//#version 430
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform image2D
+    bulkState; // Bulk flow from decomposition, in spatial domain
+layout(binding = 1, rg32f) readonly uniform image2D
+    surfaceHeightFFT; // Surface height in frequency domain
+layout(binding = 2,
+       rg32f) uniform image2D surfaceQxFFT; // Surface qx in frequency
+layout(binding = 3,
+       rg32f) uniform image2D surfaceQyFFT; // Surface qy in frequency
+
+uniform float dt;
+uniform float gravity;
+uniform float dx;
+uniform int N;
+
+const float eps = 1e-6;
+
+const float PI = 3.14159265358979323846;
+
+vec2 complex_mult(vec2 a, vec2 b) {
+    return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+void main() {
+
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(bulkState);
+
+    if (gid.x >= (uint(size.x)) || gid.y >= (uint(size.y))) {
+        return;
+    }
+
+    // Wavenumber k computation
+
+    // In frequency domain the waves are centered
+
+    float kx, ky;
+    if (gid.x <= N / 2) {
+        kx = float(gid.x);
+        ky = float(gid.y);
+    } else {
+        kx = float(gid.x - N);
+        ky = float(gid.y - N);
+    }
+
+    kx = kx * 2.0 * PI / (float(N) * dx);
+    ky = ky * 2.0 * PI / (float(N) * dx);
+
+    float k = sqrt(kx * kx + ky * ky);
+
+    // Dispersion omega
+
+    float h_bar = 4.0; // Should do it for h_bar in [1, 4, 16, 64]
+    float omega = 0.0;
+
+    if (k > eps) {
+        omega = sqrt(gravity * k * tanh(k * h_bar));
+    }
+
+    // Derivatives
+
+    // d h_hat/dx = i*kx* h_hat
+
+    vec2 h_hat = imageLoad(surfaceHeightFFT, gid).xy;
+    vec2 qx_hat = imageLoad(surfaceQxFFT, gid).xy;
+    vec2 qy_hat = imageLoad(surfaceQyFFT, gid).xy;
+
+    vec2 dhdx =
+        complex_mult(vec2(0.0, kx), h_hat); // This is in frequency space
+    vec2 dhdy = complex_mult(vec2(0.0, ky), h_hat);
+
+    float cos_om = cos(omega * dt);
+    float sin_om = sin(omega * dt);
+
+    vec2 qx_new = cos_om * qx_hat - sin_om * (omega / (k * k)) * dhdx;
+    vec2 qy_new = cos_om * qy_hat - sin_om * (omega / (k * k)) * dhdy;
+
+    if (k < eps) {
+        qx_new = qx_hat;
+        qy_new = qy_hat;
+    }
+
+    imageStore(surfaceQxFFT, gid, vec4(qx_new, 0.0, 0.0));
+    imageStore(surfaceQyFFT, gid, vec4(qy_new, 0.0, 0.0));
+}

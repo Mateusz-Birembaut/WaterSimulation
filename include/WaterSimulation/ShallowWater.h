@@ -147,6 +147,39 @@ class ShallowWater {
             return *this;
         }
 
+        ComputeProgram &bindAiry(Magnum::GL::Texture2D *bulkState,
+                     Magnum::GL::Texture2D *surfaceHeightFFT,
+                     Magnum::GL::Texture2D *surfaceQxFFT,
+                     Magnum::GL::Texture2D *surfaceQyFFT) {
+            bulkState->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
+                     Magnum::GL::ImageFormat::RGBA32F);
+            surfaceHeightFFT->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RG32F);
+            surfaceQxFFT->bindImage(2, 0, Magnum::GL::ImageAccess::ReadWrite,
+                        Magnum::GL::ImageFormat::RG32F);
+            surfaceQyFFT->bindImage(3, 0, Magnum::GL::ImageAccess::ReadWrite,
+                        Magnum::GL::ImageFormat::RG32F);
+            return *this;
+        }
+
+        ComputeProgram &bindRecompose(Magnum::GL::Texture2D *stateOut,
+                     Magnum::GL::Texture2D *bulkFlow,
+                     Magnum::GL::Texture2D *surfaceHeight,
+                     Magnum::GL::Texture2D *surfaceQx,
+                     Magnum::GL::Texture2D *surfaceQy) {
+            stateOut->bindImage(0, 0, Magnum::GL::ImageAccess::WriteOnly,
+                     Magnum::GL::ImageFormat::RGBA32F);
+            bulkFlow->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RGBA32F);
+            surfaceHeight->bindImage(2, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RG32F);
+            surfaceQx->bindImage(3, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RG32F);
+            surfaceQy->bindImage(4, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RG32F);
+            return *this;
+        }
+
         ComputeProgram &setParametersUniforms(ShallowWater &sim) {
             setUniform(uniformLocation("dx"), sim.dx);
             setUniform(uniformLocation("dt"), sim.dt);
@@ -192,6 +225,10 @@ class ShallowWater {
     ComputeProgram m_normalizedProgram; // To normalized ifft output
 
     ComputeProgram m_copyProgram;
+
+    ComputeProgram m_airywavesProgram;
+
+    ComputeProgram m_recomposeProgram;
 
   public:
     ShallowWater() = default;
