@@ -90,14 +90,14 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
-    converter->configuration().setValue("size", "512 512");
+    converter->configuration().setValue("size", "256 256");
     auto resized = converter->convert(*image);
     auto allo = resized->format();
     Debug{} << "FORMAT IS : " << allo;
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(255,255, .25f, 1.0f/60.0f);
     
     m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 8.0f);
 

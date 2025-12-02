@@ -3,9 +3,9 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
 layout(binding = 1, r32f) readonly uniform highp image2D terrain;
 layout(binding = 2, rgba32f) writeonly uniform highp image2D bulkFlow;
-layout(binding = 3, rgba32f) writeonly uniform highp image2D surfaceHeight;
-layout(binding = 4, rgba32f) writeonly uniform highp image2D surfaceQx;
-layout(binding = 5, rgba32f) writeonly uniform highp image2D surfaceQy;
+layout(binding = 3, rg32f) writeonly uniform highp image2D surfaceHeight;
+layout(binding = 4, rg32f) writeonly uniform highp image2D surfaceQx;
+layout(binding = 5, rg32f) writeonly uniform highp image2D surfaceQy;
 layout(binding = 6, rgba32f) readonly uniform highp image2D tempIn;
 layout(binding = 7, rgba32f) writeonly uniform highp image2D tempOut;
 

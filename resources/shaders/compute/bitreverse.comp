@@ -1,0 +1,43 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rg32f) readonly uniform image2D u_input;
+layout(binding = 1, rg32f) writeonly uniform image2D u_output;
+
+uniform int u_length;
+uniform int u_isVertical;
+
+int bitReverse(int x, int numBits) {
+    int result = 0;
+    for (int i = 0; i < numBits; i++) {
+        result = (result << 1) | (x & 1);
+        x >>= 1;
+    }
+    return result;
+}
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(u_input);
+    
+    if (gid.x >= size.x || gid.y >= size.y) return;
+    
+    int numBits = int(log2(float(u_length)));
+    
+    int srcIndex, dstIndex;
+    ivec2 srcCoord, dstCoord;
+    
+    if (u_isVertical == 0) {
+        srcIndex = gid.x;
+        dstIndex = bitReverse(srcIndex, numBits);
+        srcCoord = ivec2(srcIndex, gid.y);
+        dstCoord = ivec2(dstIndex, gid.y);
+    } else {
+        srcIndex = gid.y;
+        dstIndex = bitReverse(srcIndex, numBits);
+        srcCoord = ivec2(gid.x, srcIndex);
+        dstCoord = ivec2(gid.x, dstIndex);
+    }
+    
+    vec4 val = imageLoad(u_input, srcCoord);
+    imageStore(u_output, dstCoord, val);
+}

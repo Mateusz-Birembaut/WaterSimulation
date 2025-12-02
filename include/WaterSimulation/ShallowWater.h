@@ -115,11 +115,11 @@ class ShallowWater {
             bulk->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
                              Magnum::GL::ImageFormat::RGBA32F);
             surfaceHeight->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
+                              Magnum::GL::ImageFormat::RG32F);
             surfaceQx->bindImage(4, 0, Magnum::GL::ImageAccess::WriteOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
+                              Magnum::GL::ImageFormat::RG32F);
             surfaceQy->bindImage(5, 0, Magnum::GL::ImageAccess::WriteOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
+                              Magnum::GL::ImageFormat::RG32F);
             tempIn->bindImage(6, 0, Magnum::GL::ImageAccess::ReadOnly,
                               Magnum::GL::ImageFormat::RGBA32F);
             tempOut->bindImage(7, 0, Magnum::GL::ImageAccess::WriteOnly,
@@ -130,14 +130,20 @@ class ShallowWater {
         ComputeProgram &bindFFT(Magnum::GL::Texture2D *input,
                                 Magnum::GL::Texture2D *output) {
             input->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
-                             Magnum::GL::ImageFormat::RGBA32F);
+                             Magnum::GL::ImageFormat::RG32F);
             output->bindImage(1, 0, Magnum::GL::ImageAccess::WriteOnly,
-                              Magnum::GL::ImageFormat::RGBA32F);
+                              Magnum::GL::ImageFormat::RG32F);
             return *this;
         }
 
-        ComputeProgram &bindReadWrite(Magnum::GL::Texture2D * input){
-            input->bindImage(0,0,Magnum::GL::ImageAccess::ReadWrite, Magnum::GL::ImageFormat::RGBA32F);
+        ComputeProgram &bindReadWrite(Magnum::GL::Texture2D * input, Magnum::GL::ImageFormat format = Magnum::GL::ImageFormat::RGBA32F){
+            input->bindImage(0,0,Magnum::GL::ImageAccess::ReadWrite, format);
+            return *this;
+        }
+
+        ComputeProgram &bindCopy(Magnum::GL::Texture2D * input, Magnum::GL::Texture2D * output){
+            input->bindImage(0,0,Magnum::GL::ImageAccess::ReadOnly, Magnum::GL::ImageFormat::RG32F);
+            output->bindImage(1,0,Magnum::GL::ImageAccess::WriteOnly, Magnum::GL::ImageFormat::RG32F);
             return *this;
         }
 
@@ -178,6 +184,14 @@ class ShallowWater {
     ComputeProgram m_initProgram;
 
     ComputeProgram m_debugAlphaProgram;
+
+    ComputeProgram m_fftProgram;
+
+    ComputeProgram m_bitReverseProgram;
+
+    ComputeProgram m_normalizedProgram; // To normalized ifft output
+
+    ComputeProgram m_copyProgram;
 
   public:
     ShallowWater() = default;
@@ -223,25 +237,25 @@ class ShallowWater {
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         // Surface textures use RG32F for complex numbers (for FFT)
-        m_surfaceHeightTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+        m_surfaceHeightTexture.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setWrapping(Magnum::GL::SamplerWrapping::Repeat);
 
-        m_surfaceQxTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+        m_surfaceQxTexture.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
-        m_surfaceQyTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+        m_surfaceQyTexture.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
-        m_surfaceHeightPing.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+        m_surfaceHeightPing.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setWrapping(Magnum::GL::SamplerWrapping::Repeat);
 
-        m_surfaceHeightPong.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+        m_surfaceHeightPong.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setWrapping(Magnum::GL::SamplerWrapping::Repeat);;
@@ -273,7 +287,7 @@ class ShallowWater {
     void runSW(Magnum::GL::Texture2D *inputTex);
     void runDecomposition(Magnum::GL::Texture2D *inputTex);
     Magnum::GL::Texture2D* runFFT(Magnum::GL::Texture2D* pingTex, Magnum::GL::Texture2D* pongTex, 
-                        int direction, float normalization);
+                        int direction);
     void runIFFT();
 
     // helper functions
