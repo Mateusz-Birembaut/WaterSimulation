@@ -45,7 +45,7 @@ void WaterSimulation::GodRayPass::init() {
 
 
 void WaterSimulation::GodRayPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(700, 700, 2.0);
+	Mesh gridData = Mesh::createGrid(300, 300, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
 	m_photonGrid = Magnum::GL::Mesh{};

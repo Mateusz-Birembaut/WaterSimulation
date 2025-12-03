@@ -19,6 +19,8 @@ add_executable(WaterSimulation
     Rendering/ShadowMapPass.cpp
     Rendering/CausticPass.cpp
     Rendering/GodRayPass.cpp
+    Rendering/CompositionPass.cpp
+    Rendering/HeightmapReadback.cpp
 
     FrustumVisualizer.cpp
     DebugDraw.cpp

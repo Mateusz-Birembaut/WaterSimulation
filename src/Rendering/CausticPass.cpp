@@ -45,7 +45,7 @@ void WaterSimulation::CausticPass::init() {
 
 
 void WaterSimulation::CausticPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
+	Mesh gridData = Mesh::createGrid(800, 800, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
 	m_photonGrid = Magnum::GL::Mesh{};
@@ -108,6 +108,7 @@ void WaterSimulation::CausticPass::render(
 		m_causticShader.bindShadowMapTexture(shadowMap)
 		    .bindWaterMaskTexture(waterWorldPos)
 		    .setVPLight(lightViewProj)
+		    .setInvVPLight(lightViewProj.inverted())
 		    .setVPCamera(camViewProj)
 		    .setCameraPos(camera.position())
 		    .setLightPos(lightPosition)

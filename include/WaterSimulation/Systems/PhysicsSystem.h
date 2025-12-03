@@ -4,6 +4,7 @@
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/RigidBodyComponent.h>
 #include <WaterSimulation/PhysicsUtils.h>
+#include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Matrix3.h>
@@ -20,6 +21,8 @@ namespace WaterSimulation
 
 
 class PhysicsSystem  {
+
+    HeightmapReadback* m_heightmapReadback{nullptr};
 
     std::vector<std::pair<Entity, Entity>> collisionPairs;
     std::vector<CollisionInfo> collisionList;
@@ -47,6 +50,7 @@ public :
     
     std::vector<CollisionInfo> getCollisionList(){return collisionList;}
 
+    void setHeightmapReadback(HeightmapReadback* hb) { m_heightmapReadback = hb; }
 
 
 };

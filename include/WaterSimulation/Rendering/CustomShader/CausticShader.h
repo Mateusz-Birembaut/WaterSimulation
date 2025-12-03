@@ -26,6 +26,7 @@ namespace WaterSimulation {
 		Magnum::Int m_uALoc;
 		Magnum::Int m_uBLoc;
 		Magnum::Int m_uLightFarLoc;
+		Magnum::Int m_uInvLightViewProjLoc;
 
 	      public:
 		explicit CausticShader() {
@@ -83,10 +84,17 @@ namespace WaterSimulation {
 			m_uBLoc = uniformLocation("uB");
 
 			m_uLightFarLoc = uniformLocation("uLightFar");
+
+			m_uInvLightViewProjLoc = uniformLocation("uInvVPLight");
 		}
 
 		CausticShader& setVPLight(const Magnum::Matrix4& VPLight) {
 			setUniform(m_uLightViewProjLoc, VPLight);
+			return *this;
+		}
+
+		CausticShader& setInvVPLight(const Magnum::Matrix4& invVPLight) {
+			setUniform(m_uInvLightViewProjLoc, invVPLight);
 			return *this;
 		}
 

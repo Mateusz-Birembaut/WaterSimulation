@@ -256,7 +256,7 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
 
     }
 
-    {   
+    {
 
         auto & godrayPass = (app->m_renderSystem.godrayPass());
 
@@ -267,6 +267,7 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
         ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
 
     }
+
     ImGui::End();
 }
 

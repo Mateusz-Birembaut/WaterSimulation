@@ -488,29 +488,8 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
     WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
-    auto * heightmap = materialComp.heightmap.get();
 
-    size_t dataSize = (wC.width) * (wC.height) * 4 * sizeof(float);
-
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, wC.pbo);
-    glBindTexture(GL_TEXTURE_2D, heightmap->id());
-
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, 0);
     
-
-    void* ptr = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-
-    if (ptr) {
-        std::memcpy(wC.heightData.data(), ptr, dataSize);
-
-        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-    }
-
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); 
-    // restore texture binding to avoid interfering with subsequent render passes
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
 		auto& transform = view.get<TransformComponent>(entity);

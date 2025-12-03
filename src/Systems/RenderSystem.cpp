@@ -5,6 +5,7 @@
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/TerrainComponent.h>
 #include <WaterSimulation/Components/MaterialComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
 
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
@@ -16,6 +17,8 @@
 #include <Magnum/Shaders/PhongGL.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Matrix3.h>
+#include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Functions.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Shader.h>
@@ -110,9 +113,21 @@ void RenderSystem::render(Registry& registry,
         return;
     }
 
-    drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
+
+    m_compositionPass.render(
+        m_opaquePass.getColorTexture(),
+        m_causticPass.getCausticTexture(),
+        m_godrayPass.getGodRayTexture(),
+        m_opaquePass.getDepthTexture(),
+        registry,
+        viewMatrix,
+        projectionMatrix);
+
+
+    //drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
     return;
 }
+
 
 
 // rend la profondeur avec shader adapté

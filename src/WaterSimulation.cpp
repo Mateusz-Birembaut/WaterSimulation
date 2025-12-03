@@ -233,7 +233,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     m_registry.emplace<TransformComponent>(
         waterEntity,
-        Magnum::Vector3{0.0f, 5.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
+        Magnum::Vector3{0.0f, 1.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
     );
     m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
@@ -285,6 +285,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
     m_registry.emplace<DirectionalLightComponent>(sunEntity);
     m_registry.emplace<ShadowCasterComponent>(sunEntity);  
+
+    m_renderSystem.setHeightmapReadback(&m_heightmapReadback);
+    m_physicSystem.setHeightmapReadback(&m_heightmapReadback);
 }
     
 
@@ -320,6 +323,7 @@ void WaterSimulation::Application::drawEvent() {
     if(!simulationPaused) {
         for(int i = 0; i < step_number; ++i){
             m_shallowWaterSimulation.step();
+            m_heightmapReadback.enqueueReadback(m_shallowWaterSimulation.getStateTexture());
         }
     }
 
