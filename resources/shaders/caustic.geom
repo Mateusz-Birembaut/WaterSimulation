@@ -1,5 +1,5 @@
 layout (points) in;
-layout (points, max_vertices = 2) out;
+layout (points, max_vertices = 1) out;
 
 in vec2 v_gridPos[];
 
@@ -119,32 +119,69 @@ vec3 getProceduralNormal(vec2 p, float time) {
 
 
 vec3 findFloor(vec3 position, vec3 direction){
-    vec3 p = position;
-    int MAX_ITER = 15;
+    const int MAX_STEPS = 32;
+    const int MAX_BISECT_STEPS = 5; 
+    const float DEPTH_EPS = 0.0001;
+    float maxDistance = uLightFar;
+    float stepSize = maxDistance / float(MAX_STEPS);
 
-    for(int i = 0; i < MAX_ITER; i++){
+    vec3 prevPoint = position;
+    float prevDiff = 0.0;
 
-        vec4 lightClip = uVPLight * vec4(p, 1.0);
-        vec3 lightNDC = lightClip.xyz / lightClip.w; // -1 1
+    for(int i = 0; i < MAX_STEPS; ++i){
+        vec3 currentPoint = position + direction * (stepSize * float(i));
+        vec4 lightClip = uVPLight * vec4(currentPoint, 1.0);
+        vec3 lightNDC = lightClip.xyz / lightClip.w;
         vec2 shadowUV = lightNDC.xy * 0.5 + 0.5;
 
-        if(shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1) break;
+        if(shadowUV.x < 0.0 || shadowUV.x > 1.0 || shadowUV.y < 0.0 || shadowUV.y > 1.0)
+            return prevPoint;
 
-        float currentRayDepth = lightNDC.z * 0.5 + 0.5; // 0 1
-        float currentUVDepth = texture(uShadowMap, shadowUV).r; // 0 1 
+        float currentRayDepth = lightNDC.z * 0.5 + 0.5;
+        float currentUVDepth = texture(uShadowMap, shadowUV).r;
         float diff = currentUVDepth - currentRayDepth;
 
-        if (abs(diff) < 0.0001) break;
+        if(i == 0){
+            prevDiff = diff;
+            prevPoint = currentPoint;
+            continue;
+        }
 
-        float displacementDist = diff * uLightFar;
+        if(abs(diff) < DEPTH_EPS)
+            return currentPoint;
 
+        // Once we detect that the ray went behind the stored depth we bisect to stay on top of the floor
+        if(diff <= 0.0 && prevDiff >= 0.0){
+            vec3 a = prevPoint;
+            vec3 b = currentPoint;
+            for(int j = 0; j < MAX_BISECT_STEPS; ++j){
+                vec3 midPoint = mix(a, b, 0.5);
+                vec4 midClip = uVPLight * vec4(midPoint, 1.0);
+                vec3 midNDC = midClip.xyz / midClip.w;
+                vec2 midUV = midNDC.xy * 0.5 + 0.5;
+                if(midUV.x < 0.0 || midUV.x > 1.0 || midUV.y < 0.0 || midUV.y > 1.0)
+                    break;
 
-        p += direction * displacementDist;
+                float midDepth = midNDC.z * 0.5 + 0.5;
+                float storedDepth = texture(uShadowMap, midUV).r;
+                float midDiff = storedDepth - midDepth;
 
-        // TODO ajouter le fait de partir dans l'autre sens pour des height maps plus complexe mais pour l'instant ok
+                if(abs(midDiff) < DEPTH_EPS)
+                    return midPoint;
 
+                if(midDiff > 0.0)
+                    a = midPoint;
+                else
+                    b = midPoint;
+            }
+            return a;
+        }
+
+        prevDiff = diff;
+        prevPoint = currentPoint;
     }
-    return p;
+
+    return prevPoint;
 }
 
 
@@ -175,12 +212,14 @@ void main()
     
     float sfinal = uA + uB / distToCam;
 
+    /*
     vIntensity = uIntensity * exp(-uAttenuation * distInWater);
     gl_Position = uVPCamera * vec4(Ps, 1.0);
     vClipPos = gl_Position;
     gl_PointSize = sfinal;
     EmitVertex();
     EndPrimitive();
+    */
 
     vIntensity = uIntensity * exp(-uAttenuation * distInWater);
     gl_Position = uVPCamera * vec4(Pi, 1.0);

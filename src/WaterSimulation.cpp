@@ -48,8 +48,10 @@
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
+#include <SDL2/SDL.h>
 
 #include <memory>
+
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -59,11 +61,35 @@ using namespace Corrade::Utility;
 WaterSimulation::Application::Application(const Arguments& arguments): 
     Platform::Application{arguments, Configuration{}
         .setTitle("Water Simulation App")
-        .setSize({1200, 800})
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
-{   
-	Corrade::Utility::Resource rs{"WaterSimulationResources"};
+{
+    // Détecte l'écran où se trouve la souris et redimensionne la fenêtre à la taille de cet écran
+    int mouseX = 0, mouseY = 0;
+    SDL_GetGlobalMouseState(&mouseX, &mouseY);
+    int numDisplays = SDL_GetNumVideoDisplays();
+    int targetDisplay = 0;
+    for(int i = 0; i < numDisplays; ++i) {
+        SDL_Rect bounds;
+        if(SDL_GetDisplayBounds(i, &bounds) == 0) {
+            if(mouseX >= bounds.x && mouseX < bounds.x + bounds.w &&
+               mouseY >= bounds.y && mouseY < bounds.y + bounds.h) {
+                targetDisplay = i;
+                break;
+            }
+        }
+    }
+    SDL_Rect targetBounds;
+    if(SDL_GetDisplayBounds(targetDisplay, &targetBounds) == 0) {
+        SDL_Window* sdlWindow = static_cast<SDL_Window*>(window());
+        // Positionner la fenêtre d'abord sur l'écran cible
+        SDL_SetWindowPosition(sdlWindow, targetBounds.x, targetBounds.y);
+        // Redimensionner la fenêtre via SDL pour s'assurer d'utiliser la résolution de l'écran cible
+        SDL_SetWindowSize(sdlWindow, targetBounds.w, targetBounds.h);
+        // Mettre aussi à jour Magnum au cas où
+        setWindowSize({targetBounds.w, targetBounds.h});
+    }
+    Corrade::Utility::Resource rs{"WaterSimulationResources"};
 
     Debug{} << "Creating application";
     
@@ -105,7 +131,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 8.0f, 4);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 1.0f, 4);
 
     m_shallowWaterSimulation.initDamBreak();
 
