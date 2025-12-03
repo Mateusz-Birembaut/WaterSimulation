@@ -86,20 +86,20 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h3.png");
+    auto heightmapData = rs.getRaw("h7.png");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
-    converter->configuration().setValue("size", "256 256");
+    converter->configuration().setValue("size", "512 512");
     auto resized = converter->convert(*image);
     auto allo = resized->format();
     Debug{} << "FORMAT IS : " << allo;
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(255,255, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 3.0f, 4);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 9.0f, 1);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -162,7 +162,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     */
 
-    float scale = 75.0f;
+    float scale = 200.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();

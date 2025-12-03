@@ -21,7 +21,11 @@ void ShallowWater::step() {
     Magnum::GL::Texture2D *inputTex;
     Magnum::GL::Texture2D *outputTex;
 
-    
+    if(!airyWavesEnabled){
+        runSW(&m_stateTexture);
+        return;
+    }
+
 
     // Decompisition Bulk (shallow) + surface (airy) 
 
@@ -50,7 +54,10 @@ void ShallowWater::step() {
         fftQx = runFFT(&m_surfaceQxTexture, &m_surfaceQxPong, 1);
         fftQy = runFFT(&m_surfaceQyTexture, &m_surfaceQyPong, 1);
 
-        //m_airywavesProgram.bindAiry(&m_bulkTexture, fftHeight, fftQx, fftQy );
+        m_airywavesProgram.bindAiry(&m_bulkTexture, fftHeight, fftQx, fftQy).run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
         // Turn qx and qy back into spatial domain
         ifftQx = runFFT(fftQx, &m_surfaceQxPong, -1);
@@ -88,9 +95,9 @@ void ShallowWater::step() {
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-        m_recomposeProgram.bindRecompose(&m_stateTexture, &m_bulkTexture, ifftHeight, ifftQx, ifftQy)
-            .run(groupx, groupy);
+        m_recomposeProgram.bindRecompose(&m_stateTexture, &m_bulkTexture, ifftHeight, ifftQx, ifftQy).run(groupx, groupy);
 
+        m_fftOutput = &m_tempTexture;
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
     }
@@ -111,7 +118,7 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
     // Diffusion
-    const int diffusionIterations = 64;
+    const int diffusionIterations = 128;
     Magnum::GL::Texture2D *tempIn = &m_tempTexture2;
     Magnum::GL::Texture2D *tempOut = &m_tempTexture;
 
@@ -262,9 +269,12 @@ void ShallowWater::compilePrograms() {
 
     m_recomposeProgram = ComputeProgram("recompose.comp");
 
+    m_transportSurfaceProgram = ComputeProgram("transportSurface.comp");
+
     m_updateFluxesProgram.setParametersUniforms(*this);
     m_updateWaterHeightProgram.setParametersUniforms(*this);
     m_decompositionProgram.setParametersUniforms(*this);
+    m_airywavesProgram.setParametersUniforms(*this).setIntUniform("N", nx+1);
 }
 
 void ShallowWater::loadTerrainHeightMap(Magnum::Trade::ImageData2D *img,

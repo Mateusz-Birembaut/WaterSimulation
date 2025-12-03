@@ -92,6 +92,7 @@ void WaterSimulation::UIManager::paramWindow(
         if (ImGui::Button("Init Tsunami")) {
             simulation->initTsunami();
         }
+        ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
 
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 

@@ -52,18 +52,26 @@ void main() {
 
     // Dispersion omega
 
-    float h_bar = 4.0; // Should do it for h_bar in [1, 4, 16, 64]
+    float h_bar = 1.0; // Should do it for h_bar in [1, 4, 16, 64]
     float omega = 0.0;
+
+    float beta = sqrt((2.0*k)/dx) * sqrt(sin((k*dx)/2.0)); 
 
     if (k > eps) {
         omega = sqrt(gravity * k * tanh(k * h_bar));
     }
+
+    //omega *= beta;
 
     // Derivatives
 
     // d h_hat/dx = i*kx* h_hat
 
     vec2 h_hat = imageLoad(surfaceHeightFFT, gid).xy;
+
+    h_hat = complex_mult(h_hat, vec2(cos(-k *dx / 2.0), sin(-k * dx / 2.0))); // Staggered grid fourier shift
+
+
     vec2 qx_hat = imageLoad(surfaceQxFFT, gid).xy;
     vec2 qy_hat = imageLoad(surfaceQyFFT, gid).xy;
 

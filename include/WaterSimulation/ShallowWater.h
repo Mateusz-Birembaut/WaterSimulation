@@ -32,14 +32,15 @@ class ShallowWater {
     float gravity = 9.81f; // la gravité
 
     // stabilité
-    float dryEps = 1e-3f; // valeur de h a partir de laquelle une cellule est
+    float dryEps = 1e-4f; // valeur de h a partir de laquelle une cellule est
                           // considéré comme sec
     float limitCFL; // coefficient CFL
-    float friction_coef = 0.01f;
+    float friction_coef = 0.00f;
 
     // Compute Shaders
 
     bool ping = false;
+    
 
     Magnum::GL::Texture2D m_stateTexture; // RGB 32f texture that contains (h, qx, qy)
     Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup // texture final
@@ -230,6 +231,8 @@ class ShallowWater {
 
     ComputeProgram m_recomposeProgram;
 
+    ComputeProgram m_transportSurfaceProgram;
+
   public:
     ShallowWater() = default;
 
@@ -355,6 +358,8 @@ class ShallowWater {
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f, int channels = 1);
+
+    bool airyWavesEnabled = true;
 
     // debug
     float minh;

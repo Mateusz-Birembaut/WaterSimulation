@@ -8,16 +8,27 @@ layout(binding = 4, rg32f) readonly uniform highp image2D surfaceQy;
 
 void main() {
 
-    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(stateOut);
 
-    vec4 bulk = imageLoad(bulkFlow, coord);
-    vec2 surfh = imageLoad(surfaceHeight, coord).rg;
-    vec2 surfqx = imageLoad(surfaceQx, coord).rg;
-    vec2 surfqy = imageLoad(surfaceQy, coord).rg;
+    if (pos.x >= uint(gridSize.x) || pos.y >= uint(gridSize.y)) {
+        return;
+    }
 
-    vec4 result =
-        vec4(bulk.r + surfh.r, bulk.g + surfqx.r, bulk.b + surfqy.r, 1.0
-        );
+    if (pos.x == 0u || pos.x >= (uint(gridSize.x) - 2u) ||
+        pos.y == 0u || pos.y >= (uint(gridSize.y) - 2u)) {
+        vec4 bulk = imageLoad(bulkFlow, pos);
+        imageStore(stateOut, pos, bulk);
+        return;
+    }
 
-    imageStore(stateOut, coord, result);
+
+    vec4 bulk = imageLoad(bulkFlow, pos);
+    float surfh = imageLoad(surfaceHeight, pos).r;
+    float surfqx = imageLoad(surfaceQx, pos).r;
+    float surfqy = imageLoad(surfaceQy, pos).r;
+
+    vec4 result = vec4(bulk.r + surfh, bulk.g + surfqx, bulk.b + surfqy, 1.0);
+
+    imageStore(stateOut, pos, result);
 }

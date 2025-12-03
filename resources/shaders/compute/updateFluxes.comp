@@ -115,6 +115,8 @@ void main() {
         outValues.z = 0.0; // qy = 0
     } else {
 
+        // Pressure
+
         float havg = 0.5 * (stateb.x + statec.x);
 
         float pressure = -gravity * (etac - etab) / dx;

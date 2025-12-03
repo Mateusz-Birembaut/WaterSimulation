@@ -15,6 +15,7 @@ void main() {
 
     if (globalID.x >= (uint(gridSize.x) - 1u) ||
         globalID.y >= (uint(gridSize.y) - 1u)) {
+        imageStore(stateOut, ivec2(globalID.xy), vec4(0.0));
         return;
     }
 

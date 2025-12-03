@@ -19,12 +19,24 @@ void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(stateIn);
 
-    if (pos.x >= (uint(gridSize.x) - 1u) ||
-        pos.y >= (uint(gridSize.y) - 1u) || pos.x <= 1 || pos.y <= 1) {
+    if (pos.x >= uint(gridSize.x) || pos.y >= uint(gridSize.y)) {
         return;
     }
 
     float terrainc = imageLoad(terrain, pos).r;
+
+    if (pos.x == 0u || pos.x >= (uint(gridSize.x) - 2u) ||
+        pos.y == 0u || pos.y >= (uint(gridSize.y) - 2u)) {
+        vec4 statec = imageLoad(stateIn, pos);
+        imageStore(tempOut, pos, vec4(statec.x + terrainc, statec.y, statec.z, 0.0));
+        if (stage == 2) {
+            imageStore(bulkFlow, pos, statec);
+            imageStore(surfaceHeight, pos, vec4(0.0));
+            imageStore(surfaceQx, pos, vec4(0.0));
+            imageStore(surfaceQy, pos, vec4(0.0));
+        }
+        return;
+    }
 
     if (stage == 0) { // Initialisation
         vec4 statec = imageLoad(stateIn, pos);
@@ -50,7 +62,7 @@ void main() {
         float gradMag = length(gradH);
 
         float d = 1.0/100.0;
-        float alpha = (h * h) / 64.0;
+        float alpha = min((h * h) / 64.0, 1.0); // clamp test
         alpha *= exp(-d * gradMag * gradMag);
 
         imageStore(tempOut, pos, vec4(H, qx, qy, alpha));
@@ -63,7 +75,7 @@ void main() {
         vec4 temp_b = imageLoad(tempIn, pos + ivec2(0, -1));
 
         float alpha = temp_c.w;
-        float diffusion_dt = 0.1;
+        float diffusion_dt = 0.01;
 
         float laplacian_H = (temp_l.x + temp_r.x + temp_t.x + temp_b.x - 4.0 * temp_c.x) / (dx * dx);
         float laplacian_qx = (temp_l.y + temp_r.y + temp_t.y + temp_b.y - 4.0 * temp_c.y) / (dx * dx);
@@ -83,7 +95,7 @@ void main() {
         float qx = statec.y;
         float qy = statec.z;
 
-        float bulk_h = filtered.x - terrainc;
+        float bulk_h = max(0.0, min(h, filtered.x - terrainc));
         float surface_h = h - bulk_h;
 
         float bulk_qx = filtered.y;
@@ -92,8 +104,8 @@ void main() {
         float surface_qy = qy - bulk_qy;
 
         imageStore(bulkFlow, pos, vec4(bulk_h, bulk_qx, bulk_qy, 1.0));
-        imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 0.0)* 1.0);
-        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0) * 1.0);
-        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0) *1.0);
+        imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 1.0) * 1.0);
+        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 0.0));
+        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 0.0));
     }
 }
