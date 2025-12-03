@@ -138,6 +138,7 @@ vec3 findFloor(vec3 position, vec3 direction){
 
         float displacementDist = diff * uLightFar;
 
+
         p += direction * displacementDist;
 
         // TODO ajouter le fait de partir dans l'autre sens pour des height maps plus complexe mais pour l'instant ok
