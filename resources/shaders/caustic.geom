@@ -61,28 +61,6 @@ vec3 getWaterNormal(vec2 uv, vec3 posCenter)
     return n;
 }
 
-void emitLine(vec3 p0, vec3 p1, vec3 color)
-{
-    //vNs = color;
-    gl_Position = uVPCamera * vec4(p0, 1.0);
-    EmitVertex();
-
-    //vNs = color;
-    gl_Position = uVPCamera * vec4(p1, 1.0);
-    EmitVertex();
-
-    EndPrimitive();
-}
-
-void emitPoint (vec3 p, vec3 color, float size)
-{
-    gl_Position = uVPCamera * vec4(p, 1.0);
-    //vNs = color;
-    gl_PointSize = size;
-    EmitVertex();
-    EndPrimitive();
-}
-
 
 float getWaveHeight(vec2 p, float time) {
     float h = 0.0;
@@ -255,18 +233,10 @@ void main()
         return;
 
     float distInWater = distance(Ps, Pi);
-    float distToCam = length((uVPCamera * vec4(Ps,1.0)).xyz);
-    
-    float sfinal = uA + uB / distToCam;
+    float distToCam = distance(uCamPos, Pi);
+    distToCam = max(distToCam, 1e-4);
 
-    /*
-    vIntensity = uIntensity * exp(-uAttenuation * distInWater);
-    gl_Position = uVPCamera * vec4(Ps, 1.0);
-    vClipPos = gl_Position;
-    gl_PointSize = sfinal;
-    EmitVertex();
-    EndPrimitive();
-    */
+    float sfinal = uA + uB / distToCam;
 
     vIntensity = uIntensity * exp(-uAttenuation * distInWater);
     gl_Position = uVPCamera * vec4(Pi, 1.0);

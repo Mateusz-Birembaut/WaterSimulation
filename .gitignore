@@ -21,6 +21,8 @@ external/*/lib64/
 *.dll
 *.dylib
 *.exe
+*.md
+*.txt
 
 # Misc
 .DS_Store

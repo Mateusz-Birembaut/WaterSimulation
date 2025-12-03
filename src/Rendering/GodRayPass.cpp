@@ -123,7 +123,9 @@ void WaterSimulation::GodRayPass::render(
 	}
 
 	
-	m_utils.blurTexture(m_godrayTexture);
+	if (m_enableBlur) {
+		m_utils.blurTexture(m_godrayTexture);
+	}
 
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
