@@ -155,11 +155,11 @@ void main()
 
     vec3 Ps = worldPos.rgb;
 
-    float waveH = getWaveHeight(Ps.xz, uTime);
-    Ps.y += waveH; 
-    vec3 Ns = getProceduralNormal(Ps.xz, uTime);
+    //float waveH = getWaveHeight(Ps.xz, uTime);
+    //Ps.y += waveH; 
+    //vec3 Ns = getProceduralNormal(Ps.xz, uTime);
     
-    //vec3 Ns = getWaterNormal(uv, Ps);
+    vec3 Ns = getWaterNormal(uv, Ps);
 
     vec3 Ri = normalize(uLightPos - Ps);
     vec3 Rt = refract(Ri, Ns, ETA);
@@ -173,6 +173,13 @@ void main()
     float distToCam = length((uVPCamera * vec4(Ps,1.0)).xyz);
     
     float sfinal = uA + uB / distToCam;
+
+    vIntensity = uIntensity * exp(-uAttenuation * distInWater);
+    gl_Position = uVPCamera * vec4(Ps, 1.0);
+    vClipPos = gl_Position;
+    gl_PointSize = sfinal;
+    EmitVertex();
+    EndPrimitive();
 
     vIntensity = uIntensity * exp(-uAttenuation * distInWater);
     gl_Position = uVPCamera * vec4(Pi, 1.0);
