@@ -236,7 +236,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     terrainCollider->vertices = m_terrainMesh->vertices;
     terrainCollider->indices = m_terrainMesh->triangles;
 
-    const Magnum::Vector2i terrainSize = m_heightmapReadback.size();
+    const Magnum::Vector2i terrainSize = m_heightmapReadback.terrainSize();
     const std::size_t expectedCount = std::size_t(terrainSize.x()) * std::size_t(terrainSize.y());
     const auto& terrainHeights = m_heightmapReadback.terrainHeightmap();
     Magnum::Vector3 terrainMin{
@@ -261,8 +261,39 @@ WaterSimulation::Application::Application(const Arguments& arguments):
             terrainMax.z() = std::max(terrainMax.z(), v.z());
         }
     }
-    terrainRigidBody.aabbCollider.min = terrainMin;
-    terrainRigidBody.aabbCollider.max = terrainMax;
+    terrainCollider->localMin = terrainMin;
+    terrainCollider->localMax = terrainMax;
+    terrainCollider->resolution = terrainSize;
+    TransformComponent& terrainTransform = m_registry.get<TransformComponent>(testTerrain);
+    Magnum::Matrix4 terrainModel = terrainTransform.model();
+    terrainTransform.globalModel = terrainModel;
+    terrainTransform.inverseGlobalModel = terrainModel.inverted();
+    Magnum::Vector3 worldMin{std::numeric_limits<float>::max()};
+    Magnum::Vector3 worldMax{std::numeric_limits<float>::lowest()};
+    for (int ix = 0; ix < 2; ++ix) {
+        for (int iy = 0; iy < 2; ++iy) {
+            for (int iz = 0; iz < 2; ++iz) {
+                Magnum::Vector3 corner{
+                    ix ? terrainMax.x() : terrainMin.x(),
+                    iy ? terrainMax.y() : terrainMin.y(),
+                    iz ? terrainMax.z() : terrainMin.z()
+                };
+                Magnum::Vector3 worldCorner = terrainModel.transformPoint(corner);
+                worldMin = Magnum::Vector3{
+                    std::min(worldMin.x(), worldCorner.x()),
+                    std::min(worldMin.y(), worldCorner.y()),
+                    std::min(worldMin.z(), worldCorner.z())
+                };
+                worldMax = Magnum::Vector3{
+                    std::max(worldMax.x(), worldCorner.x()),
+                    std::max(worldMax.y(), worldCorner.y()),
+                    std::max(worldMax.z(), worldCorner.z())
+                };
+            }
+        }
+    }
+    terrainRigidBody.aabbCollider.min = worldMin;
+    terrainRigidBody.aabbCollider.max = worldMax;
 
     terrainRigidBody.addCollider(terrainCollider);
     terrainRigidBody.bodyType = PhysicsType::STATIC;
@@ -323,7 +354,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & testTransform = m_registry.emplace<TransformComponent>(
         testEntity
     );
-    testTransform.position = Magnum::Vector3(0.0f, 10.0f, -35.0f);
+    testTransform.position = Magnum::Vector3(0.0f, 15.0f, -35.0f);
     testTransform.scale = Magnum::Vector3(1.0f, 1.0f, 1.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     auto& testMeshComp = m_registry.emplace<MeshComponent>(

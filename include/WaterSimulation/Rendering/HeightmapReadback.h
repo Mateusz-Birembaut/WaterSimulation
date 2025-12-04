@@ -39,6 +39,10 @@ namespace WaterSimulation {
 			return m_terrainHeightmap;
 		}
 
+		Magnum::Vector2i terrainSize() const {
+			return m_terrainSize;
+		}
+
 	      private:
 		void allocateBuffers();
 		void destroyBuffers();
@@ -46,6 +50,7 @@ namespace WaterSimulation {
 		std::array<GLuint, 2> m_pbos{0, 0};
 		std::array<std::vector<float>, 2> m_cpuCaches{}; // pour la hauteur de l'eau seulement
 		std::vector<float> m_terrainHeightmap{};
+		Magnum::Vector2i m_terrainSize{0};
 
 		Magnum::Vector2i m_size{0};
 		std::size_t m_texelCount{0};

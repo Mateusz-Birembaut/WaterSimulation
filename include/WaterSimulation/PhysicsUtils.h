@@ -148,6 +148,9 @@ struct OBBCollider : public Collider {
 struct MeshCollider : public Collider {
     std::vector<Vector3> vertices;
     std::vector<unsigned int> indices;
+    Vector3 localMin{0.0f};
+    Vector3 localMax{0.0f};
+    Magnum::Vector2i resolution{0};
     
     MeshCollider() {
         type = ColliderType::MESH;

@@ -30,7 +30,9 @@ void HeightmapReadback::initTerrainHeightmapFromTexture(Magnum::GL::Texture2D& t
 	const auto totalTexels = std::size_t(texSize.x()) * std::size_t(texSize.y());
 
 	m_terrainHeightmap.clear();
+	m_terrainSize = texSize;
 	if (totalTexels == 0) {
+		m_terrainSize = {0, 0};
 		return;
 	}
 

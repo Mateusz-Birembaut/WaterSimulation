@@ -44,6 +44,16 @@ class PhysicsSystem  {
 
     void applyBuoyancy(Registry& registry);
 
+    bool handleSphereTerrainCollision(Entity entityA,
+                                      RigidBodyComponent& rigidBodyA,
+                                      TransformComponent& transformA,
+                                      const Collider& colliderA,
+                                      Entity entityB,
+                                      RigidBodyComponent& rigidBodyB,
+                                      TransformComponent& transformB,
+                                      const Collider& colliderB,
+                                      CollisionInfo& collisionInfo) const;
+
 public : 
 
     void update(Registry& registry, float deltaTime );
