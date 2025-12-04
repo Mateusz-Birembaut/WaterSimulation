@@ -3,47 +3,38 @@ in vec2 fUV;
 out vec4 fragColor;
 
 uniform sampler2D uTexture;
+uniform vec2 uTexelSize;
+uniform vec2 uDirection;
+uniform float uRadius;
 
-const float PI = 3.14159265359;
-const int SAMPLES = 32;        
-const float BLUR_RADIUS = 4.0; 
+const int KERNEL_TAPS = 8;
 
-
-float rand(vec2 co) {
-    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+float gaussianWeight(float x, float sigma) {
+    float s = max(sigma, 1e-4);
+    return exp(-(x * x) / (2.0 * s * s));
 }
 
 void main() {
-    ivec2 size = textureSize(uTexture, 0);
-    vec2 texelSize = 1.0 / vec2(size); 
+    vec4 accum = texture(uTexture, fUV);
+    float weightSum = 1.0;
 
-    vec4 totalColor = texture(uTexture, fUV);
-    float totalWeight = 1.0;
-
-    float noise = rand(fUV);
-    float angle = noise * 2.0 * PI;
+    vec2 dir = normalize(uDirection);
     
-    float s = sin(angle);
-    float c = cos(angle);
-    mat2 rotationMatrix = mat2(c, -s, s, c);
+    if(length(dir) < 1e-4)
+        dir = vec2(1.0, 0.0);
 
-    for(int i = 1; i < SAMPLES; i++) {
-        float scale = float(i) / float(SAMPLES - 1); 
-        float currentRadius = BLUR_RADIUS * scale;
+    float sigma = max(uRadius, 0.5);
 
-        vec2 offset = vec2(currentRadius, 0.0);
+    for(int i = 1; i <= KERNEL_TAPS; ++i) {
+        float offset = float(i);
+        float weight = gaussianWeight(offset, sigma);
 
-        offset = rotationMatrix * offset;
+        vec2 sampleOffset = dir * (offset * uTexelSize);
 
-        vec2 offsetUV = offset * texelSize;
-
-        vec4 sample1 = texture(uTexture, fUV + offsetUV);
-        vec4 sample2 = texture(uTexture, fUV - offsetUV);
-
-        totalColor += sample1 + sample2;
-        totalWeight += 2.0;
+        accum += texture(uTexture, fUV + sampleOffset) * weight;
+        accum += texture(uTexture, fUV - sampleOffset) * weight;
+        weightSum += 2.0 * weight;
     }
 
-
-    fragColor = totalColor / totalWeight;
+    fragColor = accum / weightSum;
 }

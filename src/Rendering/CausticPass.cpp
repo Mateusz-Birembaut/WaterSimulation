@@ -126,7 +126,7 @@ void WaterSimulation::CausticPass::render(
 
 	
 	if (m_enableBlur) {
-		m_utils.blurTexture(m_causticMap);
+		m_utils.blurTexture(m_causticMap, m_blurRadius);
 	}
 
 	glDisable(GL_BLEND);

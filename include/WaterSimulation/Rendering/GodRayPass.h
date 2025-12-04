@@ -28,6 +28,7 @@ namespace WaterSimulation {
 		float m_gamma = 1.3f;
 		float m_intensity = 10.0f;
 		float m_rayWidth = 2.0f;
+		float m_blurRadius = 3.25f;
 
         bool m_enableBlur = true; // Toggle for blur effect
 

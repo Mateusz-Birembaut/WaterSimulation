@@ -245,25 +245,24 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
     ImGui::Begin("Visuals");
 
-    {
-        auto & causticPass = (app->m_renderSystem.causticPass());
-        ImGui::Text("Caustic Parameters:");
-        ImGui::DragFloat("S Min", &causticPass.m_S_MIN, 0.1f);
-        ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
-        ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
-        ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
-        ImGui::Checkbox("Blur Caustics", &causticPass.m_enableBlur);
-    }
+    auto& causticPass = app->m_renderSystem.causticPass();
+    ImGui::Text("Caustic Parameters:");
+    ImGui::DragFloat("S Min", &causticPass.m_S_MIN, 0.1f);
+    ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
+    ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
+    ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
+    ImGui::Checkbox("Blur Caustics", &causticPass.m_enableBlur);
+    ImGui::SliderFloat("Caustics Blur Radius", &causticPass.m_blurRadius, 0.0f, 10.0f);
 
-    {
-        auto & godrayPass = (app->m_renderSystem.godrayPass());
-        ImGui::Text("God Rays Parameters:");
-        ImGui::DragFloat("G", &godrayPass.m_g, 0.1f);
-        ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.1f);
-        ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
-        ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
-        ImGui::Checkbox("Blur God Rays", &godrayPass.m_enableBlur);
-    }
+    auto& godrayPass = app->m_renderSystem.godrayPass();
+    ImGui::Separator();
+    ImGui::Text("God Rays Parameters:");
+    ImGui::DragFloat("G", &godrayPass.m_g, 0.1f);
+    ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.1f);
+    ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
+    ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
+    ImGui::Checkbox("Blur God Rays", &godrayPass.m_enableBlur);
+    ImGui::SliderFloat("God Rays Blur Radius", &godrayPass.m_blurRadius, 0.0f, 10.0f);
 
     ImGui::End();
 }

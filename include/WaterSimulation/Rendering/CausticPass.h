@@ -28,6 +28,7 @@ namespace WaterSimulation {
 		float m_S_MAX = 358.2f;
 		float m_photonIntensity = 1.45f;
 		float m_waterAttenuation = 0.940f;
+		float m_blurRadius = 3.25f;
 
         bool m_enableBlur = true; // Toggle for blur effect
 
