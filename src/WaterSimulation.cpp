@@ -221,7 +221,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     ); 
 
     //visu eau rapide
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
 
 
@@ -233,7 +233,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     m_registry.emplace<TransformComponent>(
         waterEntity,
-        Magnum::Vector3{0.0f, 1.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
+        Magnum::Vector3{0.0f, -1.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
     );
     m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
@@ -263,8 +263,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & testTransform = m_registry.emplace<TransformComponent>(
         testEntity
     );
-    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
-    testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
+    testTransform.position = Magnum::Vector3(0.0f, 10.0f, -40.0f);
+    testTransform.scale = Magnum::Vector3(1.0f, 1.0f, 1.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     auto& testMeshComp = m_registry.emplace<MeshComponent>(
         testEntity,

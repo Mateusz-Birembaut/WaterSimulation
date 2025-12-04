@@ -28,7 +28,7 @@ using namespace Magnum;
 
 
 void WaterSimulation::GodRayPass::init() {
-	const Magnum::Vector2i causticResolution = {128, 128};
+	const Magnum::Vector2i causticResolution = {256, 256};
 	m_fb = GL::Framebuffer{{{}, causticResolution}};
 
 	m_godrayTexture = GL::Texture2D{};
@@ -45,7 +45,7 @@ void WaterSimulation::GodRayPass::init() {
 
 
 void WaterSimulation::GodRayPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(300, 300, 2.0);
+	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
 	m_photonGrid = Magnum::GL::Mesh{};
@@ -107,6 +107,7 @@ void WaterSimulation::GodRayPass::render(
 		m_godrayShader.bindShadowMapTexture(shadowMap)
 		    .bindWaterMaskTexture(waterWorldPos)
 		    .setVPLight(lightViewProj)
+		    .setInvVPLight(lightViewProj.inverted())
 		    .setVPCamera(camViewProj)
 		    .setCameraPos(camera.position())
 		    .setLightPos(lightPosition)

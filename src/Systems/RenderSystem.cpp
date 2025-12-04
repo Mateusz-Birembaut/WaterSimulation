@@ -242,46 +242,5 @@ DisplayShader& DisplayShader::setTransformationMatrix(const Matrix4& matrix) {
 }
 
 
-/*
-    auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
-    if(sunView.begin() != sunView.end()) {
-        Entity sunEntity = *sunView.begin();
-		auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-		auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
-
-        float maxFarCam = 50.0f;
-        float minFarCam = 1.0f;
-
-		Magnum::Vector3 p_mid{cam.position() + (((cam.near() + std::clamp(cam.far(), minFarCam, maxFarCam))/2.0f) * cam.direction())};
-        Magnum::Vector3 lightPos {p_mid - sunDirection.direction.normalized() * sunDirection.offset};
-
-        Vector3 forward = (p_mid - lightPos).normalized();
-
-        Vector3 up = Magnum::Vector3::yAxis().normalized();
-        Vector3 right = Magnum::Math::cross(forward, up).normalized();
-
-        up = Magnum::Math::cross(right, forward).normalized();
-
-        Matrix4 lightView = Matrix4::lookAt(lightPos, p_mid, up);
-        lightView = lightView.invertedRigid();
-
-		const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
-			shadowCastData.projectionSize, 
-			shadowCastData.near,                    
-			shadowCastData.far                       
-		);
-
-        float len = 2.0f;
-        DebugDraw::instance().addPoint(lightPos, Color3{0.0f, 0.0f, 0.0f}, 0.5f);
-        DebugDraw::instance().addPoint(p_mid, Color3{1.0f, 1.0f, 0.0f}, 0.5f);
-        DebugDraw::instance().addLine(p_mid, p_mid + (forward * len), Color3{0.0f, 0.0f, 1.0f});
-        DebugDraw::instance().addLine(p_mid, p_mid + (up * len), Color3{0.0f, 1.0f, 0.0f});
-        DebugDraw::instance().addLine(p_mid, p_mid + (right * len), Color3{1.0f, 0.0f, 0.0f});
-        FrustumVisualizer::draw(lightView, lightProj, Color3{1.0f, 1.0f, 0.0f});
-    }
-
-    DebugDraw::instance().draw(viewMatrix, projectionMatrix);
-    */
-
 } // namespace WaterSimulation
 

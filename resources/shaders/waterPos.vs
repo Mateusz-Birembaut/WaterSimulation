@@ -17,7 +17,7 @@ void main() {
     float totalHeight = baseHeight + additionalHeight;
 
     localPos.y += totalHeight * 1.5;
-    vWaterHeight = totalHeight;
+    vWaterHeight = additionalHeight;
 
     vec4 worldPos4 = uModel * vec4(localPos, 1.0);
     vWorldPos = worldPos4.xyz;

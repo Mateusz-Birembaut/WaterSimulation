@@ -14,6 +14,7 @@ namespace WaterSimulation {
 
 	      private:
 		Magnum::Int m_uLightViewProjLoc;
+		Magnum::Int m_uInvLightViewProjLoc;
 		Magnum::Int m_uCameraViewProjLoc;
 		Magnum::Int m_uCameraPosLoc;
 		Magnum::Int m_uShadowMapSamplerLoc;
@@ -61,6 +62,8 @@ namespace WaterSimulation {
 
 			m_uLightViewProjLoc = uniformLocation("uVPLight");
 
+			m_uInvLightViewProjLoc = uniformLocation("uInvVPLight");
+
 			m_uCameraViewProjLoc = uniformLocation("uVPCamera");
 			m_uCameraPosLoc = uniformLocation("uCamPos");
 
@@ -87,6 +90,11 @@ namespace WaterSimulation {
 
 		GodRayShader& setVPLight(const Magnum::Matrix4& VPLight) {
 			setUniform(m_uLightViewProjLoc, VPLight);
+			return *this;
+		}
+
+		GodRayShader& setInvVPLight(const Magnum::Matrix4& invVPLight) {
+			setUniform(m_uInvLightViewProjLoc, invVPLight);
 			return *this;
 		}
 
