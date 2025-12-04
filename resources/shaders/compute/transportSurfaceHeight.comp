@@ -1,0 +1,43 @@
+//#version 430
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) uniform highp image2D surfaceOut;
+layout(binding = 1, rgba32f) readonly uniform highp image2D bulkFlow; // Contains (h_bar, qx_bar, qy_bar)
+layout(binding = 2, rg32f) readonly uniform highp image2D surfaceHeight;
+
+uniform float dt;
+uniform float dx;
+
+const float eps = 1e-6;
+
+vec2 compute_u(ivec2 pos, ivec2 gridSize) {
+    pos = clamp(pos, ivec2(1), gridSize - ivec2(2));
+    vec4 bulk = imageLoad(bulkFlow, pos);
+    float h = max(bulk.x, eps);
+    return bulk.yz / h;
+}
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(surfaceOut);
+
+    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 1 || pos.y <= 1) {
+        imageStore(surfaceOut, pos, vec4(0.0));
+        return;
+    }
+    vec2 ul = compute_u(pos + ivec2(-1, 0), gridSize);
+    vec2 ur = compute_u(pos + ivec2(1, 0), gridSize);
+    vec2 ut = compute_u(pos + ivec2(0, 1), gridSize);
+    vec2 ub = compute_u(pos + ivec2(0, -1), gridSize);
+
+    float divU = (ur.x - ul.x) / (2.0 * dx) + (ut.y - ub.y) / (2.0 * dx);
+
+    float gamma = 1.0;
+    float G = min(-divU, -gamma * divU);
+
+    float surfh = imageLoad(surfaceHeight, pos).r;
+    float dampedh = surfh * exp(G * dt);
+
+    vec4 oldval = imageLoad(surfaceOut, pos);
+    imageStore(surfaceOut, pos, vec4(dampedh, oldval.y, oldval.z, 1.0));
+}

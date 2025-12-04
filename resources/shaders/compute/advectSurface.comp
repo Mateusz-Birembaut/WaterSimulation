@@ -1,0 +1,82 @@
+//#version 430
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D surfaceIn;
+
+layout(binding = 1, rgba32f) writeonly uniform highp image2D surfaceOut;
+
+layout(binding = 2, rgba32f) readonly uniform highp image2D bulkFlow;
+
+uniform float dt;
+uniform float dx;
+
+const float eps = 1e-6;
+
+vec2 getBulkVelocityAt(vec2 coord, ivec2 gridSize) {
+    coord = clamp(coord, vec2(1.0), vec2(gridSize) - vec2(2.0));
+    
+    ivec2 i0 = ivec2(floor(coord));
+    ivec2 i1 = min(i0 + ivec2(1), gridSize - ivec2(2));
+    
+    vec2 f = fract(coord);
+    
+    vec4 b00 = imageLoad(bulkFlow, i0);
+    vec4 b10 = imageLoad(bulkFlow, ivec2(i1.x, i0.y));
+    vec4 b01 = imageLoad(bulkFlow, ivec2(i0.x, i1.y));
+    vec4 b11 = imageLoad(bulkFlow, i1);
+    
+    vec2 u00 = b00.yz / max(b00.x, eps);
+    vec2 u10 = b10.yz / max(b10.x, eps);
+    vec2 u01 = b01.yz / max(b01.x, eps);
+    vec2 u11 = b11.yz / max(b11.x, eps);
+    
+    vec2 u0 = mix(u00, u10, f.x);
+    vec2 u1 = mix(u01, u11, f.x);
+    return mix(u0, u1, f.y);
+}
+
+vec3 sampleSurface(vec2 coord, ivec2 gridSize) {
+    coord = clamp(coord, vec2(1.0), vec2(gridSize) - vec2(2.0));
+    
+    ivec2 i0 = ivec2(floor(coord));
+    ivec2 i1 = min(i0 + ivec2(1), gridSize - ivec2(2));
+    
+    vec2 f = fract(coord);
+    
+    vec3 s00 = imageLoad(surfaceIn, i0).xyz;
+    vec3 s10 = imageLoad(surfaceIn, ivec2(i1.x, i0.y)).xyz;
+    vec3 s01 = imageLoad(surfaceIn, ivec2(i0.x, i1.y)).xyz;
+    vec3 s11 = imageLoad(surfaceIn, i1).xyz;
+    
+    vec3 s0 = mix(s00, s10, f.x);
+    vec3 s1 = mix(s01, s11, f.x);
+    return mix(s0, s1, f.y);
+}
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(surfaceIn);
+
+    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 0 || pos.y <= 0) {
+        imageStore(surfaceOut, pos, vec4(0.0));
+        return;
+    }
+
+    vec2 currentPos = vec2(pos);
+    
+    vec4 bulk = imageLoad(bulkFlow, pos);
+    vec2 velocity = bulk.yz / max(bulk.x, eps);
+    
+    vec2 velocityGrid = velocity / dx;
+
+    // Semi lagrangian backtrack
+    vec2 midPos = currentPos - 0.5 * dt * velocityGrid;
+    
+    vec2 midVelocity = getBulkVelocityAt(midPos, gridSize) / dx;
+    
+    vec2 backPos = currentPos - dt * midVelocity;
+    
+    vec3 advectedSurface = sampleSurface(backPos, gridSize);
+    
+    imageStore(surfaceOut, pos, vec4(advectedSurface, 1.0));
+}

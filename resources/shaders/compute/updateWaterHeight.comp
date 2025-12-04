@@ -1,37 +1,51 @@
+//#version 430
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
-layout(binding = 1, rgba32f) writeonly uniform highp image2D stateOut;
-layout(binding = 2, r32f) readonly uniform highp image2D terrain;
+layout(binding = 0, rgba32f) readonly uniform highp image2D bulk;
+layout(binding = 1, rgba32f) readonly uniform highp image2D surface;
+
+layout(binding = 2, rgba32f) writeonly uniform highp image2D stateOut;
 
 uniform float dx;
 uniform float dt;
-uniform float gravity;
 uniform float dryEps;
-uniform float friction_coef;
 
 void main() {
-    uvec3 globalID = gl_GlobalInvocationID;
-    ivec2 gridSize = imageSize(stateIn);
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(stateOut);
 
-    vec4 outValues = vec4(0.0);
-
-    if (globalID.x >= (uint(gridSize.x) - 1u) ||
-        globalID.y >= (uint(gridSize.y) - 1u)) {
+    if (pos.x <= 0 || pos.y <= 0 || pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1) {
+        imageStore(stateOut, pos, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
 
-    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
-    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
-    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
+    vec4 bulkc = imageLoad(bulk, pos);
+    vec4 bulkr = imageLoad(bulk, pos + ivec2(1, 0));
+    vec4 bulkt = imageLoad(bulk, pos + ivec2(0, 1));
 
-    float divx = (stater.y - statec.y) / dx;
-    float divy = (statet.z - statec.z) / dx;
+    vec4 surfacec = imageLoad(surface, pos);
+    vec4 surfacer = imageLoad(surface, pos + ivec2(1, 0));
+    vec4 surfacet = imageLoad(surface, pos + ivec2(0, 1));
 
-    outValues.x = max(statec.x - (divx + divy) * dt, 0.0);
-    outValues.y = statec.y;
-    outValues.z = statec.z;
-    outValues.a = 1.0;
+    float total_h = bulkc.x + surfacec.x;
+    
 
-    imageStore(stateOut, ivec2(globalID.xy), outValues);
+    float qx_c = bulkc.y + surfacec.y;
+    float qx_r = bulkr.y + surfacer.y;
+    float qy_c = bulkc.z + surfacec.z;
+    float qy_t = bulkt.z + surfacet.z;
+
+    float div_q = (qx_r - qx_c) / dx + (qy_t - qy_c) / dx;
+
+    float new_h = total_h - div_q * dt;
+    new_h = max(new_h, 0.0);
+
+    vec2 total_q = vec2(qx_c, qy_c);
+
+    if (new_h < dryEps) {
+        new_h = 0.0;
+        total_q = vec2(0.0);
+    }
+
+    imageStore(stateOut, pos, vec4(new_h, total_q.x, total_q.y, 1.0));
 }

@@ -32,15 +32,14 @@ class ShallowWater {
     float gravity = 9.81f; // la gravité
 
     // stabilité
-    float dryEps = 1e-4f; // valeur de h a partir de laquelle une cellule est
+    float dryEps = 1e-3f; // valeur de h a partir de laquelle une cellule est
                           // considéré comme sec
     float limitCFL; // coefficient CFL
-    float friction_coef = 0.00f;
+    float friction_coef = 0.01f;
 
     // Compute Shaders
 
     bool ping = false;
-    
 
     Magnum::GL::Texture2D m_stateTexture; // RGB 32f texture that contains (h, qx, qy)
     Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup // texture final
@@ -181,6 +180,64 @@ class ShallowWater {
             return *this;
         }
 
+        ComputeProgram &bindTransportSurfaceFlow(Magnum::GL::Texture2D * surfaceQx,
+                     Magnum::GL::Texture2D *surfaceQy,
+                     Magnum::GL::Texture2D *bulkFlow,
+                     Magnum::GL::Texture2D *bulkFLowOld,
+                    Magnum::GL::Texture2D *surfaceOut) {
+            surfaceQx->bindImage(3, 0, Magnum::GL::ImageAccess::ReadOnly,
+                     Magnum::GL::ImageFormat::RG32F);
+            surfaceQy->bindImage(4, 0, Magnum::GL::ImageAccess::ReadOnly,
+                     Magnum::GL::ImageFormat::RG32F);
+
+            bulkFlow->bindImage(2, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RGBA32F);
+            bulkFLowOld->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RGBA32F);
+
+            surfaceOut->bindImage(0, 0, Magnum::GL::ImageAccess::WriteOnly,
+                        Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
+        ComputeProgram &bindTransportSurfaceHeight(Magnum::GL::Texture2D * surfaceHeight,
+                     Magnum::GL::Texture2D *bulkFlow,
+                    Magnum::GL::Texture2D *surfaceOut) {
+            surfaceHeight->bindImage(2, 0, Magnum::GL::ImageAccess::ReadOnly,
+                     Magnum::GL::ImageFormat::RG32F);
+
+            bulkFlow->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                        Magnum::GL::ImageFormat::RGBA32F);
+
+            surfaceOut->bindImage(0, 0, Magnum::GL::ImageAccess::ReadWrite,
+                        Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
+        ComputeProgram &bindAdvection(Magnum::GL::Texture2D *surfaceIn,
+                          Magnum::GL::Texture2D *surfaceOut,
+                          Magnum::GL::Texture2D *bulkFlow) {
+            surfaceIn->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
+                     Magnum::GL::ImageFormat::RGBA32F);
+            surfaceOut->bindImage(1, 0, Magnum::GL::ImageAccess::WriteOnly,
+                      Magnum::GL::ImageFormat::RGBA32F);
+            bulkFlow->bindImage(2, 0, Magnum::GL::ImageAccess::ReadOnly,
+                    Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
+        ComputeProgram &bindUpdateHeight(Magnum::GL::Texture2D *bulk,
+                         Magnum::GL::Texture2D *surface,
+                         Magnum::GL::Texture2D *stateOut) {
+            bulk->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
+                    Magnum::GL::ImageFormat::RGBA32F);
+            surface->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
+                       Magnum::GL::ImageFormat::RGBA32F);
+            stateOut->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
+                    Magnum::GL::ImageFormat::RGBA32F);
+            return *this;
+        }
+
         ComputeProgram &setParametersUniforms(ShallowWater &sim) {
             setUniform(uniformLocation("dx"), sim.dx);
             setUniform(uniformLocation("dt"), sim.dt);
@@ -231,7 +288,10 @@ class ShallowWater {
 
     ComputeProgram m_recomposeProgram;
 
-    ComputeProgram m_transportSurfaceProgram;
+    ComputeProgram m_transportSurfaceFlowProgram;
+    ComputeProgram m_transportSurfaceHeightProgram;
+
+    ComputeProgram m_semiLagrangianAdvectionProgram;
 
   public:
     ShallowWater() = default;
@@ -324,7 +384,7 @@ class ShallowWater {
 
     void compilePrograms();
 
-    void runSW(Magnum::GL::Texture2D *inputTex);
+    void runSW(Magnum::GL::Texture2D *inputTex,Magnum::GL::Texture2D *outputTex);
     void runDecomposition(Magnum::GL::Texture2D *inputTex);
     Magnum::GL::Texture2D* runFFT(Magnum::GL::Texture2D* pingTex, Magnum::GL::Texture2D* pongTex, 
                         int direction);
@@ -350,7 +410,7 @@ class ShallowWater {
     Magnum::GL::Texture2D *getIFFTOutput() { return m_ifftOutput; }
     
 
-
+    bool airyWavesEnabled = true;
     // initialisation
     void initBump();
     void initDamBreak();
@@ -358,8 +418,6 @@ class ShallowWater {
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f, int channels = 1);
-
-    bool airyWavesEnabled = true;
 
     // debug
     float minh;

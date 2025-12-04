@@ -36,17 +36,11 @@ void main() {
 
     // In frequency domain the waves are centered
 
-    float kx, ky;
-    if (gid.x <= N / 2) {
-        kx = float(gid.x);
-        ky = float(gid.y);
-    } else {
-        kx = float(gid.x - N);
-        ky = float(gid.y - N);
-    }
+    float kx_idx = (gid.x <= N / 2) ? float(gid.x) : float(gid.x - N);
+    float ky_idx = (gid.y <= N / 2) ? float(gid.y) : float(gid.y - N);
 
-    kx = kx * 2.0 * PI / (float(N) * dx);
-    ky = ky * 2.0 * PI / (float(N) * dx);
+    float kx = kx_idx * 2.0 * PI / (float(N) * dx);
+    float ky = ky_idx * 2.0 * PI / (float(N) * dx);
 
     float k = sqrt(kx * kx + ky * ky);
 

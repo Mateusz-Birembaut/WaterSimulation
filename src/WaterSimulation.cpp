@@ -99,7 +99,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 9.0f, 1);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 7.0f, 1);
 
     m_shallowWaterSimulation.initDamBreak();
 
