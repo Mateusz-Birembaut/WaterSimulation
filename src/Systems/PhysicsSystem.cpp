@@ -9,8 +9,10 @@
 #include <WaterSimulation/PhysicsUtils.h>
 
 #include <Corrade/Utility/Debug.h>
+#include <Magnum/Math/Constants.h>
 #include <Magnum/Math/Functions.h>
 
+#include <cmath>
 #include <limits>
 #include <cstring>
 
@@ -689,61 +691,70 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
     WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
+    if (m_heightmapReadback)
+        m_heightmapReadback->fetchLatestCPUCopy();
+
     const bool hasHeightmap = m_heightmapReadback && m_heightmapReadback->hasCpuData();
     const Magnum::Vector2i heightmapSize = hasHeightmap ? m_heightmapReadback->size() : Magnum::Vector2i{0};
 
     
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
-		auto& transform = view.get<TransformComponent>(entity);
+        auto& transform = view.get<TransformComponent>(entity);
         auto& rb = view.get<RigidBodyComponent>(entity);
         auto& b = view.get<BuoyancyComponent>(entity);
 
-        if (b.localTestPoints.empty()) continue;
+        if (rb.bodyType == PhysicsType::STATIC) continue;
 
-        Magnum::Matrix4 transformMatrix = transform.globalModel; 
+        if (!hasHeightmap || heightmapSize.x() <= 0 || heightmapSize.y() <= 0) continue;
 
-        int pointsUnderwater = 0;
+        const float gravityMagnitude = std::abs(gravity.y());
+        const float fluidDensity = b.flotability > 0.0f ? b.flotability : 1000.0f;
 
-        for (const auto& localPoint : b.localTestPoints) {
-            Magnum::Vector4 worldPoint = {transformMatrix.transformPoint(localPoint), 1.0};
+        for (Collider* colliderPtr : rb.colliders) {
 
+            if (!colliderPtr || colliderPtr->type != ColliderType::SPHERE) continue;
+
+            const SphereCollider& sphere = static_cast<const SphereCollider&>(*colliderPtr);
+
+            const float radiusScale = std::max({transform.scale.x(), transform.scale.y(), transform.scale.z()});
+            const float radius = sphere.radius * radiusScale;
             
-            Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * worldPoint).xyz();
+            if (radius <= 0.0f) continue;
 
-            float u = (waterSpacePoint.x() + wC.scale * 0.5f) / wC.scale ;
-            float v = (waterSpacePoint.z() + wC.scale  * 0.5f) / wC.scale ;
+            Magnum::Vector3 sphereCenter = transform.globalModel.transformPoint(sphere.localCentroid);
+            Magnum::Vector4 centerWorld{sphereCenter, 1.0f};
+            Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * centerWorld).xyz();
 
-            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) {
-                continue;
-            }
+            const float u = (waterSpacePoint.x() + wC.scale * 0.5f) / wC.scale;
+            const float v = (waterSpacePoint.z() + wC.scale * 0.5f) / wC.scale;
 
-            if (!hasHeightmap || heightmapSize.x() <= 0 || heightmapSize.y() <= 0) {
-                continue;
-            }
+            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) continue;
 
-            int px = Magnum::Math::clamp(int(u * float(heightmapSize.x() - 1)), 0, heightmapSize.x() - 1);
-            int py = Magnum::Math::clamp(int(v * float(heightmapSize.y() - 1)), 0, heightmapSize.y() - 1);
+            const int px = Magnum::Math::clamp(int(u * float(heightmapSize.x() - 1)), 0, heightmapSize.x() - 1);
+            const int py = Magnum::Math::clamp(int(v * float(heightmapSize.y() - 1)), 0, heightmapSize.y() - 1);
 
-            // hauteur totale eau + terrain
-            float waterHeightLocal = m_heightmapReadback->heightAt(px, py);
+            const float waterHeightLocal = m_heightmapReadback->heightAt(px, py);
+            Magnum::Vector4 surfaceLocal{waterSpacePoint.x(), waterHeightLocal, waterSpacePoint.z(), 1.0f};
+            const float waterHeightWorld = (transformComp.globalModel * surfaceLocal).y();
 
-            float displaced_volumes = 0.0f;
+            const float sphereBottom = sphereCenter.y() - radius;
 
-            if (waterSpacePoint.y()  < waterHeightLocal) {
-                pointsUnderwater++;
+            if (waterHeightWorld <= sphereBottom) continue;
 
-                Magnum::Vector4 surfaceLocal{waterSpacePoint.x(), waterHeightLocal, waterSpacePoint.z(), 1.0f};
-                const float waterHeightWorld = (transformComp.globalModel * surfaceLocal).y();
-                float depth = waterHeightWorld - worldPoint.y();
+            const float maxSubmersion = radius * 2.0f;
+            const float submergedHeight = Magnum::Math::clamp(waterHeightWorld - sphereBottom, 0.0f, maxSubmersion);
 
-				// voir formule pour ajouter force 
+            if (submergedHeight <= 0.0f) continue;
 
-				Corrade::Utility::Debug{} << "ajout force au point" << worldPoint.xyz() << "à la hauteur" << waterHeightLocal;
-                rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
-            }
+            const float submergedVolume = Magnum::Constants::pi() * submergedHeight * submergedHeight * (radius - submergedHeight / 3.0f);
+            const float buoyantForceMagnitude = fluidDensity * gravityMagnitude * submergedVolume;
+
+            if (buoyantForceMagnitude <= 0.0f) continue;
+
+            rb.globalCentroid = transform.globalModel.transformPoint(rb.localCentroid);
+            rb.addForceAt({0.0f, buoyantForceMagnitude, 0.0f}, sphereCenter);
         }
-        
     }
 }
 

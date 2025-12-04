@@ -133,7 +133,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
-    
+    m_heightmapReadback.init({m_shallowWaterSimulation.getnx() + 1, m_shallowWaterSimulation.getny() + 1});
+
     m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 1.0f, 4);
 
     m_shallowWaterSimulation.initDamBreak();
@@ -364,10 +365,21 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
     rigidBody.mass = 1.0f;
+    rigidBody.linearDamping = 0.4f;
+    rigidBody.angularDamping = 0.6f;
+    rigidBody.inverseMass = 1.0f / rigidBody.mass;
     rigidBody.mesh = testMeshComp.activeMesh;
-    rigidBody.addCollider(new SphereCollider(10.0f));
+
+    auto* sphereCollider = new SphereCollider(1.0f);
+    sphereCollider->mass = 2500.0f;
+    sphereCollider->computeInertiaTensor();
+    rigidBody.addCollider(sphereCollider);
+
+
     auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
-    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
+    b.flotability = 600.0f;
+    b.waterDrag = 2.0f;
+    b.angularDrag = 1.0f;
 
 
     // sun light en cours
