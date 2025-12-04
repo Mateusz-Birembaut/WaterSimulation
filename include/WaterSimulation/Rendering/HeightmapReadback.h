@@ -2,6 +2,7 @@
 
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Vector3.h>
 
 #include <array>
 #include <cstddef>
@@ -30,6 +31,7 @@ namespace WaterSimulation {
 
 		float heightAt(int x, int y) const;
 		float heightAtUV(const Magnum::Vector2& uv) const;
+		Magnum::Vector3 stateAt(int x, int y) const;
 
 		Magnum::Vector2i size() const {
 			return m_size;

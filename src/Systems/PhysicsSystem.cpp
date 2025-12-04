@@ -735,6 +735,7 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
             const int py = Magnum::Math::clamp(int(v * float(heightmapSize.y() - 1)), 0, heightmapSize.y() - 1);
 
             const float waterHeightLocal = m_heightmapReadback->heightAt(px, py);
+            const Magnum::Vector3 waterState = m_heightmapReadback->stateAt(px, py);
             Magnum::Vector4 surfaceLocal{waterSpacePoint.x(), waterHeightLocal, waterSpacePoint.z(), 1.0f};
             const float waterHeightWorld = (transformComp.globalModel * surfaceLocal).y();
 
@@ -754,6 +755,32 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
             rb.globalCentroid = transform.globalModel.transformPoint(rb.localCentroid);
             rb.addForceAt({0.0f, buoyantForceMagnitude, 0.0f}, sphereCenter);
+
+            const float waterDepth = waterState.x();
+            
+            Magnum::Vector3 waterVelocityLocal{0.0f};
+            if (waterDepth > 1.0e-4f) {
+                const float invDepth = 1.0f / waterDepth;
+                waterVelocityLocal.x() = waterState.y() * invDepth;
+                waterVelocityLocal.z() = waterState.z() * invDepth;
+            }
+
+            Magnum::Matrix3 waterRotation = transformComp.globalModel.rotationScaling();
+            Magnum::Vector3 waterVelocityWorld = waterRotation * waterVelocityLocal;
+
+            Magnum::Vector3 bodyVelocityAtPoint = rb.getVelocityAt(sphereCenter);
+            Magnum::Vector3 relativeVelocity = waterVelocityWorld - bodyVelocityAtPoint;
+            Magnum::Vector3 horizontalRelative{relativeVelocity.x(), 0.0f, relativeVelocity.z()};
+
+            const float relSpeed = horizontalRelative.length();
+            if (relSpeed > 1.0e-3f) {
+                const float submersionRatio = submergedHeight / maxSubmersion;
+                const float referenceArea = Magnum::Constants::pi() * radius * radius;
+                const float dragCoefficient = b.waterDrag > 0.0f ? b.waterDrag : 1.0f;
+                const float dragMagnitude = 0.5f * fluidDensity * referenceArea * relSpeed * relSpeed * dragCoefficient * submersionRatio;
+                Magnum::Vector3 lateralForce = dragMagnitude * (horizontalRelative / relSpeed);
+                rb.addForceAt(lateralForce, sphereCenter);
+            }
         }
     }
 }

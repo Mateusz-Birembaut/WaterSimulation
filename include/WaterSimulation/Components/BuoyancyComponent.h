@@ -13,7 +13,7 @@ namespace WaterSimulation
 	{
 		
 		float flotability{};
-		float waterDrag = 1.0f; 
+		float waterDrag = 0.1f; 
 		float angularDrag = 0.5f;
 
         //float flowInfluence = 0.0f; influence de swe sur object ?

@@ -150,3 +150,13 @@ float HeightmapReadback::heightAtUV(const Vector2& uv) const {
 
 	return heightAt(x, y);
 }
+
+Magnum::Vector3 HeightmapReadback::stateAt(int x, int y) const {
+	if (!m_hasCpuData || x < 0 || y < 0 || x >= m_size.x() || y >= m_size.y())
+		return {0.0f, 0.0f, 0.0f};
+
+	const std::size_t texelIndex = std::size_t(y) * std::size_t(m_size.x()) + std::size_t(x);
+	const std::size_t idx = texelIndex * kChannels;
+	const auto& cache = m_cpuCaches[m_lastCpuIndex];
+	return {cache[idx + 0], cache[idx + 1], cache[idx + 2]};
+}

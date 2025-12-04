@@ -371,7 +371,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     rigidBody.mesh = testMeshComp.activeMesh;
 
     auto* sphereCollider = new SphereCollider(1.0f);
-    sphereCollider->mass = 2500.0f;
+    sphereCollider->mass = 800.0f;
     sphereCollider->computeInertiaTensor();
     rigidBody.addCollider(sphereCollider);
 
