@@ -82,27 +82,32 @@ public:
 
         Magnum::Vector2 texelSize{1.0f / float(size.x()), 1.0f / float(size.y())};
 
-        // horizontal temp text
-        fbTemp.bind();
-        blur.setTexelSize(texelSize)
-            .setRadius(clampedRadius)
-            .setDirection({1.0f, 0.0f})
-            .bindTexture(texture)
-            .draw(m_meshFullscreenUtils);
-
-        // vertical texture de sortie
         Magnum::GL::Framebuffer fbOriginal{{{}, size}};
         fbOriginal.attachTexture(Magnum::GL::Framebuffer::ColorAttachment{0}, texture, 0);
         fbOriginal.setViewport({{}, size});
-        fbOriginal.bind();
-        Magnum::GL::Renderer::setClearColor(Magnum::Color4{0.0f, 0.0f, 0.0f, 0.0f});
-        fbOriginal.clear(Magnum::GL::FramebufferClear::Color);
 
-        blur.setTexelSize(texelSize)
-            .setRadius(clampedRadius)
-            .setDirection({0.0f, 1.0f})
-            .bindTexture(m_tempTexture)
-            .draw(m_meshFullscreenUtils);
+        constexpr float rotations[2]{0.0f, 2.09439510239f};
+
+        Magnum::GL::Texture2D* readTexture = &texture;
+
+        for(int pass = 0; pass < 2; ++pass) {
+            bool writeToTemp = (pass % 2 == 0);
+            if(writeToTemp) {
+                fbTemp.bind();
+                fbTemp.clear(Magnum::GL::FramebufferClear::Color);
+            } else {
+                fbOriginal.bind();
+                fbOriginal.clear(Magnum::GL::FramebufferClear::Color);
+            }
+
+            blur.setTexelSize(texelSize)
+                .setRadius(clampedRadius)
+                .setRotation(rotations[pass])
+                .bindTexture(*readTexture)
+                .draw(m_meshFullscreenUtils);
+
+            readTexture = writeToTemp ? &m_tempTexture : &texture;
+        }
 
         Magnum::GL::Renderer::enable(Magnum::GL::Renderer::Feature::DepthTest);
         Magnum::GL::Renderer::enable(Magnum::GL::Renderer::Feature::Blending);

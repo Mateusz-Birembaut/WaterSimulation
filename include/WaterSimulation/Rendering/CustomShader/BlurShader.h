@@ -17,7 +17,7 @@ namespace WaterSimulation
 	private:
 		Magnum::Int m_uTextureLoc;
 		Magnum::Int m_uTexelSizeLoc;
-		Magnum::Int m_uDirectionLoc;
+		Magnum::Int m_uRotationLoc;
 		Magnum::Int m_uRadiusLoc;
 
 	public:
@@ -47,7 +47,7 @@ namespace WaterSimulation
 
 			m_uTextureLoc = uniformLocation("uTexture");
 			m_uTexelSizeLoc = uniformLocation("uTexelSize");
-			m_uDirectionLoc = uniformLocation("uDirection");
+			m_uRotationLoc = uniformLocation("uRotation");
 			m_uRadiusLoc = uniformLocation("uRadius");
 		}
 
@@ -62,8 +62,8 @@ namespace WaterSimulation
 			return *this;
 		}
 
-		BlurShader& setDirection(const Magnum::Vector2& direction) {
-			setUniform(m_uDirectionLoc, direction);
+		BlurShader& setRotation(float rotation) {
+			setUniform(m_uRotationLoc, rotation);
 			return *this;
 		}
 

@@ -257,8 +257,8 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
     auto& godrayPass = app->m_renderSystem.godrayPass();
     ImGui::Separator();
     ImGui::Text("God Rays Parameters:");
-    ImGui::DragFloat("G", &godrayPass.m_g, 0.1f);
-    ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.1f);
+    ImGui::DragFloat("G", &godrayPass.m_g, 0.005f);
+    ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.005f);
     ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
     ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
     ImGui::Checkbox("Blur God Rays", &godrayPass.m_enableBlur);
