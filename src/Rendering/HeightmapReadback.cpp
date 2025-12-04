@@ -1,6 +1,7 @@
 #include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 #include <Magnum/GL/OpenGL.h>
+#include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Vector2.h>
 
@@ -22,6 +23,22 @@ HeightmapReadback::~HeightmapReadback() {
 void HeightmapReadback::init(const Vector2i& size) {
 	m_size = size;
 	allocateBuffers();
+}
+
+void HeightmapReadback::initTerrainHeightmapFromTexture(Magnum::GL::Texture2D& texture) {
+	const Vector2i texSize = texture.imageSize(0);
+	const auto totalTexels = std::size_t(texSize.x()) * std::size_t(texSize.y());
+
+	m_terrainHeightmap.clear();
+	if (totalTexels == 0) {
+		return;
+	}
+
+	m_terrainHeightmap.resize(totalTexels);
+
+	glBindTexture(GL_TEXTURE_2D, texture.id());
+	glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, m_terrainHeightmap.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void HeightmapReadback::resize(const Vector2i& size) {
@@ -114,8 +131,12 @@ float HeightmapReadback::heightAt(int x, int y) const {
 	if (!m_hasCpuData || x < 0 || y < 0 || x >= m_size.x() || y >= m_size.y())
 		return 0.0f;
 
-	const std::size_t idx = (std::size_t(y) * std::size_t(m_size.x()) + std::size_t(x)) * kChannels;
-	return m_cpuCaches[m_lastCpuIndex][idx];
+	const std::size_t texelIndex = std::size_t(y) * std::size_t(m_size.x()) + std::size_t(x);
+	const std::size_t idx = texelIndex * kChannels;
+	float waterHeight = m_cpuCaches[m_lastCpuIndex][idx];
+	if (texelIndex < m_terrainHeightmap.size())
+		waterHeight += m_terrainHeightmap[texelIndex];
+	return waterHeight;
 }
 
 float HeightmapReadback::heightAtUV(const Vector2& uv) const {

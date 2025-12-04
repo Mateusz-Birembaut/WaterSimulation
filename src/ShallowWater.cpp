@@ -29,19 +29,19 @@ void ShallowWater::step() {
     //m_fftOutput = &m_surfaceHeightTexture;
     //m_ifftOutput = &m_surfaceHeightTexture;
 
-    Corrade::Utility::Debug{} << "running fft pass";
+    //Corrade::Utility::Debug{} << "running fft pass";
     m_fftOutput = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1, 1.0f );
-    Corrade::Utility::Debug{} << "FFT output : " << m_fftOutput;
+   // Corrade::Utility::Debug{} << "FFT output : " << m_fftOutput;
 
     
 
-    Corrade::Utility::Debug{} << "\n running ifft pass";
+    //Corrade::Utility::Debug{} << "\n running ifft pass";
     m_ifftOutput = runFFT(m_fftOutput, &m_surfaceHeightPing, -1, 1.0/static_cast<float>(nx+1));
-    Corrade::Utility::Debug{} << "IFFT output : " << m_ifftOutput;
+    //Corrade::Utility::Debug{} << "IFFT output : " << m_ifftOutput;
     //
     m_debugAlphaProgram.bindReadWrite(m_ifftOutput).run(groupx, groupy); // removing this has no real effect, this is not the issue 
 
-    Corrade::Utility::Debug{} << "-----------------------";
+    //Corrade::Utility::Debug{} << "-----------------------";
 
     ping = !ping;
 }
@@ -109,11 +109,11 @@ Magnum::GL::Texture2D* ShallowWater::runFFT(Magnum::GL::Texture2D* pingTex, Magn
 
     int N = nx + 1;
     int numStages = static_cast<int>(std::log2(N));
-    Corrade::Utility::Debug{} << "N : "<< N << ", Number of stages: " << numStages;
+    //Corrade::Utility::Debug{} << "N : "<< N << ", Number of stages: " << numStages;
     
-    Corrade::Utility::Debug{} << "Horizontal";
-    Corrade::Utility::Debug{} << "Input : " << pingTex;
-    Corrade::Utility::Debug{} << "Output : " << pongTex;
+    //Corrade::Utility::Debug{} << "Horizontal";
+    //Corrade::Utility::Debug{} << "Input : " << pingTex;
+    //Corrade::Utility::Debug{} << "Output : " << pongTex;
     
     Magnum::GL::Texture2D* input = pingTex;
     Magnum::GL::Texture2D* output = pongTex;
@@ -139,9 +139,9 @@ Magnum::GL::Texture2D* ShallowWater::runFFT(Magnum::GL::Texture2D* pingTex, Magn
 
         temp_as_input = !temp_as_input;
     }
-    Corrade::Utility::Debug{} << "Vertical";
-    Corrade::Utility::Debug{} << "Input : " << input;
-    Corrade::Utility::Debug{} << "Output : " << output;
+    //Corrade::Utility::Debug{} << "Vertical";
+    //Corrade::Utility::Debug{} << "Input : " << input;
+    //Corrade::Utility::Debug{} << "Output : " << output;
 
     //return (numStages % 2 == 0) ? input : output;
 

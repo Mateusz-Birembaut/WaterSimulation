@@ -9,6 +9,7 @@
 #include <WaterSimulation/PhysicsUtils.h>
 
 #include <Corrade/Utility/Debug.h>
+#include <Magnum/Math/Functions.h>
 
 #include <limits>
 #include <cstring>
@@ -66,6 +67,8 @@ void PhysicsSystem::recomputeAABB(Registry& registry){
     for(Entity entity : view){
         RigidBodyComponent& rigidBody = view.get<RigidBodyComponent>(entity);
         TransformComponent& transform = view.get<TransformComponent>(entity);
+        if (rigidBody.bodyType == PhysicsType::STATIC)
+            continue;
 
         Magnum::Vector3 min{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         Magnum::Vector3 max{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
@@ -172,6 +175,26 @@ void PhysicsSystem::recomputeAABB(Registry& registry){
                 max.x() = std::max(max.x(), std::max(start.x(), end.x()) + worldRadius);
                 max.y() = std::max(max.y(), std::max(start.y(), end.y()) + worldRadius);
                 max.z() = std::max(max.z(), std::max(start.z(), end.z()) + worldRadius);
+
+                rigidBody.aabbCollider.min = min;
+                rigidBody.aabbCollider.max = max;
+
+            }else if(collider.type == ColliderType::MESH){
+
+                const MeshCollider& meshCollider = (const MeshCollider&) collider;
+                if(meshCollider.vertices.empty())
+                    continue;
+
+                for(const Magnum::Vector3& vertex : meshCollider.vertices){
+                    Magnum::Vector3 worldVertex = transform.globalModel.transformPoint(vertex);
+                    min.x() = std::min(min.x(), worldVertex.x());
+                    min.y() = std::min(min.y(), worldVertex.y());
+                    min.z() = std::min(min.z(), worldVertex.z());
+
+                    max.x() = std::max(max.x(), worldVertex.x());
+                    max.y() = std::max(max.y(), worldVertex.y());
+                    max.z() = std::max(max.z(), worldVertex.z());
+                }
 
                 rigidBody.aabbCollider.min = min;
                 rigidBody.aabbCollider.max = max;
@@ -488,6 +511,8 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
     WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
+    const bool hasHeightmap = m_heightmapReadback && m_heightmapReadback->hasCpuData();
+    const Magnum::Vector2i heightmapSize = hasHeightmap ? m_heightmapReadback->size() : Magnum::Vector2i{0};
 
     
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
@@ -515,25 +540,28 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
                 continue;
             }
 
-            int px = int(u * (wC.width - 1));
-            int py = int(v * (wC.height - 1));
-            
-            int index = (py * wC.width + px) * 4;
+            if (!hasHeightmap || heightmapSize.x() <= 0 || heightmapSize.y() <= 0) {
+                continue;
+            }
 
-			//check la hauter de l'eau
-			float waterHeight = wC.heightData[index];
+            int px = Magnum::Math::clamp(int(u * float(heightmapSize.x() - 1)), 0, heightmapSize.x() - 1);
+            int py = Magnum::Math::clamp(int(v * float(heightmapSize.y() - 1)), 0, heightmapSize.y() - 1);
+
+            // hauteur totale eau + terrain
+            float waterHeightLocal = m_heightmapReadback->heightAt(px, py);
 
             float displaced_volumes = 0.0f;
 
-            //if (worldPoint.y() < waterHeight) {
-            if (waterSpacePoint.y()  < waterHeight) {
+            if (waterSpacePoint.y()  < waterHeightLocal) {
                 pointsUnderwater++;
 
-                float depth = waterHeight - worldPoint.y();
+                Magnum::Vector4 surfaceLocal{waterSpacePoint.x(), waterHeightLocal, waterSpacePoint.z(), 1.0f};
+                const float waterHeightWorld = (transformComp.globalModel * surfaceLocal).y();
+                float depth = waterHeightWorld - worldPoint.y();
 
 				// voir formule pour ajouter force 
 
-				///Corrade::Utility::Debug{} << "ajout force au point" << worldPoint.xyz() << "à la hauteur" << waterHeight;
+				Corrade::Utility::Debug{} << "ajout force au point" << worldPoint.xyz() << "à la hauteur" << waterHeightLocal;
                 rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
             }
         }

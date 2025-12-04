@@ -96,8 +96,6 @@ void WaterSimulation::GodRayPass::render(
 
 	if (viewWater.begin() != viewWater.end()) {
 		Entity waterEntity = *viewWater.begin();
-		auto& heightMap = registry.get<MaterialComponent>(waterEntity).heightmap;
-		auto& transform = registry.get<TransformComponent>(waterEntity);
 
 		const auto camViewProj = camera.projectionMatrix() * camera.viewMatrix();
 

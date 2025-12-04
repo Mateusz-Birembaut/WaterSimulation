@@ -15,6 +15,7 @@ namespace WaterSimulation {
 		~HeightmapReadback();
 
 		void init(const Magnum::Vector2i& size);
+		void initTerrainHeightmapFromTexture(Magnum::GL::Texture2D& texture);
 		void resize(const Magnum::Vector2i& size);
 
 		void enqueueReadback(Magnum::GL::Texture2D& texture);
@@ -34,12 +35,17 @@ namespace WaterSimulation {
 			return m_size;
 		}
 
+		const std::vector<float>& terrainHeightmap() const {
+			return m_terrainHeightmap;
+		}
+
 	      private:
 		void allocateBuffers();
 		void destroyBuffers();
 
 		std::array<GLuint, 2> m_pbos{0, 0};
-		std::array<std::vector<float>, 2> m_cpuCaches{};
+		std::array<std::vector<float>, 2> m_cpuCaches{}; // pour la hauteur de l'eau seulement
+		std::vector<float> m_terrainHeightmap{};
 
 		Magnum::Vector2i m_size{0};
 		std::size_t m_texelCount{0};

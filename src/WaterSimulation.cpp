@@ -24,6 +24,7 @@
 #include <WaterSimulation/Components/WaterComponent.h>
 #include <WaterSimulation/Components/TerrainComponent.h>
 #include <WaterSimulation/Components/BuoyancyComponent.h>
+#include <WaterSimulation/Components/RigidBodyComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -51,6 +52,8 @@
 #include <SDL2/SDL.h>
 
 #include <memory>
+#include <algorithm>
+#include <limits>
 
 
 using namespace Magnum;
@@ -201,8 +204,13 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & matTerrain = m_registry.emplace<MaterialComponent>(
         testTerrain
     );
+    m_registry.emplace<TerrainComponent>(testTerrain);
 
-    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
+    auto& terrainTexture = m_shallowWaterSimulation.getTerrainTexture();
+    m_heightmapReadback.initTerrainHeightmapFromTexture(terrainTexture);
+
+    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&terrainTexture, [](Magnum::GL::Texture2D*){});
+
     matTerrain.setAlbedo(albedoPtr);
     matTerrain.setHeightMap(heightmapPtr);
     m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale));
@@ -214,6 +222,58 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         testTerrain,
         Magnum::Vector3{0.0f, -1.0f, -3.0f}
     );
+    auto& terrainRigidBody = m_registry.emplace<RigidBodyComponent>(testTerrain);
+    terrainRigidBody.bodyType = PhysicsType::STATIC;
+    terrainRigidBody.useGravity = false;
+    terrainRigidBody.mesh = m_terrainMesh.get();
+    terrainRigidBody.linearVelocity = Magnum::Vector3{0.0f};
+    terrainRigidBody.angularVelocity = Magnum::Vector3{0.0f};
+
+    auto* terrainCollider = new MeshCollider();
+    terrainCollider->mass = 1.0f; 
+    terrainCollider->localCentroid = Magnum::Vector3{0.0f};
+    terrainCollider->localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainCollider->vertices = m_terrainMesh->vertices;
+    terrainCollider->indices = m_terrainMesh->triangles;
+
+    const Magnum::Vector2i terrainSize = m_heightmapReadback.size();
+    const std::size_t expectedCount = std::size_t(terrainSize.x()) * std::size_t(terrainSize.y());
+    const auto& terrainHeights = m_heightmapReadback.terrainHeightmap();
+    Magnum::Vector3 terrainMin{
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max()
+    };
+    Magnum::Vector3 terrainMax{
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest()
+    };
+    if (terrainCollider->vertices.size() == expectedCount && terrainHeights.size() == expectedCount) {
+        for (std::size_t i = 0; i < expectedCount; ++i) {
+            terrainCollider->vertices[i].y() = terrainHeights[i];
+            const Magnum::Vector3& v = terrainCollider->vertices[i];
+            terrainMin.x() = std::min(terrainMin.x(), v.x());
+            terrainMin.y() = std::min(terrainMin.y(), v.y());
+            terrainMin.z() = std::min(terrainMin.z(), v.z());
+            terrainMax.x() = std::max(terrainMax.x(), v.x());
+            terrainMax.y() = std::max(terrainMax.y(), v.y());
+            terrainMax.z() = std::max(terrainMax.z(), v.z());
+        }
+    }
+    terrainRigidBody.aabbCollider.min = terrainMin;
+    terrainRigidBody.aabbCollider.max = terrainMax;
+
+    terrainRigidBody.addCollider(terrainCollider);
+    terrainRigidBody.bodyType = PhysicsType::STATIC;
+    terrainRigidBody.mass = std::numeric_limits<float>::infinity();
+    terrainRigidBody.inverseMass = 0.0f;
+    terrainRigidBody.localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.localInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.globalInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.forceAccumulator = Magnum::Vector3{0.0f};
+    terrainRigidBody.torqueAccumulator = Magnum::Vector3{0.0f};
+    
     auto shaderPtr = std::make_shared<TerrainShader>();
     m_registry.emplace<ShaderComponent>(
         testTerrain,
@@ -233,7 +293,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     m_registry.emplace<TransformComponent>(
         waterEntity,
-        Magnum::Vector3{0.0f, -1.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
+        Magnum::Vector3{0.0f, -1.0f, -3.0f} 
     );
     m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
@@ -263,7 +323,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & testTransform = m_registry.emplace<TransformComponent>(
         testEntity
     );
-    testTransform.position = Magnum::Vector3(0.0f, 10.0f, -40.0f);
+    testTransform.position = Magnum::Vector3(0.0f, 10.0f, -35.0f);
     testTransform.scale = Magnum::Vector3(1.0f, 1.0f, 1.0f);
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     auto& testMeshComp = m_registry.emplace<MeshComponent>(
@@ -324,11 +384,13 @@ void WaterSimulation::Application::drawEvent() {
         for(int i = 0; i < step_number; ++i){
             m_shallowWaterSimulation.step();
             m_heightmapReadback.enqueueReadback(m_shallowWaterSimulation.getStateTexture());
+
+            m_transform_System.update(m_registry);
+            m_physicSystem.update(m_registry, m_deltaTime);
         }
     }
 
-    m_transform_System.update(m_registry);
-    m_physicSystem.update(m_registry, m_deltaTime);
+
 
     m_renderSystem.render(m_registry, *m_camera.get());
 
