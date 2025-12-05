@@ -1,9 +1,11 @@
-//#version 430
+// #version 430
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(binding = 0, rgba32f) writeonly uniform highp image2D surfaceOut;
-layout(binding = 1, rgba32f) readonly uniform highp image2D bulkFlowOld; // Contains bulk at t
-layout(binding = 2, rgba32f) readonly uniform highp image2D bulkFlow;    // Contains bulk at t+dt
+layout(binding = 1, rgba32f) readonly uniform highp image2D
+    bulkFlowOld; // Contains bulk at t
+layout(binding = 2, rgba32f)
+    readonly uniform highp image2D bulkFlow; // Contains bulk at t+dt
 
 layout(binding = 3, rg32f) readonly uniform highp image2D surfaceQx;
 layout(binding = 4, rg32f) readonly uniform highp image2D surfaceQy;
@@ -15,13 +17,13 @@ const float eps = 1e-6;
 
 vec2 compute_u(ivec2 pos, ivec2 gridSize) {
     pos = clamp(pos, ivec2(1), gridSize - ivec2(2));
-    
+
     vec4 bulkNew = imageLoad(bulkFlow, pos);
     vec4 bulkOld = imageLoad(bulkFlowOld, pos);
-    
+
     float h = max((bulkNew.x + bulkOld.x) * 0.5, eps);
     vec2 q = (bulkNew.yz + bulkOld.yz) * 0.5;
-    
+
     return q / h;
 }
 
@@ -29,7 +31,8 @@ void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(surfaceOut);
 
-    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 1 || pos.y <= 1) {
+    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 1 ||
+        pos.y <= 1) {
         imageStore(surfaceOut, pos, vec4(0.0));
         return;
     }
@@ -41,8 +44,9 @@ void main() {
 
     float divU = (ur.x - ul.x) / (2.0 * dx) + (ut.y - ub.y) / (2.0 * dx);
 
-    float gamma = 1.0;
-    float G = min(-divU, -gamma * divU);
+    float gamma = 0.25;
+    float G = (divU > 0.0) ? -divU : -gamma * (-divU);
+    G = min(G, 0.0); // To only dampen not amplify the wave
 
     float surfqx = imageLoad(surfaceQx, pos).r;
     float surfqy = imageLoad(surfaceQy, pos).r;

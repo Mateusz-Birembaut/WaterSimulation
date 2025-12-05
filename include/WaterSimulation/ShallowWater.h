@@ -43,6 +43,7 @@ class ShallowWater {
 
     Magnum::GL::Texture2D m_stateTexture; // RGB 32f texture that contains (h, qx, qy)
     Magnum::GL::Texture2D m_stateTexturePong; // ping pong setup // texture final
+    Magnum::GL::Texture2D m_prevStateTexture; // Previous state for height update
     Magnum::GL::Texture2D m_terrainTexture;   // Terrain R 32f texture
 
     //
@@ -60,6 +61,19 @@ class ShallowWater {
 
     Magnum::GL::Texture2D m_tempTexture;
     Magnum::GL::Texture2D m_tempTexture2;
+    Magnum::GL::Texture2D m_tempTexture3;
+
+    // Visualization textures
+    Magnum::GL::Texture2D m_visBulkUpdated;
+    Magnum::GL::Texture2D m_visFFTHeight;
+    Magnum::GL::Texture2D m_visFFTQx;
+    Magnum::GL::Texture2D m_visFFTQy;
+    Magnum::GL::Texture2D m_visIFFTHeight;
+    Magnum::GL::Texture2D m_visIFFTQx;
+    Magnum::GL::Texture2D m_visIFFTQy;
+    Magnum::GL::Texture2D m_visTransportedFlow;
+    Magnum::GL::Texture2D m_visTransportedHeight;
+    Magnum::GL::Texture2D m_visAdvectedHeight;
 
     Magnum::GL::Texture2D * m_fftOutput = nullptr;
     Magnum::GL::Texture2D * m_ifftOutput = nullptr;
@@ -141,9 +155,20 @@ class ShallowWater {
             return *this;
         }
 
+        ComputeProgram &bindClear(Magnum::GL::Texture2D * output, Magnum::GL::ImageFormat format = Magnum::GL::ImageFormat::RGBA32F){
+            output->bindImage(0,0,Magnum::GL::ImageAccess::WriteOnly, format);
+            return *this;
+        }
+
         ComputeProgram &bindCopy(Magnum::GL::Texture2D * input, Magnum::GL::Texture2D * output){
             input->bindImage(0,0,Magnum::GL::ImageAccess::ReadOnly, Magnum::GL::ImageFormat::RG32F);
             output->bindImage(1,0,Magnum::GL::ImageAccess::WriteOnly, Magnum::GL::ImageFormat::RG32F);
+            return *this;
+        }
+
+        ComputeProgram &bindCopyRGBA(Magnum::GL::Texture2D * input, Magnum::GL::Texture2D * output){
+            input->bindImage(0,0,Magnum::GL::ImageAccess::ReadOnly, Magnum::GL::ImageFormat::RGBA32F);
+            output->bindImage(1,0,Magnum::GL::ImageAccess::WriteOnly, Magnum::GL::ImageFormat::RGBA32F);
             return *this;
         }
 
@@ -228,12 +253,15 @@ class ShallowWater {
 
         ComputeProgram &bindUpdateHeight(Magnum::GL::Texture2D *bulk,
                          Magnum::GL::Texture2D *surface,
+                         Magnum::GL::Texture2D *stateIn,
                          Magnum::GL::Texture2D *stateOut) {
             bulk->bindImage(0, 0, Magnum::GL::ImageAccess::ReadOnly,
                     Magnum::GL::ImageFormat::RGBA32F);
             surface->bindImage(1, 0, Magnum::GL::ImageAccess::ReadOnly,
                        Magnum::GL::ImageFormat::RGBA32F);
-            stateOut->bindImage(2, 0, Magnum::GL::ImageAccess::WriteOnly,
+            stateIn->bindImage(2, 0, Magnum::GL::ImageAccess::ReadOnly,
+                    Magnum::GL::ImageFormat::RGBA32F);
+            stateOut->bindImage(3, 0, Magnum::GL::ImageAccess::WriteOnly,
                     Magnum::GL::ImageFormat::RGBA32F);
             return *this;
         }
@@ -266,6 +294,7 @@ class ShallowWater {
     ComputeProgram m_computeVelocitiesProgram;
     ComputeProgram m_updateFluxesProgram;
     ComputeProgram m_updateWaterHeightProgram;
+    ComputeProgram m_updateHeightSimpleProgram;
 
     ComputeProgram m_decompositionProgram;
 
@@ -283,6 +312,10 @@ class ShallowWater {
     ComputeProgram m_normalizedProgram; // To normalized ifft output
 
     ComputeProgram m_copyProgram;
+    ComputeProgram m_CopyRGBAProgram;
+
+    ComputeProgram m_clearProgram;
+    ComputeProgram m_clearRGProgram;
 
     ComputeProgram m_airywavesProgram;
 
@@ -319,6 +352,11 @@ class ShallowWater {
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_stateTexturePong
+            .setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_prevStateTexture
             .setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
             .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
             .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
@@ -361,20 +399,68 @@ class ShallowWater {
             .setWrapping(Magnum::GL::SamplerWrapping::Repeat);;
 
         m_surfaceQxPong.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_surfaceQyPong.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_tempTexture.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
 
         m_tempTexture2.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Nearest)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Nearest);
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_tempTexture2.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_tempTexture3.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visBulkUpdated.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visFFTHeight.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visFFTQx.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visFFTQy.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visIFFTHeight.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visIFFTQx.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visIFFTQy.setStorage(1, Magnum::GL::TextureFormat::RG32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visTransportedFlow.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visTransportedHeight.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
+
+        m_visAdvectedHeight.setStorage(1, Magnum::GL::TextureFormat::RGBA32F, {nx + 1, ny + 1})
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear);
         
 
         compilePrograms();
@@ -383,6 +469,8 @@ class ShallowWater {
     void step();
 
     void compilePrograms();
+    
+    void clearAllTextures();
 
     void runSW(Magnum::GL::Texture2D *inputTex,Magnum::GL::Texture2D *outputTex);
     void runDecomposition(Magnum::GL::Texture2D *inputTex);
@@ -405,6 +493,17 @@ class ShallowWater {
     Magnum::GL::Texture2D &getSurfaceHeightTexture() { return m_surfaceHeightTexture; }
     Magnum::GL::Texture2D &getSurfaceQxTexture() { return m_surfaceQxTexture; }
     Magnum::GL::Texture2D &getSurfaceQyTexture() { return m_surfaceQyTexture; }
+
+    Magnum::GL::Texture2D &getVisBulkUpdated() { return m_visBulkUpdated; }
+    Magnum::GL::Texture2D &getVisFFTHeight() { return m_visFFTHeight; }
+    Magnum::GL::Texture2D &getVisFFTQx() { return m_visFFTQx; }
+    Magnum::GL::Texture2D &getVisFFTQy() { return m_visFFTQy; }
+    Magnum::GL::Texture2D &getVisIFFTHeight() { return m_visIFFTHeight; }
+    Magnum::GL::Texture2D &getVisIFFTQx() { return m_visIFFTQx; }
+    Magnum::GL::Texture2D &getVisIFFTQy() { return m_visIFFTQy; }
+    Magnum::GL::Texture2D &getVisTransportedFlow() { return m_visTransportedFlow; }
+    Magnum::GL::Texture2D &getVisTransportedHeight() { return m_visTransportedHeight; }
+    Magnum::GL::Texture2D &getVisAdvectedHeight() { return m_visAdvectedHeight; }
 
     Magnum::GL::Texture2D *getFFTOutput() { return m_fftOutput; }
     Magnum::GL::Texture2D *getIFFTOutput() { return m_ifftOutput; }

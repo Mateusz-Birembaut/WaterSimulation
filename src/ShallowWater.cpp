@@ -18,18 +18,36 @@
 
 void ShallowWater::step() {
 
-    Magnum::GL::Texture2D *inputTex;
-    Magnum::GL::Texture2D *outputTex;
+    if (!airyWavesEnabled) {
+        m_updateFluxesProgram.bindStates(&m_stateTexture, &m_tempTexture)
+            .bindTerrain(&m_terrainTexture)
+            .run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
+        m_updateHeightSimpleProgram.bindStates(&m_tempTexture, &m_stateTexture)
+            .run(groupx, groupy);
+
+        Magnum::GL::Renderer::setMemoryBarrier(
+            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+            
+        ping = !ping;
+        return;
+    }
+
+    m_CopyRGBAProgram.bindCopyRGBA(&m_stateTexture, &m_prevStateTexture).run(groupx, groupy);
+    Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
     // Decompisition Bulk (shallow) + surface (airy) 
 
     runDecomposition(&m_stateTexture);
-
     // Shallow water pass
 
     runSW(&m_bulkTexture, &m_tempTexture);
 
-
+    m_CopyRGBAProgram.bindCopyRGBA(&m_tempTexture, &m_visBulkUpdated).run(groupx, groupy);
+    Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
     float N = nx+1;
     Magnum::GL::Texture2D * fftHeight; Magnum::GL::Texture2D * ifftHeight;
@@ -38,17 +56,16 @@ void ShallowWater::step() {
     // Airy Waves
     {   
         
-        /* m_copyProgram.bindCopy(&m_surfaceHeightTexture,&m_surfaceHeightPing).run(groupx,groupy);
-
-        Magnum::GL::Renderer::setMemoryBarrier(
-            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-
-        Corrade::Utility::Debug{} << "running fft pass"; */
         // FFT pass
         fftHeight = runFFT(&m_surfaceHeightTexture, &m_surfaceHeightPong, 1);
         
         fftQx = runFFT(&m_surfaceQxTexture, &m_surfaceQxPong, 1);
         fftQy = runFFT(&m_surfaceQyTexture, &m_surfaceQyPong, 1);
+
+        m_copyProgram.bindCopy(fftHeight, &m_visFFTHeight).run(groupx, groupy);
+        m_copyProgram.bindCopy(fftQx, &m_visFFTQx).run(groupx, groupy);
+        m_copyProgram.bindCopy(fftQy, &m_visFFTQy).run(groupx, groupy);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
         m_airywavesProgram.bindAiry(&m_tempTexture, fftHeight, fftQx, fftQy)
             .setFloatUniform("dt", dt)
@@ -73,37 +90,28 @@ void ShallowWater::step() {
             .setFloatUniform("norm", 1.0f / (N * N))
             .run(groupx, groupy);
 
+        m_copyProgram.bindCopy(ifftQx, &m_visIFFTQx).run(groupx, groupy);
+        m_copyProgram.bindCopy(ifftQy, &m_visIFFTQy).run(groupx, groupy);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
         m_fftOutput = ifftQx;
         m_ifftOutput = ifftQy;
-        //m_fftOutput = ifftQx;
-        /* Magnum::GL::Texture2D* ifftPong = (m_fftOutput == &m_surfaceHeightPing) 
-                                        ? &m_surfaceHeightPong 
-                                        : &m_surfaceHeightPing;
 
-        
-        m_copyProgram.bindCopy(m_fftOutput,&m_surfaceQxPong).run(groupx,groupy);
-
-        Magnum::GL::Renderer::setMemoryBarrier(
-            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess); */
-
-        //runAiryWaves(m_fftOutput);
 
         // IFFT pass, m_fftOutput can be surface Height pong, add an if 
         ifftHeight = runFFT(fftHeight, &m_surfaceHeightPong, -1); // Should just copy the original before fft instead of this 
 
         m_normalizedProgram.bindReadWrite(ifftHeight, Magnum::GL::ImageFormat::RG32F).setFloatUniform("norm", 1.0f/(N*N)).run(groupx, groupy);
 
+        m_copyProgram.bindCopy(ifftHeight, &m_visIFFTHeight).run(groupx, groupy);
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-
-        /* m_recomposeProgram.bindRecompose(&m_stateTexture, &m_bulkTexture, ifftHeight, ifftQx, ifftQy)
-            .run(groupx, groupy); */
 
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
     }
 
-
+    
     {//Surface Transportt
 
         m_transportSurfaceFlowProgram.bindTransportSurfaceFlow(ifftQx, ifftQy, &m_tempTexture, &m_bulkTexture, &m_tempTexture2)
@@ -111,37 +119,45 @@ void ShallowWater::step() {
             .setFloatUniform("dx", dx)
             .run(groupx, groupy);
 
-        Magnum::GL::Renderer::setMemoryBarrier(
-            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        m_CopyRGBAProgram.bindCopyRGBA(&m_tempTexture2, &m_visTransportedFlow).run(groupx, groupy);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-        m_transportSurfaceHeightProgram.bindTransportSurfaceHeight(ifftHeight, &m_tempTexture, &m_tempTexture2)
+        m_transportSurfaceHeightProgram.bindTransportSurfaceHeight(ifftHeight, &m_bulkTexture, &m_tempTexture2)
             .setFloatUniform("dt", dt)
             .setFloatUniform("dx", dx)
             .run(groupx, groupy);
 
-        Magnum::GL::Renderer::setMemoryBarrier(
-            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        m_CopyRGBAProgram.bindCopyRGBA(&m_tempTexture2, &m_visTransportedHeight).run(groupx, groupy);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-        m_semiLagrangianAdvectionProgram.bindAdvection(&m_tempTexture2, &m_surfaceHeightPong, &m_tempTexture)
+        m_semiLagrangianAdvectionProgram.bindAdvection(&m_tempTexture2, &m_tempTexture3, &m_tempTexture)
             .setFloatUniform("dt", dt)
             .setFloatUniform("dx", dx)
             .run(groupx, groupy);
 
-        Magnum::GL::Renderer::setMemoryBarrier(
-            Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+        m_CopyRGBAProgram.bindCopyRGBA(&m_tempTexture3, &m_visAdvectedHeight).run(groupx, groupy);
+        Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
     }
 
-    m_updateWaterHeightProgram.bindUpdateHeight(&m_tempTexture, &m_surfaceHeightPong, &m_stateTexture)
+    m_updateWaterHeightProgram.bindUpdateHeight(&m_tempTexture, &m_tempTexture3, &m_prevStateTexture, &m_stateTexture)
         .setFloatUniform("dt", dt)
         .setFloatUniform("dx", dx)
         .setFloatUniform("dryEps", dryEps)
         .run(groupx, groupy);
+   
+
+    
+    /* m_recomposeProgram.bindRecompose(&m_stateTexture, &m_tempTexture, &m_surfaceHeightTexture, 
+                                      &m_surfaceQxTexture, &m_surfaceQyTexture)
+        .run(groupx, groupy); */
 
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-    ping = !ping;
 }
 
 void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
@@ -156,8 +172,7 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-    // Diffusion
-    const int diffusionIterations = 64;
+    const int diffusionIterations = 128;
     Magnum::GL::Texture2D *tempIn = &m_tempTexture2;
     Magnum::GL::Texture2D *tempOut = &m_tempTexture;
 
@@ -280,6 +295,7 @@ Magnum::GL::Texture2D *ShallowWater::runFFT(Magnum::GL::Texture2D *pingTex,
 void ShallowWater::compilePrograms() {
     m_updateFluxesProgram = ComputeProgram("updateFluxes.comp");
     m_updateWaterHeightProgram = ComputeProgram("updateWaterHeight.comp");
+    m_updateHeightSimpleProgram = ComputeProgram("updateHeightSimple.comp");
     m_initProgram = ComputeProgram("init.comp");
 
     m_decompositionProgram = ComputeProgram("decompose.comp");
@@ -296,6 +312,10 @@ void ShallowWater::compilePrograms() {
     m_debugAlphaProgram = ComputeProgram("debugAlpha.comp");
 
     m_copyProgram = ComputeProgram("copy.comp");
+    m_CopyRGBAProgram = ComputeProgram("copyRGBA.comp");
+
+    m_clearProgram = ComputeProgram("clear.comp");
+    m_clearRGProgram = ComputeProgram("clearRG.comp");
 
     m_airywavesProgram = ComputeProgram("airywaves.comp");
 
@@ -309,6 +329,7 @@ void ShallowWater::compilePrograms() {
 
     m_updateFluxesProgram.setParametersUniforms(*this);
     m_updateWaterHeightProgram.setParametersUniforms(*this);
+    m_updateHeightSimpleProgram.setParametersUniforms(*this);
     m_decompositionProgram.setParametersUniforms(*this);
 
     m_airywavesProgram.setParametersUniforms(*this);
@@ -316,6 +337,42 @@ void ShallowWater::compilePrograms() {
     m_transportSurfaceFlowProgram.setParametersUniforms(*this);
     m_transportSurfaceHeightProgram.setParametersUniforms(*this);
     m_semiLagrangianAdvectionProgram.setParametersUniforms(*this);
+}
+
+void ShallowWater::clearAllTextures() {
+    m_clearProgram.bindClear(&m_stateTexture).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_stateTexturePong).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_prevStateTexture).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_bulkTexture).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_surfaceTexture).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_tempTexture).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_tempTexture2).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_tempTexture3).run(groupx, groupy);
+    
+    m_clearRGProgram.bindClear(&m_surfaceHeightTexture, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceQxTexture, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceQyTexture, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceHeightPing, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceHeightPong, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceQxPong, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_surfaceQyPong, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    
+    m_clearProgram.bindClear(&m_visBulkUpdated).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visFFTHeight, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visFFTQx, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visFFTQy, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visIFFTHeight, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visIFFTQx, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearRGProgram.bindClear(&m_visIFFTQy, Magnum::GL::ImageFormat::RG32F).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_visTransportedFlow).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_visTransportedHeight).run(groupx, groupy);
+    m_clearProgram.bindClear(&m_visAdvectedHeight).run(groupx, groupy);
+    
+    m_fftOutput = nullptr;
+    m_ifftOutput = nullptr;
+    
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 }
 
 void ShallowWater::loadTerrainHeightMap(Magnum::Trade::ImageData2D *img,
@@ -353,6 +410,8 @@ void ShallowWater::loadTerrainHeightMap(Magnum::Trade::ImageData2D *img,
 
 void ShallowWater::initBump() {
     ping = false;
+    
+    clearAllTextures();
 
     m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)
@@ -366,6 +425,8 @@ void ShallowWater::initBump() {
 
 void ShallowWater::initDamBreak() {
     ping = false;
+    
+    clearAllTextures();
 
     m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)
@@ -379,6 +440,8 @@ void ShallowWater::initDamBreak() {
 
 void ShallowWater::initTsunami() {
     ping = false;
+    
+    clearAllTextures();
 
     m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
         .bindTerrain(&m_terrainTexture)

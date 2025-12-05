@@ -127,8 +127,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera.get()->setPos({0.0, 1.0, 0.0f});
-    m_camera.get()->setSpeed(10.0f);
+    m_camera.get()->setPos({0.0, 5.0, 0.0f});
+    m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     
     // test ECS et rendu avec shader de base

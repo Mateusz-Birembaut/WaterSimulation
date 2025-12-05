@@ -70,6 +70,8 @@ void WaterSimulation::UIManager::paramWindow(
     {
         ShallowWater *simulation = &(app->shallowWaterSimulation());
 
+        ImGui::Begin("Simulation Parameters");
+
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
                     1000.0 / Double(ImGui::GetIO().Framerate),
                     Double(ImGui::GetIO().Framerate));
@@ -77,6 +79,7 @@ void WaterSimulation::UIManager::paramWindow(
         if (ImGui::Button(app->simulationPaused ? "Resume" : "Pause")) {
             app->simulationPaused = !app->simulationPaused;
         }
+        ImGui::SameLine();
         if (ImGui::Button("Step")) {
             simulation->step();
         }
@@ -96,61 +99,125 @@ void WaterSimulation::UIManager::paramWindow(
 
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
-        ImGui::Text("State, Terrain and Bulk Texture");
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getStateTexture().id()),
-            ImVec2(256, 256));
-        ImGui::SameLine();
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getTerrainTexture().id()),
-            ImVec2(256, 256));
-        ImGui::SameLine();
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getBulkTexture().id()),
-            ImVec2(256, 256));
+        ImGui::End();
+    }
 
+    // Visualization window
+    {
+        ShallowWater *simulation = &(app->shallowWaterSimulation());
+        
+        ImGui::Begin("Algorithm Visualization");
+        
+        ImVec2 texSize(512, 512);
 
-        Magnum::GL::Texture2D * fftoutput = simulation->getFFTOutput();
-        Magnum::GL::Texture2D * ifftoutput = simulation->getIFFTOutput();
-
-        ImGui::Text("Surface Height, FFT, IFFT, Qx and Qy");
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getSurfaceHeightTexture().id()),
-            ImVec2(256, 256));
-        ImGui::SameLine();
-        if(fftoutput){
-            ImGui::Image(
-            reinterpret_cast<void *>(fftoutput->id()),
-            ImVec2(256, 256));
+        if (ImGui::CollapsingHeader("1. Input State", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("State");
+            ImGui::SameLine(100);
+            ImGui::Text("Terrain");
             
-        }else{
-            ImGui::Text("no fftoutput");
-        }
-        ImGui::SameLine();
-        if (ifftoutput) {
             ImGui::Image(
-                reinterpret_cast<void *>(ifftoutput->id()),
-                ImVec2(256, 256));
-        } else {
-            ImGui::Text("no ifftoutput");
-        }  
-        ImGui::SameLine();
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getSurfaceQxTexture().id()),
-            ImVec2(256, 256));
-        ImGui::SameLine();
-        ImGui::Image(
-            reinterpret_cast<void *>(simulation->getSurfaceQyTexture().id()),
-            ImVec2(256, 256));
+                reinterpret_cast<void *>(simulation->getStateTexture().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getTerrainTexture().id()),
+                texSize);
+        }
 
-        /* const char* items[] = { "h3.png", "h6.png" };
-        static int currentItem = 0;
-        if (ImGui::Combo("Texture", &currentItem, items, IM_ARRAYSIZE(items))) {
-                        auto heightmapData =
-        app->resourceManager().getRaw(items[currentItem]);
-                        app->importer()->openData(heightmapData);
-                        auto image = app->importer()->image2D(0);
-                        simulation->loadTerrainHeightMap(&*image, 10.0f);  } */
+        if (ImGui::CollapsingHeader("2. Decomposition", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Bulk Flow");
+            ImGui::SameLine(100);
+            ImGui::Text("Surface Height");
+            ImGui::SameLine(220);
+            ImGui::Text("Surface Qx");
+            ImGui::SameLine(340);
+            ImGui::Text("Surface Qy");
+
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getBulkTexture().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getSurfaceHeightTexture().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getSurfaceQxTexture().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getSurfaceQyTexture().id()),
+                texSize);
+        }
+
+        if (ImGui::CollapsingHeader("3. Shallow Water (Bulk)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Bulk Updated");
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisBulkUpdated().id()),
+                texSize);
+        }
+
+        if (ImGui::CollapsingHeader("4. FFT (Airy Waves)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("FFT Height");
+            ImGui::SameLine(100);
+            ImGui::Text("FFT Qx");
+            ImGui::SameLine(220);
+            ImGui::Text("FFT Qy");
+
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisFFTHeight().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisFFTQx().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisFFTQy().id()),
+                texSize);
+        }
+
+        if (ImGui::CollapsingHeader("5. IFFT (Back to Spatial)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("IFFT Height");
+            ImGui::SameLine(100);
+            ImGui::Text("IFFT Qx");
+            ImGui::SameLine(220);
+            ImGui::Text("IFFT Qy");
+
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisIFFTHeight().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisIFFTQx().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisIFFTQy().id()),
+                texSize);
+        }
+
+        if (ImGui::CollapsingHeader("6. Surface Transport", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Text("Transported Flow");
+            ImGui::SameLine(150);
+            ImGui::Text("Transported Height");
+            ImGui::SameLine(320);
+            ImGui::Text("Advected Surface");
+
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisTransportedFlow().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisTransportedHeight().id()),
+                texSize);
+            ImGui::SameLine();
+            ImGui::Image(
+                reinterpret_cast<void *>(simulation->getVisAdvectedHeight().id()),
+                texSize);
+        }
+
+        ImGui::End();
     }
 }
 

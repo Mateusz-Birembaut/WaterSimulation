@@ -13,14 +13,24 @@ uniform float dx;
 uniform float dt;
 uniform int stage;
 
+const float dryEps = 1e-4;
+
 // It would be better to split it into 3 shader for optimisation but this was easier
 
 void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(stateIn);
 
-    if (pos.x >= (uint(gridSize.x) - 1u) ||
-        pos.y >= (uint(gridSize.y) - 1u) || pos.x <= 1 || pos.y <= 1) {
+    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 0 || pos.y <= 0) {
+        float terrainc = imageLoad(terrain, pos).r;
+        if (stage == 0 || stage == 1) {
+            imageStore(tempOut, pos, vec4(terrainc, 0.0, 0.0, 0.0));
+        } else if (stage == 2) {
+            imageStore(bulkFlow, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceHeight, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceQx, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceQy, pos, vec4(0.0, 0.0, 0.0, 1.0));
+        }
         return;
     }
 
@@ -28,6 +38,17 @@ void main() {
 
     if (stage == 0) { // Initialisation
         vec4 statec = imageLoad(stateIn, pos);
+        
+        float h = statec.x;
+        float qx = statec.y;
+        float qy = statec.z;
+        
+        // If cell is dry, output zeros
+        if (h < dryEps) {
+            imageStore(tempOut, pos, vec4(terrainc, 0.0, 0.0, 0.0));
+            return;
+        }
+        
         vec4 statel = imageLoad(stateIn, pos + ivec2(-1, 0));
         vec4 stater = imageLoad(stateIn, pos + ivec2(1, 0));
         vec4 statet = imageLoad(stateIn, pos + ivec2(0, 1));
@@ -38,9 +59,6 @@ void main() {
         float terraint = imageLoad(terrain, pos + ivec2(0, 1)).r;
         float terrainb = imageLoad(terrain, pos + ivec2(0, -1)).r;
 
-        float h = statec.x;
-        float qx = statec.y;
-        float qy = statec.z;
         float H = h + terrainc;
 
         vec2 gradH = vec2(
@@ -49,7 +67,7 @@ void main() {
         );
         float gradMag = length(gradH);
 
-        float d = 1.0/100.0;
+        float d = 1.0/10.0;
         float alpha = (h * h) / 64.0;
         alpha *= exp(-d * gradMag * gradMag);
 
@@ -57,23 +75,44 @@ void main() {
     }
     else if (stage == 1) { //Diffusion
         vec4 temp_c = imageLoad(tempIn, pos);
-        vec4 temp_l = imageLoad(tempIn, pos + ivec2(-1, 0));
-        vec4 temp_r = imageLoad(tempIn, pos + ivec2(1, 0));
-        vec4 temp_t = imageLoad(tempIn, pos + ivec2(0, 1));
-        vec4 temp_b = imageLoad(tempIn, pos + ivec2(0, -1));
+        
+        ivec2 posL = ivec2(max(pos.x - 1, 1), pos.y);
+        ivec2 posR = ivec2(min(pos.x + 1, gridSize.x - 2), pos.y);
+        ivec2 posT = ivec2(pos.x, min(pos.y + 1, gridSize.y - 2));
+        ivec2 posB = ivec2(pos.x, max(pos.y - 1, 1));
+        
+        vec4 temp_l = imageLoad(tempIn, posL);
+        vec4 temp_r = imageLoad(tempIn, posR);
+        vec4 temp_t = imageLoad(tempIn, posT);
+        vec4 temp_b = imageLoad(tempIn, posB);
 
-        float alpha = temp_c.w;
-        float diffusion_dt = 0.1;
+        float alpha_c = temp_c.w;
+        float alpha_l = temp_l.w;
+        float alpha_r = temp_r.w;
+        float alpha_t = temp_t.w;
+        float alpha_b = temp_b.w;
+        
+        float alpha_face_l = (alpha_c + alpha_l) * 0.5;
+        float alpha_face_r = (alpha_c + alpha_r) * 0.5;
+        float alpha_face_t = (alpha_c + alpha_t) * 0.5;
+        float alpha_face_b = (alpha_c + alpha_b) * 0.5;
+        
+        float max_alpha = max(max(alpha_face_l, alpha_face_r), max(alpha_face_t, alpha_face_b));
+        float diffusion_dt = min(0.25 * dx * dx / max(max_alpha, 1e-6), 0.25);
 
-        float laplacian_H = (temp_l.x + temp_r.x + temp_t.x + temp_b.x - 4.0 * temp_c.x) / (dx * dx);
-        float laplacian_qx = (temp_l.y + temp_r.y + temp_t.y + temp_b.y - 4.0 * temp_c.y) / (dx * dx);
-        float laplacian_qy = (temp_l.z + temp_r.z + temp_t.z + temp_b.z - 4.0 * temp_c.z) / (dx * dx);
 
-        float H_new = temp_c.x + alpha * laplacian_H * diffusion_dt;
-        float qx_new = temp_c.y + alpha * laplacian_qx * diffusion_dt;
-        float qy_new = temp_c.z + alpha * laplacian_qy * diffusion_dt;
+        float diff_H = (alpha_face_r * (temp_r.x - temp_c.x) - alpha_face_l * (temp_c.x - temp_l.x) +
+                        alpha_face_t * (temp_t.x - temp_c.x) - alpha_face_b * (temp_c.x - temp_b.x)) / (dx * dx);
+        float diff_qx = (alpha_face_r * (temp_r.y - temp_c.y) - alpha_face_l * (temp_c.y - temp_l.y) +
+                         alpha_face_t * (temp_t.y - temp_c.y) - alpha_face_b * (temp_c.y - temp_b.y)) / (dx * dx);
+        float diff_qy = (alpha_face_r * (temp_r.z - temp_c.z) - alpha_face_l * (temp_c.z - temp_l.z) +
+                         alpha_face_t * (temp_t.z - temp_c.z) - alpha_face_b * (temp_c.z - temp_b.z)) / (dx * dx);
 
-        imageStore(tempOut, pos, vec4(H_new, qx_new, qy_new, alpha));
+        float H_new = temp_c.x + diff_H * diffusion_dt;
+        float qx_new = temp_c.y + diff_qx * diffusion_dt;
+        float qy_new = temp_c.z + diff_qy * diffusion_dt;
+
+        imageStore(tempOut, pos, vec4(H_new, qx_new, qy_new, alpha_c));
     }
     else if (stage == 2) { // Final
         vec4 statec = imageLoad(stateIn, pos);
@@ -83,7 +122,16 @@ void main() {
         float qx = statec.y;
         float qy = statec.z;
 
+        if (h < dryEps) {
+            imageStore(bulkFlow, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceHeight, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceQx, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            imageStore(surfaceQy, pos, vec4(0.0, 0.0, 0.0, 1.0));
+            return;
+        }
+
         float bulk_h = filtered.x - terrainc;
+        bulk_h = clamp(bulk_h, 0.0, h);
         float surface_h = h - bulk_h;
 
         float bulk_qx = filtered.y;
@@ -92,13 +140,8 @@ void main() {
         float surface_qy = qy - bulk_qy;
 
         imageStore(bulkFlow, pos, vec4(bulk_h, bulk_qx, bulk_qy, 1.0));
-        imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 0.0)* 1.0);
-        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0) * 1.0);
-        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0) *1.0);
-
-        /* imageStore(bulkFlow, pos, vec4(bulk_h+surface_h, bulk_qx+surface_qx, bulk_qy+surface_qy, 1.0));
-        imageStore(surfaceHeight, pos, vec4(0.0, 0.0, 0.0, 0.0)* 1.0);
-        imageStore(surfaceQx, pos, vec4(0.0, 0.0, 0.0, 1.0) * 1.0);
-        imageStore(surfaceQy, pos, vec4(0.0, 0.0, 0.0, 1.0) *1.0); */
+        imageStore(surfaceHeight, pos, vec4(surface_h, 0.0, 0.0, 1.0));
+        imageStore(surfaceQx, pos, vec4(surface_qx, 0.0, 0.0, 1.0));
+        imageStore(surfaceQy, pos, vec4(surface_qy, 0.0, 0.0, 1.0));
     }
 }

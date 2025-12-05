@@ -41,22 +41,29 @@ bool is_wet_face_y(float etab, float etat, float terrain_max) {
 void main() {
     uvec3 globalID = gl_GlobalInvocationID;
     ivec2 gridSize = imageSize(stateIn);
+    ivec2 pos = ivec2(globalID.xy);
 
     vec4 outValues = vec4(0.0);
 
+    if (pos.x <= 0 || pos.y <= 0 || pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1) {
+        vec4 statec = imageLoad(stateIn, pos);
+        imageStore(stateOut, pos, vec4(statec.x, 0.0, 0.0, 1.0));
+        return;
+    }
+
     float limitCFL = dx / (4.0 * dt);
 
-    vec4 statec = imageLoad(stateIn, ivec2(globalID.xy));
-    vec4 statel = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(-1, 0));
-    vec4 stater = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(1, 0));
-    vec4 statet = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, 1));
-    vec4 stateb = imageLoad(stateIn, ivec2(globalID.xy) + ivec2(0, -1));
+    vec4 statec = imageLoad(stateIn, pos);
+    vec4 statel = imageLoad(stateIn, pos + ivec2(-1, 0));
+    vec4 stater = imageLoad(stateIn, pos + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, pos + ivec2(0, 1));
+    vec4 stateb = imageLoad(stateIn, pos + ivec2(0, -1));
 
-    float terrainc = imageLoad(terrain, ivec2(globalID.xy)).r;
-    float terrainl = imageLoad(terrain, ivec2(globalID.xy) + ivec2(-1, 0)).r;
-    float terrainr = imageLoad(terrain, ivec2(globalID.xy) + ivec2(1, 0)).r;
-    float terraint = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, 1)).r;
-    float terrainb = imageLoad(terrain, ivec2(globalID.xy) + ivec2(0, -1)).r;
+    float terrainc = imageLoad(terrain, pos).r;
+    float terrainl = imageLoad(terrain, pos + ivec2(-1, 0)).r;
+    float terrainr = imageLoad(terrain, pos + ivec2(1, 0)).r;
+    float terraint = imageLoad(terrain, pos + ivec2(0, 1)).r;
+    float terrainb = imageLoad(terrain, pos + ivec2(0, -1)).r;
 
     float etac = statec.x + terrainc;
     float etal = statel.x + terrainl;
@@ -77,7 +84,7 @@ void main() {
     float dqy = 0.0;
 
     if (!is_wet_face_x(etal, etac, max_terrain_x) || h_upwind_x <= dryEps ||
-        globalID.x == 0u || globalID.x == (uint(gridSize.x) - 1u)) {
+        pos.x <= 1 || pos.x >= gridSize.x - 1) {
         outValues.y = 0.0; // qx = 0
     } else {
 
@@ -111,7 +118,7 @@ void main() {
     }
 
     if (!is_wet_face_y(etab, etac, max_terrain_y) || h_upwind_y <= dryEps ||
-        globalID.y == 0u || globalID.y == (uint(gridSize.y) - 1u)) {
+        pos.y <= 1 || pos.y >= gridSize.y - 1) {
         outValues.z = 0.0; // qy = 0
     } else {
 
@@ -145,7 +152,5 @@ void main() {
         outValues.z = newqy;
     }
 
-    //
-
-    imageStore(stateOut, ivec2(globalID.xy), outValues);
+    imageStore(stateOut, pos, outValues);
 }
