@@ -1,0 +1,37 @@
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) uniform image2D uStateTexture;
+
+struct Disturbance {
+    ivec2 position;  // pixel position (px, py)
+    float strength;  // momentum magnitude
+    float _padding;  // align to 16 bytes
+};
+
+layout(std430, binding = 1) readonly buffer DisturbanceBuffer {
+    Disturbance disturbances[];
+};
+
+uniform int uDisturbanceCount;
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    
+    if (int(idx) >= uDisturbanceCount)
+        return;
+    
+    Disturbance d = disturbances[idx];
+    ivec2 pos = d.position;
+    float strength = d.strength;
+    
+    // Read current state (h, q.x, q.y, terrain_height)
+    vec4 state = imageLoad(uStateTexture, pos);
+    
+    // Add momentum disturbance to q.x and q.y channels
+    // The paper mentions adding disturbances to q (momentum)
+    state.y += strength * 0.5;  // add to q.x (x-momentum)
+    state.z += strength * 0.5;  // add to q.y (z-momentum)
+    
+    // Write back
+    imageStore(uStateTexture, pos, state);
+}

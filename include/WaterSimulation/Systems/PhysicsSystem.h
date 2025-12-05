@@ -42,6 +42,14 @@ class PhysicsSystem  {
 
     void collisionResolutionLinear(Registry& registry);
 
+    struct Disturbance {
+        int px, py;
+        float strength;
+        float _padding;
+    };
+
+    std::vector<Disturbance> m_disturbances;
+
     void applyBuoyancy(Registry& registry);
 
     bool handleSphereTerrainCollision(Entity entityA,
@@ -61,6 +69,9 @@ public :
     std::vector<CollisionInfo> getCollisionList(){return collisionList;}
 
     void setHeightmapReadback(HeightmapReadback* hb) { m_heightmapReadback = hb; }
+
+    const std::vector<Disturbance>& getDisturbances() const { return m_disturbances; }
+    void clearDisturbances() { m_disturbances.clear(); }
 
 
 };

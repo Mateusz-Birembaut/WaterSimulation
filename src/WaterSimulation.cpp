@@ -181,22 +181,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
     
-    /* test maillage
-    Entity testEntity = m_registry.create();
-    auto & mat = m_registry.emplace<MaterialComponent>(
-        testEntity
-    );
-    mat.setAlbedo(albedoPtr);
-    m_registry.emplace<TransformComponent>(
-        testEntity,
-        Magnum::Vector3{0.0f, 2.0f, -3.0f}
-    );
-    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    m_registry.emplace<MeshComponent>(
-        testEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
-    );
-    */
 
     float scale = 75.0f;
     
@@ -371,16 +355,14 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     rigidBody.mesh = testMeshComp.activeMesh;
 
     auto* sphereCollider = new SphereCollider(1.0f);
-    sphereCollider->mass = 800.0f;
+    sphereCollider->mass = 600.0f;
     sphereCollider->computeInertiaTensor();
     rigidBody.addCollider(sphereCollider);
 
 
     auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
-    b.flotability = 600.0f;
-    b.waterDrag = 2.0f;
-    b.angularDrag = 1.0f;
-
+    b.flotability = 500.0f;
+    b.waterDrag = 10.0f;
 
     // sun light en cours
     auto sunEntity = m_registry.create();
@@ -425,14 +407,24 @@ void WaterSimulation::Application::drawEvent() {
 
     if(!simulationPaused) {
         for(int i = 0; i < step_number; ++i){
-            m_shallowWaterSimulation.step();
-            m_heightmapReadback.enqueueReadback(m_shallowWaterSimulation.getStateTexture());
-
             m_transform_System.update(m_registry);
             m_physicSystem.update(m_registry, m_deltaTime);
+
+            // appliquer les mouvments sur l'eau 
+            const auto& disturbances = m_physicSystem.getDisturbances();
+            if (!disturbances.empty()) {
+                std::vector<ShallowWater::Disturbance> wakeDisturbances;
+                wakeDisturbances.reserve(disturbances.size());
+                for (const auto& d : disturbances) {
+                    wakeDisturbances.push_back({d.px, d.py, d.strength, d._padding});
+                }
+                m_shallowWaterSimulation.applyDisturbances(wakeDisturbances);
+            }
+
+            m_shallowWaterSimulation.step();
+            m_heightmapReadback.enqueueReadback(m_shallowWaterSimulation.getStateTexture());
         }
     }
-
 
 
     m_renderSystem.render(m_registry, *m_camera.get());

@@ -680,6 +680,8 @@ void PhysicsSystem::collisionResolutionLinear(Registry& registry) {
 
 void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
+    m_disturbances.clear();
+
     auto waterView = registry.view<MeshComponent, TransformComponent, WaterComponent>();
 
     if (waterView.begin() == waterView.end()) {
@@ -696,7 +698,6 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
     const bool hasHeightmap = m_heightmapReadback && m_heightmapReadback->hasCpuData();
     const Magnum::Vector2i heightmapSize = hasHeightmap ? m_heightmapReadback->size() : Magnum::Vector2i{0};
-
     
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
@@ -772,15 +773,19 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
             Magnum::Vector3 relativeVelocity = waterVelocityWorld - bodyVelocityAtPoint;
             Magnum::Vector3 horizontalRelative{relativeVelocity.x(), 0.0f, relativeVelocity.z()};
 
+            const float submersionRatio = submergedHeight / maxSubmersion;
             const float relSpeed = horizontalRelative.length();
             if (relSpeed > 1.0e-3f) {
-                const float submersionRatio = submergedHeight / maxSubmersion;
                 const float referenceArea = Magnum::Constants::pi() * radius * radius;
                 const float dragCoefficient = b.waterDrag > 0.0f ? b.waterDrag : 1.0f;
                 const float dragMagnitude = 0.5f * fluidDensity * referenceArea * relSpeed * relSpeed * dragCoefficient * submersionRatio;
                 Magnum::Vector3 lateralForce = dragMagnitude * (horizontalRelative / relSpeed);
                 rb.addForceAt(lateralForce, sphereCenter);
             }
+
+            const float strengthFactor = 1.0f;
+            const float wakeStrength = relSpeed * submersionRatio * strengthFactor; 
+            m_disturbances.push_back({px, py, wakeStrength, 0.0f});
         }
     }
 }
