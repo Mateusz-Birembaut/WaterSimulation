@@ -67,7 +67,7 @@ void main() {
         float gradMag = length(gradH);
 
         float d = decompositionD;
-        float alpha = (h * h) / 64.0;
+        float alpha = (h * h) / 128.0;
         alpha *= exp(-d * gradMag * gradMag);
 
         imageStore(tempOut, pos, vec4(H, qx, qy, alpha));
@@ -98,7 +98,6 @@ void main() {
         
         float max_alpha = max(max(alpha_face_l, alpha_face_r), max(alpha_face_t, alpha_face_b));
         float diffusion_dt = min(0.25 * dx * dx / max(max_alpha, 1e-6), 0.25);
-
 
         float diff_H = (alpha_face_r * (temp_r.x - temp_c.x) - alpha_face_l * (temp_c.x - temp_l.x) +
                         alpha_face_t * (temp_t.x - temp_c.x) - alpha_face_b * (temp_c.x - temp_b.x)) / (dx * dx);
