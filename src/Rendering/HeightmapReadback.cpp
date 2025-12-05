@@ -138,7 +138,8 @@ float HeightmapReadback::heightAt(int x, int y) const {
 	float waterHeight = m_cpuCaches[m_lastCpuIndex][idx];
 	if (texelIndex < m_terrainHeightmap.size())
 		waterHeight += m_terrainHeightmap[texelIndex];
-	return waterHeight;
+
+	return waterHeight * 1.5f; // TODO : METTRE CA EN GLOBALE OU PENSER A LE MODIFIER
 }
 
 float HeightmapReadback::heightAtUV(const Vector2& uv) const {

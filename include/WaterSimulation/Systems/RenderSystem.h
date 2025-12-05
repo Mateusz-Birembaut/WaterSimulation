@@ -66,6 +66,8 @@ namespace WaterSimulation {
 
 		void setHeightmapReadback(HeightmapReadback* hb) { m_heightmapReadback = hb; }
 
+		void visualizeHeightmap(Registry& registry, const Magnum::Matrix4& viewProj);
+
 	      private:
 		OpaquePass m_opaquePass;
 		ShadowMapPass m_shadowMapPass;

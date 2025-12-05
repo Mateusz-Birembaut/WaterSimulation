@@ -1,12 +1,16 @@
+
+#pragma once
+
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Rendering/CustomShader/FullscreenTextureShader.h>
-#pragma once
+#include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Vector3.h>
 
 namespace WaterSimulation {
 
@@ -16,6 +20,8 @@ namespace WaterSimulation {
 		void resize(const Magnum::Vector2i& windowSize);
 
 		void render(
+			HeightmapReadback * heightmapReadback,
+			const Magnum::Vector3& cameraPosition,
 			Magnum::GL::Texture2D& opaqueColor,
 			Magnum::GL::Texture2D& caustics,
 			Magnum::GL::Texture2D& godrays,
@@ -26,6 +32,12 @@ namespace WaterSimulation {
 		);
 
 		Magnum::GL::Texture2D& getColorTexture() { return m_colorTexture; }
+
+		bool isCameraUnderwater(
+			Registry& registry,
+			const Magnum::Vector3& cameraPosition,
+			HeightmapReadback* heightmapReadback
+		);
 
 	private:
 		Magnum::GL::Mesh createFullscreenTriangle();
