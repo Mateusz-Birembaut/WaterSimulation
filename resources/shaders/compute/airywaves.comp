@@ -14,9 +14,9 @@ uniform float dt;
 uniform float gravity;
 uniform float dx;
 uniform int N;
+uniform float hBar;
 
 const float eps = 1e-6;
-
 const float PI = 3.14159265358979323846;
 
 vec2 complex_mult(vec2 a, vec2 b) {
@@ -24,18 +24,24 @@ vec2 complex_mult(vec2 a, vec2 b) {
 }
 
 void main() {
-
     ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(bulkState);
 
-    if (gid.x >= (uint(size.x)) || gid.y >= (uint(size.y))) {
+    if (gid.x >= size.x || gid.y >= size.y) {
         return;
     }
 
-    // Wavenumber k computation
+    vec2 qx_hat = imageLoad(surfaceQxFFT, gid).xy;
+    vec2 qy_hat = imageLoad(surfaceQyFFT, gid).xy;
 
-    // In frequency domain the waves are centered
+    if (gid.x == 0 && gid.y == 0) {
+        imageStore(surfaceQxFFT, gid, vec4(qx_hat, 0.0, 0.0));
+        imageStore(surfaceQyFFT, gid, vec4(qy_hat, 0.0, 0.0));
+        return;
+    }
 
+    // Compute wavenumber
+    
     float kx_idx = (gid.x <= N / 2) ? float(gid.x) : float(gid.x - N);
     float ky_idx = (gid.y <= N / 2) ? float(gid.y) : float(gid.y - N);
 
@@ -44,45 +50,33 @@ void main() {
 
     float k = sqrt(kx * kx + ky * ky);
 
-    // Dispersion omega
-
-    float h_bar = 1.0; // Should do it for h_bar in [1, 4, 16, 64]
-    float omega = 0.0;
-
-    float beta = sqrt((2.0*k)/dx) * sqrt(sin((k*dx)/2.0)); 
-
-    if (k > eps) {
-        omega = sqrt(gravity * k * tanh(k * h_bar));
+    if (k <= eps) {
+        imageStore(surfaceQxFFT, gid, vec4(qx_hat, 0.0, 0.0));
+        imageStore(surfaceQyFFT, gid, vec4(qy_hat, 0.0, 0.0));
+        return;
     }
 
-    //omega *= beta;
+    float h_bar = hBar;
+    float omega = sqrt(gravity * k * tanh(k * h_bar));
+    
 
-    // Derivatives
-
-    // d h_hat/dx = i*kx* h_hat
-
+    // Fourier shift
     vec2 h_hat = imageLoad(surfaceHeightFFT, gid).xy;
+    vec2 shift_x = vec2(cos(-kx * dx * 0.5), sin(-kx * dx * 0.5));
+    vec2 shift_y = vec2(cos(-ky * dx * 0.5), sin(-ky * dx * 0.5));
 
-    h_hat = complex_mult(h_hat, vec2(cos(-k *dx / 2.0), sin(-k * dx / 2.0))); // Staggered grid fourier shift
+    vec2 h_hat_x = complex_mult(h_hat, shift_x);
+    vec2 h_hat_y = complex_mult(h_hat, shift_y);
 
-
-    vec2 qx_hat = imageLoad(surfaceQxFFT, gid).xy;
-    vec2 qy_hat = imageLoad(surfaceQyFFT, gid).xy;
-
-    vec2 dhdx =
-        complex_mult(vec2(0.0, kx), h_hat); // This is in frequency space
-    vec2 dhdy = complex_mult(vec2(0.0, ky), h_hat);
+    vec2 dhdx = complex_mult(vec2(0.0, kx), h_hat_x);
+    vec2 dhdy = complex_mult(vec2(0.0, ky), h_hat_y);
 
     float cos_om = cos(omega * dt);
     float sin_om = sin(omega * dt);
+    float factor = omega / (k * k);
 
-    vec2 qx_new = cos_om * qx_hat - sin_om * (omega / (k * k)) * dhdx;
-    vec2 qy_new = cos_om * qy_hat - sin_om * (omega / (k * k)) * dhdy;
-
-    if (k < eps) {
-        qx_new = qx_hat;
-        qy_new = qy_hat;
-    }
+    vec2 qx_new = cos_om * qx_hat - sin_om * factor * dhdx;
+    vec2 qy_new = cos_om * qy_hat - sin_om * factor * dhdy;
 
     imageStore(surfaceQxFFT, gid, vec4(qx_new, 0.0, 0.0));
     imageStore(surfaceQyFFT, gid, vec4(qy_new, 0.0, 0.0));

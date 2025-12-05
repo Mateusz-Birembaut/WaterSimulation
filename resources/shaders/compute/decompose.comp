@@ -12,8 +12,8 @@ layout(binding = 7, rgba32f) writeonly uniform highp image2D tempOut;
 uniform float dx;
 uniform float dt;
 uniform int stage;
-
-const float dryEps = 1e-4;
+uniform float decompositionD;
+uniform float dryEps;
 
 // It would be better to split it into 3 shader for optimisation but this was easier
 
@@ -43,7 +43,6 @@ void main() {
         float qx = statec.y;
         float qy = statec.z;
         
-        // If cell is dry, output zeros
         if (h < dryEps) {
             imageStore(tempOut, pos, vec4(terrainc, 0.0, 0.0, 0.0));
             return;
@@ -67,7 +66,7 @@ void main() {
         );
         float gradMag = length(gradH);
 
-        float d = 1.0/10.0;
+        float d = decompositionD;
         float alpha = (h * h) / 64.0;
         alpha *= exp(-d * gradMag * gradMag);
 

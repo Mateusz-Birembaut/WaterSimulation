@@ -71,8 +71,8 @@ void ShallowWater::step() {
             .setFloatUniform("dt", dt)
             .setFloatUniform("gravity", gravity)
             .setFloatUniform("dx", dx)
-            .setIntUniform("N", static_cast<int>(N));
-            //.run(groupx, groupy);
+            .setFloatUniform("hBar", airyHBar)
+            .setIntUniform("N", static_cast<int>(N)).run(groupx, groupy);
 
         Magnum::GL::Renderer::setMemoryBarrier(
             Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
@@ -117,6 +117,7 @@ void ShallowWater::step() {
         m_transportSurfaceFlowProgram.bindTransportSurfaceFlow(ifftQx, ifftQy, &m_tempTexture, &m_bulkTexture, &m_tempTexture2)
             .setFloatUniform("dt", dt)
             .setFloatUniform("dx", dx)
+            .setFloatUniform("transportGamma", transportGamma)
             .run(groupx, groupy);
 
         Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
@@ -126,6 +127,7 @@ void ShallowWater::step() {
         m_transportSurfaceHeightProgram.bindTransportSurfaceHeight(ifftHeight, &m_bulkTexture, &m_tempTexture2)
             .setFloatUniform("dt", dt)
             .setFloatUniform("dx", dx)
+            .setFloatUniform("transportGamma", transportGamma)
             .run(groupx, groupy);
 
         Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
@@ -167,12 +169,14 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
                        &m_surfaceHeightTexture, &m_surfaceQxTexture,
                        &m_surfaceQyTexture, &m_tempTexture, &m_tempTexture2)
         .setIntUniform("stage", 0)
+        .setFloatUniform("decompositionD", decompositionD)
+        .setFloatUniform("dryEps", dryEps)
+        .setFloatUniform("dx", dx)
         .run(groupx, groupy);
 
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 
-    const int diffusionIterations = 128;
     Magnum::GL::Texture2D *tempIn = &m_tempTexture2;
     Magnum::GL::Texture2D *tempOut = &m_tempTexture;
 
@@ -182,6 +186,9 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
                            &m_surfaceHeightTexture, &m_surfaceQxTexture,
                            &m_surfaceQyTexture, tempIn, tempOut)
             .setIntUniform("stage", 1)
+            .setFloatUniform("decompositionD", decompositionD)
+            .setFloatUniform("dryEps", dryEps)
+            .setFloatUniform("dx", dx)
             .run(groupx, groupy);
 
         Magnum::GL::Renderer::setMemoryBarrier(
@@ -196,6 +203,9 @@ void ShallowWater::runDecomposition(Magnum::GL::Texture2D *inputTex) {
                        &m_surfaceHeightTexture, &m_surfaceQxTexture,
                        &m_surfaceQyTexture, tempIn, tempOut)
         .setIntUniform("stage", 2)
+        .setFloatUniform("decompositionD", decompositionD)
+        .setFloatUniform("dryEps", dryEps)
+        .setFloatUniform("dx", dx)
         .run(groupx, groupy);
 
     Magnum::GL::Renderer::setMemoryBarrier(

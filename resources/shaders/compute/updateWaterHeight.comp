@@ -36,28 +36,19 @@ void main() {
     float qy_c = bulkc.z + surfacec.z;
     float qy_t = bulkt.z + surfacet.z;
 
-    float h_tilde_r = (surfacec.x + surfacer.x)*0.5;
-    float h_bar_r = (bulkc.x + bulkr.x) * 0.5;
-    float u_bar_r = (h_bar_r > eps) ? ( (bulkc.y + bulkr.y) * 0.5 ) / h_bar_r : 0.0;
-    float q_breve_x_r = h_tilde_r * u_bar_r;
 
-    float q_breve_x_c = surfacec.x * ((bulkc.x > eps) ? bulkc.y / bulkc.x : 0.0);
-
-    float h_tilde_t =  (surfacec.x + surfacet.x) * 0.5 ;
-    float h_bar_t =  (bulkc.x + bulkt.x) * 0.5;
-    float v_bar_t = (h_bar_t > eps) ? ( (bulkc.z + bulkt.z) * 0.5) / h_bar_t : 0.0;
-    float q_breve_y_t = h_tilde_t * v_bar_t;
-
-
-    float q_breve_y_c = surfacec.x * ((bulkc.x > eps) ? bulkc.z / bulkc.x : 0.0);
-
+    /* if(h_prev >= dryEps){
+        float max_q = h_prev * dx / (4.0 * dt);
+        qx_c = clamp(qx_c, -max_q, max_q);
+        qy_c = clamp(qy_c, -max_q, max_q);
+    }
+     */
     float div_q = (qx_r - qx_c) / dx + (qy_t - qy_c) / dx;
-    float div_q_breve = (q_breve_x_r - q_breve_x_c) / dx + (q_breve_y_t - q_breve_y_c) / dx;
 
-    float new_h = h_prev - dt * (div_q + div_q_breve);
+    float new_h = h_prev - dt * div_q;
     new_h = max(new_h, 0.0);
 
-    vec2 total_q = vec2(qx_c, qy_c);
+    
 
-    imageStore(stateOut, pos, vec4(new_h, total_q.x, total_q.y, 1.0));
+    imageStore(stateOut, pos, vec4(new_h, qx_c, qy_c, 1.0));
 }

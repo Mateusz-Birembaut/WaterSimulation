@@ -24,18 +24,27 @@
 #include <vector>
 
 class ShallowWater {
+  public:
+    // Tunable simulation parameters (exposed to UI)
+    float gravity = 9.81f; // la gravité
+    float dryEps = 1e-3f; // valeur de h a partir de laquelle une cellule est
+                          // considéré comme sec
+    float friction_coef = 0.01f;
+    
+    // Airy waves parameters
+    float decompositionD = 0.01f;      // d parameter in decomposition (1/100)
+    int diffusionIterations = 128;      // Number of diffusion iterations
+    float airyHBar = 4.0f;              // h_bar in airy waves dispersion
+    float transportGamma = 0.25f;       // gamma damping factor in transport
+
   private:
     // Dimensions de la simulation
     int nx, ny;            // nombre de cellules sur chaque axe
     float dx;              // l'écart entre les cellules
     float dt;              // le pas de temps
-    float gravity = 9.81f; // la gravité
 
     // stabilité
-    float dryEps = 1e-3f; // valeur de h a partir de laquelle une cellule est
-                          // considéré comme sec
     float limitCFL; // coefficient CFL
-    float friction_coef = 0.01f;
 
     // Compute Shaders
 
@@ -63,7 +72,7 @@ class ShallowWater {
     Magnum::GL::Texture2D m_tempTexture2;
     Magnum::GL::Texture2D m_tempTexture3;
 
-    // Visualization textures
+    // Debug textures
     Magnum::GL::Texture2D m_visBulkUpdated;
     Magnum::GL::Texture2D m_visFFTHeight;
     Magnum::GL::Texture2D m_visFFTQx;

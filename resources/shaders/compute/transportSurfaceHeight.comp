@@ -8,6 +8,7 @@ layout(binding = 2, rg32f) readonly uniform highp image2D surfaceHeight;
 
 uniform float dt;
 uniform float dx;
+uniform float transportGamma;
 
 const float eps = 1e-6;
 
@@ -22,7 +23,7 @@ void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     ivec2 gridSize = imageSize(surfaceOut);
 
-    if (pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1 || pos.x <= 1 ||
+    if (pos.x >= gridSize.x - 2 || pos.y >= gridSize.y - 2 || pos.x <= 1 ||
         pos.y <= 1) {
         imageStore(surfaceOut, pos, vec4(0.0));
         return;
@@ -34,7 +35,7 @@ void main() {
 
     float divU = (ur.x - ul.x) / (2.0 * dx) + (ut.y - ub.y) / (2.0 * dx);
 
-    float gamma = 0.25;
+    float gamma = transportGamma;
     float G = (divU > 0.0) ? -divU : -gamma * (-divU);
     G = min(G, 0.0); // To only dampen not amplify the wave
 

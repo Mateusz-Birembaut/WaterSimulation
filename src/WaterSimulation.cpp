@@ -97,7 +97,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/60.0f);
     
     m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 7.0f, 1);
 
@@ -127,7 +127,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera.get()->setPos({0.0, 5.0, 0.0f});
+    m_camera.get()->setPos({0.0, 10.0, 0.0f});
     m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     

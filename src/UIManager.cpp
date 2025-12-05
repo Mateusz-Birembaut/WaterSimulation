@@ -99,6 +99,20 @@ void WaterSimulation::UIManager::paramWindow(
 
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
+        ImGui::Separator();
+        ImGui::Text("Simulation Parameters");
+        
+        ImGui::SliderFloat("Gravity", &simulation->gravity, 0.1f, 50.0f, "%.2f");
+        ImGui::SliderFloat("Dry Epsilon", &simulation->dryEps, 1e-6f, 0.1f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        
+        ImGui::Separator();
+        ImGui::Text("Airy Waves Parameters");
+        
+        ImGui::SliderFloat("Decomposition D", &simulation->decompositionD, 0.000001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderInt("Diffusion Iterations", &simulation->diffusionIterations, 1, 512);
+        ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
+        ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
+
         ImGui::End();
     }
 

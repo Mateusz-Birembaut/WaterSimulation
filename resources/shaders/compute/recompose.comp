@@ -1,3 +1,5 @@
+//#version 430
+
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(binding = 0, rgba32f) writeonly uniform highp image2D stateOut;
@@ -5,19 +7,43 @@ layout(binding = 1, rgba32f) readonly uniform highp image2D bulkFlow;
 layout(binding = 2, rg32f) readonly uniform highp image2D surfaceHeight;
 layout(binding = 3, rg32f) readonly uniform highp image2D surfaceQx;
 layout(binding = 4, rg32f) readonly uniform highp image2D surfaceQy;
+layout(binding = 5, r32f) readonly uniform highp image2D terrain;
 
 void main() {
 
-    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+    float dryEps = 1e-3;
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(stateOut);
 
-    vec4 bulk = imageLoad(bulkFlow, coord);
-    vec2 surfh = imageLoad(surfaceHeight, coord).rg;
-    vec2 surfqx = imageLoad(surfaceQx, coord).rg;
-    vec2 surfqy = imageLoad(surfaceQy, coord).rg;
+    if (pos.x >= gridSize.x || pos.y >= gridSize.y) {
+        return;
+    }
 
-    vec4 result =
-        vec4(bulk.r + surfh.r, bulk.g + surfqx.r, bulk.b + surfqy.r, 1.0
-        );
+    if (pos.x == 0u || pos.y == 0u || pos.x >= gridSize.x - 1u || pos.y >= gridSize.y - 1u) {
+        vec4 bulk = imageLoad(bulkFlow, pos);
+        imageStore(stateOut, pos, bulk);
+        return;
+    }
 
-    imageStore(stateOut, coord, result);
+    vec4 bulk = imageLoad(bulkFlow, pos);
+    float surfh = imageLoad(surfaceHeight, pos).r;
+    float surfqx = imageLoad(surfaceQx, pos).r;
+    float surfqy = imageLoad(surfaceQy, pos).r;
+    float terrainH = imageLoad(terrain, pos).r;
+
+    float bulk_h = bulk.r - terrainH;
+    float total_h = bulk_h + surfh;
+
+    if (bulk_h <= dryEps) {
+        total_h = max(0.0, bulk_h);
+        surfqx = 0.0;
+        surfqy = 0.0;
+    }
+
+    total_h = max(0.0, total_h);
+
+    float qx = bulk.g + surfqx;
+    float qy = bulk.b + surfqy;
+
+    imageStore(stateOut, pos, vec4(total_h + terrainH, qx, qy, 1.0));
 }
