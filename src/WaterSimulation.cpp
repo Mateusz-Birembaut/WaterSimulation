@@ -18,7 +18,6 @@
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/DirectionalLightComponent.h>
-#include <WaterSimulation/Components/LightComponent.h>
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
@@ -196,8 +195,47 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&terrainTexture, [](Magnum::GL::Texture2D*){});
 
-    matTerrain.setAlbedo(albedoPtr);
-    matTerrain.setHeightMap(heightmapPtr);
+    {
+        auto sandAlbedoData = rs.getRaw("sand_albedo.jpg");
+        importer->openData(sandAlbedoData);
+        auto sandAlbedoImage = importer->image2D(0);
+        Magnum::GL::Texture2D sandAlbedoTex;
+        sandAlbedoTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandAlbedoImage->size())
+            .setSubImage(0, {}, Magnum::ImageView2D{*sandAlbedoImage});
+        matTerrain.albedo = std::make_shared<Magnum::GL::Texture2D>(std::move(sandAlbedoTex));
+    }
+
+    {
+        auto sandNormalData = rs.getRaw("sand_norm.png");
+        importer->openData(sandNormalData);
+        auto sandNormalImage = importer->image2D(0);
+        Magnum::GL::Texture2D sandNormalTex;
+        sandNormalTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandNormalImage->size())
+            .setSubImage(0, {}, Magnum::ImageView2D{*sandNormalImage});
+        matTerrain.normal = std::make_shared<Magnum::GL::Texture2D>(std::move(sandNormalTex));
+    }
+
+    {
+        auto sandArmData = rs.getRaw("sand_arm.jpg");
+        importer->openData(sandArmData);
+        auto sandArmImage = importer->image2D(0);
+        Magnum::GL::Texture2D sandArmTex;
+        sandArmTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandArmImage->size())
+            .setSubImage(0, {}, Magnum::ImageView2D{*sandArmImage});
+        matTerrain.arm = std::make_shared<Magnum::GL::Texture2D>(std::move(sandArmTex));
+    }
+
+
+    matTerrain.heightmap = heightmapPtr;
     m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale));
     m_registry.emplace<MeshComponent>(
         testTerrain,
@@ -315,8 +353,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto waterShader = std::make_shared<DebugShader>();
     auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
-    waterMat.setHeightMap(waterHeightTexPtr);
-    waterMat.setAlbedo(waterAlbedoTexPtr);
+    waterMat.heightmap = waterHeightTexPtr;
+    waterMat.albedo = waterAlbedoTexPtr;
 
     m_registry.emplace<ShaderComponent>(
         waterEntity,
@@ -335,12 +373,13 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto & mat = m_registry.emplace<MaterialComponent>(
         testEntity
     );
-    mat.setAlbedo(albedoPtr);
+    mat.albedo = albedoPtr;
     auto & testTransform = m_registry.emplace<TransformComponent>(
         testEntity
     );
     testTransform.position = Magnum::Vector3(0.0f, 15.0f, -35.0f);
     testTransform.scale = Magnum::Vector3(1.0f, 1.0f, 1.0f);
+    auto sphereMesh = rs.getRaw("sphere.obj");
     m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
     auto& testMeshComp = m_registry.emplace<MeshComponent>(
         testEntity,
@@ -367,8 +406,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // sun light en cours
     auto sunEntity = m_registry.create();
     m_registry.emplace<TransformComponent>(sunEntity, Vector3{50.0f, 100.0f, 50.0f});
-    m_registry.emplace<LightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
-    m_registry.emplace<DirectionalLightComponent>(sunEntity);
+    m_registry.emplace<DirectionalLightComponent>(sunEntity, Color3{1.0f, 0.95f, 0.8f}, 5.0f);
     m_registry.emplace<ShadowCasterComponent>(sunEntity);  
 
     m_renderSystem.setHeightmapReadback(&m_heightmapReadback);

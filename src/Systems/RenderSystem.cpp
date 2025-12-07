@@ -72,7 +72,7 @@ void RenderSystem::render(Registry& registry,
         }
     }
 
-    m_opaquePass.render(registry, viewMatrix, projectionMatrix, m_lightViewProjMatrix, m_shadowMapPass.getDepthTexture());
+    m_opaquePass.render(registry, cam, m_lightViewProjMatrix, m_shadowMapPass.getDepthTexture());
 
     if(m_renderDepthOnly){
         drawFullscreenTextureDebugDepth(m_opaquePass.getDepthTexture(), cam.near(), cam.far(), false);

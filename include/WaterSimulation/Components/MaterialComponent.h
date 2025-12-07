@@ -22,27 +22,12 @@ namespace WaterSimulation {
     struct MaterialComponent {
 
         std::shared_ptr<Magnum::GL::Texture2D> albedo;
+        std::shared_ptr<Magnum::GL::Texture2D> arm; // ao rough metal
         std::shared_ptr<Magnum::GL::Texture2D> normal;
-        std::shared_ptr<Magnum::GL::Texture2D> metallicRoughness;
-        std::shared_ptr<Magnum::GL::Texture2D> ao;
         std::shared_ptr<Magnum::GL::Texture2D> heightmap;
 
         Magnum::Color4 baseColor{1.0f};
 
-        //TODO ajouter shader ici ? dans la opaque pass -> draw avec le shader approprié
-
-        MaterialComponent() = default;
-
-        MaterialComponent& setAlbedo(std::shared_ptr<Magnum::GL::Texture2D> tex) {
-            albedo = tex;
-            return *this;
-        }
-
-        MaterialComponent& setHeightMap(std::shared_ptr<Magnum::GL::Texture2D> tex) {
-            heightmap = tex;
-            return *this;
-        }
-        //TODO : ajouter les autres si on veut PBR
 
         void onAttach(Registry& registry[[maybe_unused]], Entity entity[[maybe_unused]]) {};
         void onDetach(Registry& registry[[maybe_unused]], Entity entity[[maybe_unused]]) {};

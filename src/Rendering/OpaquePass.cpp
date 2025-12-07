@@ -2,10 +2,12 @@
 
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/MeshComponent.h>
+#include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
 #include <WaterSimulation/ECS.h>
+#include <WaterSimulation/Camera.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Framebuffer.h>
@@ -55,16 +57,18 @@ void WaterSimulation::OpaquePass::resize(const Magnum::Vector2i& windowSize) {
 
 void WaterSimulation::OpaquePass::render(
     Registry& registry,
-    const Magnum::Matrix4& viewMatrix,
-    const Magnum::Matrix4& projMatrix,
+	Camera& cam,
     const Magnum::Matrix4& lightVP,
     Magnum::GL::Texture2D& shadowMap) {
 	m_fb.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth).bind();
 
-	const Matrix4 viewProj = projMatrix * viewMatrix;
+	const Matrix4 viewProj = cam.projectionMatrix() * cam.viewMatrix();
+
+	auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+	Entity sunEntity = *sunView.begin();
+	DirectionalLightComponent& sunLight = registry.get<DirectionalLightComponent>(sunEntity);
 
 	auto view = registry.view<MeshComponent, TransformComponent>();
-
 	for (Entity entity : view) {
 
 		if (registry.has<WaterComponent>(entity))
@@ -74,11 +78,12 @@ void WaterSimulation::OpaquePass::render(
 		TransformComponent& transformComp = registry.get<TransformComponent>(entity);
 		MaterialComponent& materialComp = registry.get<MaterialComponent>(entity);
 
-		Matrix4 mvp = viewProj * transformComp.globalModel;
+		Matrix4 model = transformComp.globalModel;
+		Matrix4 mvp = viewProj * model;
 
 		if (registry.has<ShaderComponent>(entity)) {
 			auto& shaderComp = registry.get<ShaderComponent>(entity);
-			shaderComp.shaderPtr.get()->draw(meshComp.glMesh, mvp, materialComp, lightVP, shadowMap,{}); // TODO : ajouter lights
+			shaderComp.shaderPtr.get()->draw(meshComp.glMesh, model, mvp, materialComp, lightVP, shadowMap, sunLight, cam.position()); // TODO : ajouter lights
 		} else {									    // si pas defini de shader component on en a un de base TODO : le rendre mieux ?
 			m_opaqueShader.setMVP(mvp);
 			if (materialComp.albedo) {

@@ -1,9 +1,10 @@
 
 #include <WaterSimulation/Rendering/CompositionPass.h>
-#include <WaterSimulation/Components/LightComponent.h>
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
 #include <WaterSimulation/Components/MaterialComponent.h>
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
+#include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/WaterComponent.h>
 #include <WaterSimulation/ECS.h>
@@ -111,16 +112,15 @@ void CompositionPass::render(
 	    MaterialComponent,
 	    ShaderComponent>();
 
-	auto lightView = registry.view<LightComponent>();
-	std::vector<LightComponent> lights;
-	for (Entity lightEntity : lightView) {
-		lights.push_back(lightView.get<LightComponent>(lightEntity));
-	}
 
 	GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 	// don't write depth when drawing transparent water
 	GL::Renderer::setDepthMask(false);
 	GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+
+	auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
+	Entity sunEntity = *sunView.begin();
+	DirectionalLightComponent& sunLight = registry.get<DirectionalLightComponent>(sunEntity);
 
 	for (Entity entity : waterView) {
 		auto& meshComp = waterView.get<MeshComponent>(entity);
@@ -132,14 +132,17 @@ void CompositionPass::render(
 			continue;
 		}
 
-		const Matrix4 mvp = viewProj * transform.globalModel;
+		const Matrix4 model = transform.globalModel;
+		const Matrix4 mvp = viewProj * model;
 		shaderComp.shaderPtr->draw(
 		    meshComp.glMesh,
+		    model,
 		    mvp,
 		    material,
 		    Matrix4{Math::IdentityInit},
-		    opaqueColor,
-		    lights);
+		    opaqueDepth, // reuse scene depth as shadow map placeholder
+		    sunLight,
+			cameraPosition);
 	}
 
 

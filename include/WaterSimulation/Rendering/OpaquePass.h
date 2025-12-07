@@ -3,6 +3,7 @@
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Rendering/CustomShader/DepthShader.h>
 #include <WaterSimulation/Rendering/CustomShader/OpaqueShader.h>
+#include <WaterSimulation/Camera.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -18,10 +19,9 @@ namespace WaterSimulation {
 		void resize(const Magnum::Vector2i& windowSize);
 
 		void render(Registry& registry,
-			    const Magnum::Matrix4& viewMatrix,
-			    const Magnum::Matrix4& projMatrix,
-			    const Magnum::Matrix4& lightVP,
-			    Magnum::GL::Texture2D& shadowMap);
+					Camera& cam,
+					const Magnum::Matrix4& lightVP,
+					Magnum::GL::Texture2D& shadowMap);
 
 		void recreateTextures(const Magnum::Vector2i& windowSize);
 		Magnum::GL::Texture2D& getDepthTexture() {

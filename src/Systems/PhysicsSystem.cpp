@@ -783,7 +783,7 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
                 rb.addForceAt(lateralForce, sphereCenter);
             }
 
-            const float strengthFactor = 1.0f;
+            const float strengthFactor = 5.0f;
             const float wakeStrength = relSpeed * submersionRatio * strengthFactor; 
             m_disturbances.push_back({px, py, wakeStrength, 0.0f});
         }
