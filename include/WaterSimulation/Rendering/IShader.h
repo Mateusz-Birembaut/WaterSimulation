@@ -1,12 +1,13 @@
 #pragma once
 
 #include <WaterSimulation/Components/MaterialComponent.h>
-#include <WaterSimulation/Components/LightComponent.h>
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/Math/Vector3.h>
 
 
 namespace WaterSimulation
@@ -16,11 +17,13 @@ namespace WaterSimulation
 		virtual ~IShader() = default;
 
 		virtual void draw(  Magnum::GL::Mesh& mesh, 
+			    const Magnum::Matrix4& model,
 			    const Magnum::Matrix4& mvp, 
 			    MaterialComponent& material, 
 			    Magnum::Matrix4 lightVP,
 			    Magnum::GL::Texture2D & shadowMap,
-			    const std::vector<LightComponent>& lights) = 0;
+			    DirectionalLightComponent& sunLight,
+				Magnum::Vector3 camPos) = 0;
 	};
 	
 } // namespace WaterSimulation

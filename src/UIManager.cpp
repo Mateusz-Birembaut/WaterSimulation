@@ -5,7 +5,6 @@
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/ECS.h>
 
-#include <WaterSimulation/Components/LightComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/DirectionalLightComponent.h>
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
@@ -202,31 +201,30 @@ void WaterSimulation::UIManager::sunWindow(Registry & registry){
     {
         ImGui::Begin("Sun");
 
-        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent, LightComponent>();
+        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
         if (sunView.begin() != sunView.end()) {
 
             Entity sunEntity = *sunView.begin();
 
-            auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-            auto& sunLight = sunView.get<LightComponent>(sunEntity);
+            auto& sun = sunView.get<DirectionalLightComponent>(sunEntity);
             auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
 
 
             ImGui::Text("Color:");
-            float color[3] = {sunLight.color.r(), sunLight.color.g(), sunLight.color.b()};
+            float color[3] = {sun.color.r(), sun.color.g(), sun.color.b()};
             if (ImGui::ColorEdit3("Sun Color", color)) {
-                sunLight.color = Magnum::Color3{color[0], color[1], color[2]};
+                sun.color = Magnum::Color3{color[0], color[1], color[2]};
             }
-            float intensity = sunLight.intensity;
+            float intensity = sun.intensity;
             if (ImGui::DragFloat("Intensity", &intensity, 0.1f, 0.0f, 100.0f)) {
-                sunLight.intensity = intensity;
+                sun.intensity = intensity;
             }
 
             ImGui::Text("Direction:");
-            if (ImGui::DragFloat3("Direction", sunDirection.direction.data(), 0.01f, -1.0f, 1.0f)) {
-                sunDirection.direction = sunDirection.direction.normalized();
+            if (ImGui::DragFloat3("Direction", sun.direction.data(), 0.01f, -1.0f, 1.0f)) {
+                sun.direction = sun.direction.normalized();
             }
-            ImGui::DragFloat("Offset", &sunDirection.offset, 0.1f, 0.1f, 10000.0f);
+            ImGui::DragFloat("Offset", &sun.offset, 0.1f, 0.1f, 10000.0f);
             
 
             ImGui::Text("Shadow Map:");

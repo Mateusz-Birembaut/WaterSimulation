@@ -2,6 +2,8 @@
 
 #include <WaterSimulation/Rendering/IShader.h>
 
+#include <WaterSimulation/Components/DirectionalLightComponent.h>
+
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Shader.h>
@@ -72,19 +74,21 @@ namespace WaterSimulation
 
 
 		void draw(  Magnum::GL::Mesh& mesh, 
-			    const Magnum::Matrix4& mvp, 
-			    MaterialComponent& material, 
-			    Magnum::Matrix4 lightVP,
-			    Magnum::GL::Texture2D & shadowMap,
-			    const std::vector<LightComponent>& lights) override {
+		    const Magnum::Matrix4& model,
+		    const Magnum::Matrix4& mvp, 
+		    MaterialComponent& material, 
+		    Magnum::Matrix4 lightVP,
+		    Magnum::GL::Texture2D & shadowMap,
+		    DirectionalLightComponent& sunLight,
+			Magnum::Vector3 camPos) override {
 
-				//TODO gerer lights
+				//TODO gerer light
 
 				Magnum::GL::Texture2D* albedoTex = material.albedo.get();
 				Magnum::GL::Texture2D* heightMapTex = material.heightmap.get();
 
 				setMVP(mvp);
-				if(albedoTex) bindAlbedoTexture(*albedoTex); // TODO : remettre albedoTex
+				if(albedoTex) bindAlbedoTexture(*albedoTex); 
 				if(heightMapTex) bindHeightMapTexture(*heightMapTex);
 
 				Magnum::GL::AbstractShaderProgram::draw(mesh);
