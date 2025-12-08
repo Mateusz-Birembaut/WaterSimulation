@@ -191,8 +191,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera.get()->setPos({0.0, 1.0, 0.0f});
-    m_camera.get()->setSpeed(10.0f);
+    m_camera.get()->setPos({0.0, 10.0, 0.0f});
+    m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     
     // test ECS et rendu avec shader de base
@@ -212,16 +212,15 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
 
-    // Preload metal sphere textures for later reuse
+    
     const auto metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
     const auto metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
     const auto metalNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_normal.png");
     m_metalAlbedo = loadTexCached(metalAlbedoPath);
     m_metalArm    = loadTexCached(metalArmPath);
     m_metalNormal = loadTexCached(metalNormalPath);
-    
 
-    float scale = 75.0f;
+    float scale = 200.0f;
     
     createTerrain(scale);
 
