@@ -144,7 +144,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    const auto heightmapFile = Corrade::Utility::Path::join(resDir, "heightmaps/h3.png");
+    const auto heightmapFile = Corrade::Utility::Path::join(resDir, "heightmaps/unnamed.jpg");
     if(!importer->openFile(heightmapFile)) {
         Error{} << "Could not open heightmap" << heightmapFile;
         return;
