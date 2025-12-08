@@ -12,6 +12,7 @@
 
 #include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
 #include <WaterSimulation/Rendering/CustomShader/DebugShader.h>
+#include <WaterSimulation/Rendering/CustomShader/PBRShader.h>
 
 #include <WaterSimulation/Components/MeshComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
@@ -29,6 +30,8 @@
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/Path.h>
+
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
@@ -48,12 +51,35 @@
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
+
 #include <SDL2/SDL.h>
 
 #include <memory>
 #include <algorithm>
 #include <limits>
 
+
+static std::string resolveResourcesDir()
+{
+    namespace Path = Corrade::Utility::Path;
+    const auto exeLoc = Path::executableLocation();
+    const std::string exeDir = exeLoc ? std::string{Path::split(*exeLoc).first()} : std::string{"."};
+
+    const std::string candidates[] = {
+        Path::join(exeDir, "resources"),                           // alongside executable
+        Path::join(Path::join(exeDir, ".."), "resources"),         // ../resources
+        Path::join(Path::join(exeDir, "../.."), "resources"),      // ../../resources (common when exe in build/Debug/bin)
+        std::string{"resources"}                                   // relative cwd fallback
+    };
+
+    for (const auto& candidate : candidates) {
+        if (Path::isDirectory(candidate)) return candidate;
+    }
+    // Last resort: return alongside exe even if missing; caller will log
+    return candidates[0];
+}
+
+const auto resDir = resolveResourcesDir();
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -91,8 +117,6 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         // Mettre aussi à jour Magnum au cas où
         setWindowSize({targetBounds.w, targetBounds.h});
     }
-    Corrade::Utility::Resource rs{"WaterSimulationResources"};
-
     Debug{} << "Creating application";
     
     m_timeline.start();
@@ -120,8 +144,11 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("unnamed.jpg");
-    importer->openData(heightmapData);
+    const auto heightmapFile = Corrade::Utility::Path::join(resDir, "heightmaps/h3.png");
+    if(!importer->openFile(heightmapFile)) {
+        Error{} << "Could not open heightmap" << heightmapFile;
+        return;
+    }
     auto image = importer->image2D(0);
 
     converter->configuration().setValue("size", "512 512");
@@ -156,6 +183,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_renderSystem.init(framebufferSize());
 
+    m_pbrShader = std::make_shared<PBRShader>();
+
     Debug{} << "This application is running on"
             << GL::Context::current().version() << "using"
             << GL::Context::current().rendererString();
@@ -169,8 +198,11 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // test ECS et rendu avec shader de base
     // test sphere avec texture
 
-    auto grassData = rs.getRaw("grass.png");
-    importer->openData(grassData);
+    const auto grassFile = Corrade::Utility::Path::join(resDir, "textures/grass.png");
+    if(!importer->openFile(grassFile)) {
+        Error{} << "Could not open texture" << grassFile;
+        return;
+    }
     auto imageTest = importer->image2D(0);
     m_testAlbedo.setWrapping(Magnum::GL::SamplerWrapping::ClampToEdge)
                     .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
@@ -179,160 +211,18 @@ WaterSimulation::Application::Application(const Arguments& arguments):
                     .setSubImage(0, {}, Magnum::ImageView2D{*imageTest});   
 
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
+
     
+    const auto metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
+    const auto metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
+    const auto metalNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_normal.png");
+    m_metalAlbedo = loadTexCached(metalAlbedoPath);
+    m_metalArm    = loadTexCached(metalArmPath);
+    m_metalNormal = loadTexCached(metalNormalPath);
 
     float scale = 200.0f;
     
-    // terrain test avec heightmap et texture pas pbr
-    Entity testTerrain = m_registry.create();
-    auto & matTerrain = m_registry.emplace<MaterialComponent>(
-        testTerrain
-    );
-    m_registry.emplace<TerrainComponent>(testTerrain);
-
-    auto& terrainTexture = m_shallowWaterSimulation.getTerrainTexture();
-    m_heightmapReadback.initTerrainHeightmapFromTexture(terrainTexture);
-
-    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&terrainTexture, [](Magnum::GL::Texture2D*){});
-
-    {
-        auto sandAlbedoData = rs.getRaw("sand_albedo.jpg");
-        importer->openData(sandAlbedoData);
-        auto sandAlbedoImage = importer->image2D(0);
-        Magnum::GL::Texture2D sandAlbedoTex;
-        sandAlbedoTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandAlbedoImage->size())
-            .setSubImage(0, {}, Magnum::ImageView2D{*sandAlbedoImage});
-        matTerrain.albedo = std::make_shared<Magnum::GL::Texture2D>(std::move(sandAlbedoTex));
-    }
-
-    {
-        auto sandNormalData = rs.getRaw("sand_norm.png");
-        importer->openData(sandNormalData);
-        auto sandNormalImage = importer->image2D(0);
-        Magnum::GL::Texture2D sandNormalTex;
-        sandNormalTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandNormalImage->size())
-            .setSubImage(0, {}, Magnum::ImageView2D{*sandNormalImage});
-        matTerrain.normal = std::make_shared<Magnum::GL::Texture2D>(std::move(sandNormalTex));
-    }
-
-    {
-        auto sandArmData = rs.getRaw("sand_arm.jpg");
-        importer->openData(sandArmData);
-        auto sandArmImage = importer->image2D(0);
-        Magnum::GL::Texture2D sandArmTex;
-        sandArmTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
-            .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
-            .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandArmImage->size())
-            .setSubImage(0, {}, Magnum::ImageView2D{*sandArmImage});
-        matTerrain.arm = std::make_shared<Magnum::GL::Texture2D>(std::move(sandArmTex));
-    }
-
-
-    matTerrain.heightmap = heightmapPtr;
-    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale));
-    m_registry.emplace<MeshComponent>(
-        testTerrain,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_terrainMesh.get()}}
-    );
-    m_registry.emplace<TransformComponent>(
-        testTerrain,
-        Magnum::Vector3{0.0f, -1.0f, -3.0f}
-    );
-    auto& terrainRigidBody = m_registry.emplace<RigidBodyComponent>(testTerrain);
-    terrainRigidBody.bodyType = PhysicsType::STATIC;
-    terrainRigidBody.useGravity = false;
-    terrainRigidBody.mesh = m_terrainMesh.get();
-    terrainRigidBody.linearVelocity = Magnum::Vector3{0.0f};
-    terrainRigidBody.angularVelocity = Magnum::Vector3{0.0f};
-
-    auto* terrainCollider = new MeshCollider();
-    terrainCollider->mass = 1.0f; 
-    terrainCollider->localCentroid = Magnum::Vector3{0.0f};
-    terrainCollider->localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
-    terrainCollider->vertices = m_terrainMesh->vertices;
-    terrainCollider->indices = m_terrainMesh->triangles;
-
-    const Magnum::Vector2i terrainSize = m_heightmapReadback.terrainSize();
-    const std::size_t expectedCount = std::size_t(terrainSize.x()) * std::size_t(terrainSize.y());
-    const auto& terrainHeights = m_heightmapReadback.terrainHeightmap();
-    Magnum::Vector3 terrainMin{
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max()
-    };
-    Magnum::Vector3 terrainMax{
-        std::numeric_limits<float>::lowest(),
-        std::numeric_limits<float>::lowest(),
-        std::numeric_limits<float>::lowest()
-    };
-    if (terrainCollider->vertices.size() == expectedCount && terrainHeights.size() == expectedCount) {
-        for (std::size_t i = 0; i < expectedCount; ++i) {
-            terrainCollider->vertices[i].y() = terrainHeights[i];
-            const Magnum::Vector3& v = terrainCollider->vertices[i];
-            terrainMin.x() = std::min(terrainMin.x(), v.x());
-            terrainMin.y() = std::min(terrainMin.y(), v.y());
-            terrainMin.z() = std::min(terrainMin.z(), v.z());
-            terrainMax.x() = std::max(terrainMax.x(), v.x());
-            terrainMax.y() = std::max(terrainMax.y(), v.y());
-            terrainMax.z() = std::max(terrainMax.z(), v.z());
-        }
-    }
-    terrainCollider->localMin = terrainMin;
-    terrainCollider->localMax = terrainMax;
-    terrainCollider->resolution = terrainSize;
-    TransformComponent& terrainTransform = m_registry.get<TransformComponent>(testTerrain);
-    Magnum::Matrix4 terrainModel = terrainTransform.model();
-    terrainTransform.globalModel = terrainModel;
-    terrainTransform.inverseGlobalModel = terrainModel.inverted();
-    Magnum::Vector3 worldMin{std::numeric_limits<float>::max()};
-    Magnum::Vector3 worldMax{std::numeric_limits<float>::lowest()};
-    for (int ix = 0; ix < 2; ++ix) {
-        for (int iy = 0; iy < 2; ++iy) {
-            for (int iz = 0; iz < 2; ++iz) {
-                Magnum::Vector3 corner{
-                    ix ? terrainMax.x() : terrainMin.x(),
-                    iy ? terrainMax.y() : terrainMin.y(),
-                    iz ? terrainMax.z() : terrainMin.z()
-                };
-                Magnum::Vector3 worldCorner = terrainModel.transformPoint(corner);
-                worldMin = Magnum::Vector3{
-                    std::min(worldMin.x(), worldCorner.x()),
-                    std::min(worldMin.y(), worldCorner.y()),
-                    std::min(worldMin.z(), worldCorner.z())
-                };
-                worldMax = Magnum::Vector3{
-                    std::max(worldMax.x(), worldCorner.x()),
-                    std::max(worldMax.y(), worldCorner.y()),
-                    std::max(worldMax.z(), worldCorner.z())
-                };
-            }
-        }
-    }
-    terrainRigidBody.aabbCollider.min = worldMin;
-    terrainRigidBody.aabbCollider.max = worldMax;
-
-    terrainRigidBody.addCollider(terrainCollider);
-    terrainRigidBody.bodyType = PhysicsType::STATIC;
-    terrainRigidBody.mass = std::numeric_limits<float>::infinity();
-    terrainRigidBody.inverseMass = 0.0f;
-    terrainRigidBody.localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
-    terrainRigidBody.localInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
-    terrainRigidBody.globalInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
-    terrainRigidBody.forceAccumulator = Magnum::Vector3{0.0f};
-    terrainRigidBody.torqueAccumulator = Magnum::Vector3{0.0f};
-    
-    auto shaderPtr = std::make_shared<TerrainShader>();
-    m_registry.emplace<ShaderComponent>(
-        testTerrain,
-        shaderPtr
-    ); 
+    createTerrain(scale);
 
     //visu eau rapide
     auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
@@ -363,45 +253,15 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     //Debug Quad
 
-    /* m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    m_registry.emplace<MeshComponent>(
-        testEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
-    ); */
     
-    Entity testEntity = m_registry.create();
-    auto & mat = m_registry.emplace<MaterialComponent>(
-        testEntity
-    );
-    mat.albedo = albedoPtr;
-    auto & testTransform = m_registry.emplace<TransformComponent>(
-        testEntity
-    );
-    testTransform.position = Magnum::Vector3(0.0f, 15.0f, -35.0f);
-    testTransform.scale = Magnum::Vector3(1.0f, 1.0f, 1.0f);
-    auto sphereMesh = rs.getRaw("sphere.obj");
-    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
-    auto& testMeshComp = m_registry.emplace<MeshComponent>(
-        testEntity,
-        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
-    );
-
-    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
-    rigidBody.mass = 1.0f;
-    rigidBody.linearDamping = 0.4f;
-    rigidBody.angularDamping = 0.6f;
-    rigidBody.inverseMass = 1.0f / rigidBody.mass;
-    rigidBody.mesh = testMeshComp.activeMesh;
-
-    auto* sphereCollider = new SphereCollider(1.0f);
-    sphereCollider->mass = 600.0f;
-    sphereCollider->computeInertiaTensor();
-    rigidBody.addCollider(sphereCollider);
-
-
-    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
-    b.flotability = 500.0f;
-    b.waterDrag = 10.0f;
+    // Use the preloaded metal textures for the demo sphere
+    Entity testEntity = createSphereEntity(
+        Magnum::Vector3(0.0f, 15.0f, -35.0f),
+        1.0f,
+        600.0f,
+        30.0f,
+        m_metalAlbedo ? m_metalAlbedo : albedoPtr,
+        m_metalArm);
 
     // sun light en cours
     auto sunEntity = m_registry.create();
@@ -520,6 +380,43 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
         return;
     }
 
+    if(event.key() == Key::A) {
+        const Magnum::Vector3 camPos = m_camera->position();
+        const Magnum::Vector3 dir = m_camera->direction();
+
+        const float spawnOffset = 2.5f;
+        const Magnum::Vector3 spawnPos = camPos + dir * spawnOffset;
+
+        const bool heavy = m_nextHeavyShot;
+        const float radius = 1.0f;
+        const float mass = heavy ? 800.0f : 200.0f;
+        const float waterDrag = heavy ? 30.0f : 20.0f;
+        const float flotability = heavy ? 80.0f : 800.0f;
+        const float impulse = heavy ? 9000.0f : 6000.0f;
+        static const std::string metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
+        static const std::string metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
+        static const std::string floatAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/grass.png");
+
+        const std::string& shotAlbedo = heavy ? metalAlbedoPath : floatAlbedoPath;
+        const std::string& shotArm    = heavy ? metalArmPath    : std::string{};
+
+        Entity e = createSphereEntity(spawnPos, radius, mass, flotability, waterDrag, shotAlbedo, shotArm);
+
+        if (heavy && m_registry.has<MaterialComponent>(e) && m_metalNormal) {
+            auto& mat = m_registry.get<MaterialComponent>(e);
+            mat.normal = m_metalNormal;
+        }
+
+        if (m_registry.has<RigidBodyComponent>(e) && m_registry.has<TransformComponent>(e)) {
+            auto& rb = m_registry.get<RigidBodyComponent>(e);
+            auto& tr = m_registry.get<TransformComponent>(e);
+            rb.addForceAt(dir * impulse, tr.position);
+        }
+
+        m_nextHeavyShot = !m_nextHeavyShot;
+        return;
+    }
+
     m_keysPressed.insert(event.key());
 }
 
@@ -572,3 +469,275 @@ void WaterSimulation::Application::handleCameraInputs(){
 }
 
 MAGNUM_APPLICATION_MAIN(WaterSimulation::Application)
+
+
+uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3& position, float radius, float mass, float waterDrag, std::shared_ptr<Magnum::GL::Texture2D> albedo, std::shared_ptr<Magnum::GL::Texture2D> arm)
+{
+    Entity e = m_registry.create();
+
+    auto & mat = m_registry.emplace<MaterialComponent>(e);
+
+
+    const bool customTextures = (albedo || arm);
+    mat.albedo = albedo ? albedo : m_metalAlbedo;
+    mat.arm    = arm ? arm : m_metalArm;
+    if (!customTextures && m_metalNormal) mat.normal = m_metalNormal;
+
+    m_registry.emplace<TransformComponent>(e, position, Magnum::Quaternion(Magnum::Math::IdentityInit), Magnum::Vector3{radius});
+
+    if(!m_testMesh) {
+        try {
+            auto spherePath = Corrade::Utility::Path::join(resDir, "assets/Meshes/sphereLOD1.obj");
+            m_testMesh = std::make_unique<Mesh>(spherePath);
+        } catch(...) {
+            Debug{} << "Failed to ensure sphere mesh is loaded";
+        }
+    }
+
+    if(m_testMesh) {
+        m_registry.emplace<MeshComponent>(e, std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}});
+    } else {
+        m_registry.emplace<MeshComponent>(e, std::vector<std::pair<float, Mesh*>>{});
+    }
+
+    if (m_pbrShader) {
+        m_registry.emplace<ShaderComponent>(e, m_pbrShader);
+    }
+
+    auto& rb = m_registry.emplace<RigidBodyComponent>(e);
+    rb.mass = mass;
+    rb.inverseMass = (mass > 0.0f) ? (1.0f / mass) : 0.0f;
+    rb.linearDamping = 0.4f;
+    rb.angularDamping = 0.6f;
+    rb.mesh = (m_testMesh) ? m_testMesh.get() : nullptr;
+
+    auto* sphereCol = new SphereCollider(radius);
+    sphereCol->mass = mass;
+    sphereCol->computeInertiaTensor();
+    rb.addCollider(sphereCol);
+
+    auto& b = m_registry.emplace<BuoyancyComponent>(e);
+    b.flotability = 500.0f; 
+    b.waterDrag = waterDrag;
+
+    auto shaderPtr = std::make_shared<PBRShader>();
+    m_registry.emplace<ShaderComponent>(
+        e,
+        shaderPtr
+    ); 
+
+    return e;
+}
+
+uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3& position,
+    float radius,
+    float mass,
+    float flotability,
+    float waterDrag,
+    const std::string& albedoPath,
+    const std::string& armPath)
+{
+    auto albedoTex = albedoPath.empty() ? std::shared_ptr<Magnum::GL::Texture2D>{} : loadTexCached(albedoPath);
+    auto armTex    = armPath.empty()    ? std::shared_ptr<Magnum::GL::Texture2D>{} : loadTexCached(armPath);
+
+    Entity e = createSphereEntity(position, radius, mass, waterDrag, albedoTex, armTex);
+
+    if (m_registry.has<BuoyancyComponent>(e)) {
+        auto& b = m_registry.get<BuoyancyComponent>(e);
+        b.flotability = flotability;
+    }
+
+    return e;
+}
+
+
+uint32_t WaterSimulation::Application::createTerrain(float scale)
+{
+    Entity testTerrain = m_registry.create();
+    auto & matTerrain = m_registry.emplace<MaterialComponent>(testTerrain);
+    m_registry.emplace<TerrainComponent>(testTerrain);
+
+    auto& terrainTexture = m_shallowWaterSimulation.getTerrainTexture();
+    m_heightmapReadback.initTerrainHeightmapFromTexture(terrainTexture);
+
+    auto heightmapPtr = std::shared_ptr<Magnum::GL::Texture2D>(&terrainTexture, [](Magnum::GL::Texture2D*){});
+
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> importerManager;
+    auto importer = importerManager.loadAndInstantiate("StbImageImporter");
+    if(!importer) Debug{} << "Could not load STB Image Importer plugin for terrain textures";
+
+    if(importer) {
+        {
+            auto sandAlbedoFile = Corrade::Utility::Path::join(resDir, "textures/terrain/sand_diff.png");
+            if(!importer->openFile(sandAlbedoFile)) {
+                Error{} << "Could not open" << sandAlbedoFile;
+            }
+            auto sandAlbedoImage = importer->image2D(0);
+            Magnum::GL::Texture2D sandAlbedoTex;
+            sandAlbedoTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+                .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandAlbedoImage->size())
+                .setSubImage(0, {}, Magnum::ImageView2D{*sandAlbedoImage});
+            matTerrain.albedo = std::make_shared<Magnum::GL::Texture2D>(std::move(sandAlbedoTex));
+        }
+
+        {
+            auto sandNormalFile = Corrade::Utility::Path::join(resDir, "textures/terrain/sand_normal.png");
+            if(!importer->openFile(sandNormalFile)) {
+                Error{} << "Could not open" << sandNormalFile;
+            }
+            auto sandNormalImage = importer->image2D(0);
+            Magnum::GL::Texture2D sandNormalTex;
+            sandNormalTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+                .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandNormalImage->size())
+                .setSubImage(0, {}, Magnum::ImageView2D{*sandNormalImage});
+            matTerrain.normal = std::make_shared<Magnum::GL::Texture2D>(std::move(sandNormalTex));
+        }
+
+        {
+            auto sandArmFile = Corrade::Utility::Path::join(resDir, "textures/terrain/sand_arm.png");
+            if(!importer->openFile(sandArmFile)) {
+                Error{} << "Could not open" << sandArmFile;
+            }
+            auto sandArmImage = importer->image2D(0);
+            Magnum::GL::Texture2D sandArmTex;
+            sandArmTex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+                .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+                .setStorage(1, Magnum::GL::TextureFormat::RGBA8, sandArmImage->size())
+                .setSubImage(0, {}, Magnum::ImageView2D{*sandArmImage});
+            matTerrain.arm = std::make_shared<Magnum::GL::Texture2D>(std::move(sandArmTex));
+        }
+    }
+
+    matTerrain.heightmap = heightmapPtr;
+    m_terrainMesh = std::make_unique<Mesh>(Mesh::createGrid(512, 512, scale));
+    m_registry.emplace<MeshComponent>(
+        testTerrain,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_terrainMesh.get()}}
+    );
+    m_registry.emplace<TransformComponent>(
+        testTerrain,
+        Magnum::Vector3{0.0f, -1.0f, -3.0f}
+    );
+    auto& terrainRigidBody = m_registry.emplace<RigidBodyComponent>(testTerrain);
+    terrainRigidBody.bodyType = PhysicsType::STATIC;
+    terrainRigidBody.useGravity = false;
+    terrainRigidBody.mesh = m_terrainMesh.get();
+    terrainRigidBody.linearVelocity = Magnum::Vector3{0.0f};
+    terrainRigidBody.angularVelocity = Magnum::Vector3{0.0f};
+
+    auto* terrainCollider = new MeshCollider();
+    terrainCollider->mass = 1.0f; 
+    terrainCollider->localCentroid = Magnum::Vector3{0.0f};
+    terrainCollider->localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainCollider->vertices = m_terrainMesh->vertices;
+    terrainCollider->indices = m_terrainMesh->triangles;
+
+    const Magnum::Vector2i terrainSize = m_heightmapReadback.terrainSize();
+    const std::size_t expectedCount = std::size_t(terrainSize.x()) * std::size_t(terrainSize.y());
+    const auto& terrainHeights = m_heightmapReadback.terrainHeightmap();
+    Magnum::Vector3 terrainMin{
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max()
+    };
+    Magnum::Vector3 terrainMax{
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest()
+    };
+    if (terrainCollider->vertices.size() == expectedCount && terrainHeights.size() == expectedCount) {
+        for (std::size_t i = 0; i < expectedCount; ++i) {
+            terrainCollider->vertices[i].y() = terrainHeights[i];
+            const Magnum::Vector3& v = terrainCollider->vertices[i];
+            terrainMin.x() = std::min(terrainMin.x(), v.x());
+            terrainMin.y() = std::min(terrainMin.y(), v.y());
+            terrainMin.z() = std::min(terrainMin.z(), v.z());
+            terrainMax.x() = std::max(terrainMax.x(), v.x());
+            terrainMax.y() = std::max(terrainMax.y(), v.y());
+            terrainMax.z() = std::max(terrainMax.z(), v.z());
+        }
+    }
+    terrainCollider->localMin = terrainMin;
+    terrainCollider->localMax = terrainMax;
+    terrainCollider->resolution = terrainSize;
+    TransformComponent& terrainTransform = m_registry.get<TransformComponent>(testTerrain);
+    Magnum::Matrix4 terrainModel = terrainTransform.model();
+    terrainTransform.globalModel = terrainModel;
+    terrainTransform.inverseGlobalModel = terrainModel.inverted();
+    Magnum::Vector3 worldMin{std::numeric_limits<float>::max()};
+    Magnum::Vector3 worldMax{std::numeric_limits<float>::lowest()};
+    for (int ix = 0; ix < 2; ++ix) {
+        for (int iy = 0; iy < 2; ++iy) {
+            for (int iz = 0; iz < 2; ++iz) {
+                Magnum::Vector3 corner{
+                    ix ? terrainMax.x() : terrainMin.x(),
+                    iy ? terrainMax.y() : terrainMin.y(),
+                    iz ? terrainMax.z() : terrainMin.z()
+                };
+                Magnum::Vector3 worldCorner = terrainModel.transformPoint(corner);
+                worldMin = Magnum::Vector3{
+                    std::min(worldMin.x(), worldCorner.x()),
+                    std::min(worldMin.y(), worldCorner.y()),
+                    std::min(worldMin.z(), worldCorner.z())
+                };
+                worldMax = Magnum::Vector3{
+                    std::max(worldMax.x(), worldCorner.x()),
+                    std::max(worldMax.y(), worldCorner.y()),
+                    std::max(worldMax.z(), worldCorner.z())
+                };
+            }
+        }
+    }
+    terrainRigidBody.aabbCollider.min = worldMin;
+    terrainRigidBody.aabbCollider.max = worldMax;
+
+    terrainRigidBody.addCollider(terrainCollider);
+    terrainRigidBody.bodyType = PhysicsType::STATIC;
+    terrainRigidBody.mass = std::numeric_limits<float>::infinity();
+    terrainRigidBody.inverseMass = 0.0f;
+    terrainRigidBody.localInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.localInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.globalInverseInertiaTensor = Magnum::Matrix3{Magnum::Math::ZeroInit};
+    terrainRigidBody.forceAccumulator = Magnum::Vector3{0.0f};
+    terrainRigidBody.torqueAccumulator = Magnum::Vector3{0.0f};
+    
+    auto shaderPtr = std::make_shared<TerrainShader>();
+    m_registry.emplace<ShaderComponent>(
+        testTerrain,
+        shaderPtr
+    ); 
+
+    return testTerrain;
+}
+
+std::shared_ptr<Magnum::GL::Texture2D> WaterSimulation::Application::loadTex(const std::string& path) {
+    Corrade::PluginManager::Manager<Trade::AbstractImporter> mgr;
+    auto imp = mgr.loadAndInstantiate("StbImageImporter");
+    if(!imp || !imp->openFile(path)) {
+        Error{} << "tex fail" << Corrade::Containers::StringView{path};
+        return {};
+    }
+    auto img = imp->image2D(0);
+    Magnum::GL::Texture2D tex;
+    tex.setWrapping(Magnum::GL::SamplerWrapping::Repeat)
+       .setMinificationFilter(Magnum::GL::SamplerFilter::Linear)
+       .setMagnificationFilter(Magnum::GL::SamplerFilter::Linear)
+       .setStorage(1, Magnum::GL::TextureFormat::RGBA8, img->size())
+       .setSubImage(0, {}, ImageView2D{*img});
+    return std::make_shared<Magnum::GL::Texture2D>(std::move(tex));
+}
+
+std::shared_ptr<Magnum::GL::Texture2D> WaterSimulation::Application::loadTexCached(const std::string& path) {
+    if (path.empty()) return {};
+    if (auto it = m_textureCache.find(path); it != m_textureCache.end()) {
+        if (auto cached = it->second.lock()) return cached;
+    }
+    auto tex = loadTex(path);
+    if (tex) m_textureCache[path] = tex;
+    return tex;
+}
