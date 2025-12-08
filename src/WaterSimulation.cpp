@@ -409,8 +409,7 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
 
         if (m_registry.has<RigidBodyComponent>(e) && m_registry.has<TransformComponent>(e)) {
             auto& rb = m_registry.get<RigidBodyComponent>(e);
-            auto& tr = m_registry.get<TransformComponent>(e);
-            rb.addForceAt(dir * impulse, tr.position);
+            rb.forceAccumulator += dir * impulse;
         }
 
         m_nextHeavyShot = !m_nextHeavyShot;
@@ -652,7 +651,7 @@ uint32_t WaterSimulation::Application::createTerrain(float scale)
     };
     if (terrainCollider->vertices.size() == expectedCount && terrainHeights.size() == expectedCount) {
         for (std::size_t i = 0; i < expectedCount; ++i) {
-            terrainCollider->vertices[i].y() = terrainHeights[i];
+            terrainCollider->vertices[i].y() = terrainHeights[i] * 1.5f;
             const Magnum::Vector3& v = terrainCollider->vertices[i];
             terrainMin.x() = std::min(terrainMin.x(), v.x());
             terrainMin.y() = std::min(terrainMin.y(), v.y());

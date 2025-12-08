@@ -432,7 +432,10 @@ bool PhysicsSystem::handleSphereTerrainCollision(Entity entityA,
     const float gridX = normalizedX * float(terrainSize.x() - 1);
     const float gridZ = normalizedZ * float(terrainSize.y() - 1);
 
-    auto sampleHeight = [&](float gx, float gz) -> float {
+    const float cellSizeX = spanX / float(terrainSize.x() - 1);
+    const float cellSizeZ = spanZ / float(terrainSize.y() - 1);
+
+    auto sampleHeightAndNormal = [&](float gx, float gz) -> std::pair<float, Magnum::Vector3> {
         gx = Magnum::Math::clamp(gx, 0.0f, float(terrainSize.x() - 1));
         gz = Magnum::Math::clamp(gz, 0.0f, float(terrainSize.y() - 1));
 
@@ -448,43 +451,66 @@ bool PhysicsSystem::handleSphereTerrainCollision(Entity entityA,
             return std::size_t(z) * std::size_t(terrainSize.x()) + std::size_t(x);
         };
 
-        const float h00 = terrainHeights[index(x0, z0)];
-        const float h10 = terrainHeights[index(x1, z0)];
-        const float h01 = terrainHeights[index(x0, z1)];
-        const float h11 = terrainHeights[index(x1, z1)];
+        const float h00 = terrainHeights[index(x0, z0)] * 1.5f;
+        const float h10 = terrainHeights[index(x1, z0)] * 1.5f;
+        const float h01 = terrainHeights[index(x0, z1)] * 1.5f;
+        const float h11 = terrainHeights[index(x1, z1)] * 1.5f;
 
-        const float hx0 = Magnum::Math::lerp(h00, h10, tx);
-        const float hx1 = Magnum::Math::lerp(h01, h11, tx);
-        return Magnum::Math::lerp(hx0, hx1, tz);
+        // Local positions of the cell corners (x horizontal, z depth)
+        const float lx0 = minX + float(x0) * cellSizeX;
+        const float lx1 = minX + float(x1) * cellSizeX;
+        const float lz0 = minZ + float(z0) * cellSizeZ;
+        const float lz1 = minZ + float(z1) * cellSizeZ;
+
+        float height = 0.0f;
+        Magnum::Vector3 p0, p1, p2;
+
+        // Choose the triangle of the quad based on tx/tz and interpolate on that triangle.
+        if (tx + tz <= 1.0f) {
+            // Triangle (x0,z0)-(x1,z0)-(x0,z1)
+            height = h00 + tx * (h10 - h00) + tz * (h01 - h00);
+            p0 = {lx0, h00, lz0};
+            p1 = {lx1, h10, lz0};
+            p2 = {lx0, h01, lz1};
+        } else {
+            // Triangle (x1,z1)-(x1,z0)-(x0,z1)
+            const float tx1 = 1.0f - tx;
+            const float tz1 = 1.0f - tz;
+            height = h11 + tx1 * (h01 - h11) + tz1 * (h10 - h11);
+            p0 = {lx1, h11, lz1};
+            p1 = {lx1, h10, lz0};
+            p2 = {lx0, h01, lz1};
+        }
+
+        Magnum::Vector3 normalLocal = Magnum::Math::cross(p1 - p0, p2 - p0);
+        const float nLen = normalLocal.length();
+        if (nLen > 1.0e-6f) {
+            normalLocal /= nLen;
+            if (normalLocal.y() < 0.0f) normalLocal = -normalLocal; // keep y-up
+        } else {
+            normalLocal = Magnum::Vector3{0.0f, 1.0f, 0.0f};
+        }
+
+        return {height, normalLocal};
     };
 
-    const float heightLocal = sampleHeight(gridX, gridZ);
+    const auto [heightLocal, triNormalLocal] = sampleHeightAndNormal(gridX, gridZ);
     Magnum::Vector3 localSurface{localCenter.x(), heightLocal, localCenter.z()};
     Magnum::Vector3 worldSurface = (meshTransform->globalModel * Magnum::Vector4{localSurface, 1.0f}).xyz();
 
-    const float sphereBottom = sphereCenter.y() - sphereRadius;
-    const float penetration = worldSurface.y() - sphereBottom;
+    // Compute contact relative to the terrain plane normal to avoid under-estimating penetration on slopes
+    Magnum::Matrix3 normalMatrix = meshTransform->globalModel.rotationScaling().inverted().transposed();
+    Magnum::Vector3 normalWorld = (normalMatrix * triNormalLocal).normalized();
+
+    // Signed distance from sphere center to the terrain plane along the plane normal
+    const float distanceToPlane = Magnum::Math::dot(sphereCenter - worldSurface, normalWorld);
+    float penetration = sphereRadius - distanceToPlane;
+    const float verticalPenetration = worldSurface.y() - (sphereCenter.y() - sphereRadius);
+    if (verticalPenetration > 0.0f)
+        penetration = Magnum::Math::min(penetration, verticalPenetration);
     if (penetration <= 0.0f)
         return false;
 
-    const float cellSizeX = spanX / float(terrainSize.x() - 1);
-    const float cellSizeZ = spanZ / float(terrainSize.y() - 1);
-
-    const float hL = sampleHeight(gridX - 1.0f, gridZ);
-    const float hR = sampleHeight(gridX + 1.0f, gridZ);
-    const float hD = sampleHeight(gridX, gridZ - 1.0f);
-    const float hU = sampleHeight(gridX, gridZ + 1.0f);
-
-    Magnum::Vector3 tangentX{2.0f * cellSizeX, hR - hL, 0.0f};
-    Magnum::Vector3 tangentZ{0.0f, hU - hD, 2.0f * cellSizeZ};
-    Magnum::Vector3 normalLocal = Magnum::Math::cross(tangentZ, tangentX);
-    const float normalLength = normalLocal.length();
-    if (normalLength > 1e-4f)
-        normalLocal /= normalLength;
-    else
-        normalLocal = Magnum::Vector3{0.0f, 1.0f, 0.0f};
-
-    Magnum::Vector3 normalWorld = meshTransform->globalModel.transformVector(normalLocal).normalized();
     Magnum::Vector3 sphereContact = sphereCenter - normalWorld * sphereRadius;
 
     collisionInfo.isColliding = true;
@@ -493,10 +519,10 @@ bool PhysicsSystem::handleSphereTerrainCollision(Entity entityA,
     if (sphereIsEntityA) {
         collisionInfo.normal = normalWorld;
         collisionInfo.collisionPointA = sphereContact;
-        collisionInfo.collisionPointB = worldSurface;
+        collisionInfo.collisionPointB = worldSurface - normalWorld * distanceToPlane;
     } else {
         collisionInfo.normal = -normalWorld;
-        collisionInfo.collisionPointA = worldSurface;
+        collisionInfo.collisionPointA = worldSurface - normalWorld * distanceToPlane;
         collisionInfo.collisionPointB = sphereContact;
     }
 
@@ -591,7 +617,7 @@ void PhysicsSystem::collisionResolution(Registry& registry) {
             //Console::getInstance().addLog("applying friction ");
             impulseFriction = -Magnum::Math::dot(relativeVelocity, tangent) / denomFriction;
             float mu = std::min(rigidBodyA.friction, rigidBodyB.friction);
-            float maxFriction = impulseStrength * mu;
+            float maxFriction = std::abs(impulseStrength) * mu;
             impulseFriction = Magnum::Math::clamp(impulseFriction, -maxFriction, maxFriction);
             frictionImpulse = impulseFriction * tangent;
 
@@ -742,6 +768,9 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
             const float sphereBottom = sphereCenter.y() - radius;
 
+            const float waterDepth = waterState.x();
+            if (waterDepth <= 1.0e-3f) continue;
+
             if (waterHeightWorld <= sphereBottom) continue;
 
             const float maxSubmersion = radius * 2.0f;
@@ -755,10 +784,9 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
             if (buoyantForceMagnitude <= 0.0f) continue;
 
             rb.globalCentroid = transform.globalModel.transformPoint(rb.localCentroid);
-            rb.addForceAt({0.0f, buoyantForceMagnitude, 0.0f}, sphereCenter);
+            //rb.addForceAt({0.0f, buoyantForceMagnitude, 0.0f}, sphereCenter);
+            rb.forceAccumulator += Magnum::Vector3{0.0f, buoyantForceMagnitude, 0.0f};
 
-            const float waterDepth = waterState.x();
-            
             Magnum::Vector3 waterVelocityLocal{0.0f};
             if (waterDepth > 1.0e-4f) {
                 const float invDepth = 1.0f / waterDepth;
@@ -780,7 +808,8 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
                 const float dragCoefficient = b.waterDrag > 0.0f ? b.waterDrag : 1.0f;
                 const float dragMagnitude = 0.5f * fluidDensity * referenceArea * relSpeed * relSpeed * dragCoefficient * submersionRatio;
                 Magnum::Vector3 lateralForce = dragMagnitude * (horizontalRelative / relSpeed);
-                rb.addForceAt(lateralForce, sphereCenter);
+                //rb.addForceAt(lateralForce, sphereCenter);
+                rb.forceAccumulator += lateralForce;
             }
 
             const float strengthFactor = 5.0f;
@@ -800,7 +829,7 @@ void PhysicsSystem::update(Registry& registry, float deltaTime) {
 
     broadCollisionDetection(registry);
 
-    collisionResolutionLinear(registry);
+    collisionResolution(registry);
 
 	applyBuoyancy(registry);
 

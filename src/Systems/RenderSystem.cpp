@@ -126,7 +126,7 @@ void RenderSystem::render(Registry& registry,
         projectionMatrix);
 
     // debug : afficher les données de la heightmap cpu
-    //GL::defaultFramebuffer.bind();
+   // GL::defaultFramebuffer.bind();
     //visualizeHeightmap(registry, projectionMatrix * viewMatrix);
 
     //drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
