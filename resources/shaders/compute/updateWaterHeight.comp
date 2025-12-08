@@ -41,8 +41,8 @@ void main() {
         float max_q = h_prev * dx / (4.0 * dt);
         qx_c = clamp(qx_c, -max_q, max_q);
         qy_c = clamp(qy_c, -max_q, max_q);
-    }
-     */
+    } */
+    
     float div_q = (qx_r - qx_c) / dx + (qy_t - qy_c) / dx;
 
     float new_h = h_prev - dt * div_q;

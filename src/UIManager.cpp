@@ -95,8 +95,24 @@ void WaterSimulation::UIManager::paramWindow(
         if (ImGui::Button("Init Tsunami")) {
             simulation->initTsunami();
         }
-        ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
+        ImGui::SameLine();
+        if (ImGui::Button("Init Empty")) {
+            simulation->initEmpty();
+        }
+        ImGui::Text("Create");
+        static ImVec2 position(0.0f, 0.0f);
+        static float radius = 1.0f;
+        static float quantity = 1.0f;
 
+        ImGui::InputFloat2("Position", &position.x);
+        ImGui::SliderFloat("Radius", &radius, 0.1f, 10.0f, "%.2f");
+        ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
+
+        if (ImGui::Button("Create Water")) {
+            simulation->createWater(position.x, position.y, radius, quantity);
+        }  
+        
+        ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
         ImGui::Separator();

@@ -15,7 +15,7 @@ void main() {
     vec4 height = texture(uHeightMap, uv);
 
     vec4 finalPosition = position;
-    finalPosition.y = finalPosition.y + (height.r) * 3.0;
+    finalPosition.y = finalPosition.y + (height.r) * 4.0;
 
     gl_Position = uMVP * finalPosition;
 }

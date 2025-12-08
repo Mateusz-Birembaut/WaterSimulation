@@ -99,5 +99,8 @@ void main() {
         state.a = 1.0;
 
         imageStore(stateOut, ivec2(globalID.xy), state);
+    }else if (init_type == 4) {
+        vec4 state = vec4(0.0,0.0,0.0,1.0);
+        imageStore(stateOut, ivec2(globalID.xy), state);
     }
 }

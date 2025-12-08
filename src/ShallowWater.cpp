@@ -337,6 +337,8 @@ void ShallowWater::compilePrograms() {
 
     m_semiLagrangianAdvectionProgram = ComputeProgram("advectSurface.comp");
 
+    m_createWaterProgram = ComputeProgram("createWater.comp");
+
     m_updateFluxesProgram.setParametersUniforms(*this);
     m_updateWaterHeightProgram.setParametersUniforms(*this);
     m_updateHeightSimpleProgram.setParametersUniforms(*this);
@@ -462,3 +464,36 @@ void ShallowWater::initTsunami() {
     Magnum::GL::Renderer::setMemoryBarrier(
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 }
+
+void ShallowWater::initEmpty() {
+    ping = false;
+    
+    clearAllTextures();
+
+    m_initProgram.bindStates(&m_stateTexture, &m_stateTexture)
+        .bindTerrain(&m_terrainTexture)
+        .setFloatUniform("dryEps", dryEps)
+        .setIntUniform("init_type", 4)
+        .run(groupx, groupy);
+
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+}
+
+void ShallowWater::createWater(float x, float y, float radius , float quantity){
+
+    m_createWaterProgram.bindReadWrite(&m_stateTexture)
+        .bindTerrain(&m_terrainTexture)
+        .setFloatUniform("posx", x)
+        .setFloatUniform("posy", y)
+        .setFloatUniform("radius", radius)
+        .setFloatUniform("quantity", quantity)
+        .run(groupx, groupy);
+
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+
+
+}
+
+

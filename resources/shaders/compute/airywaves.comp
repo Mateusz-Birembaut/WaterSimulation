@@ -59,6 +59,8 @@ void main() {
     float h_bar = hBar;
     float omega = sqrt(gravity * k * tanh(k * h_bar));
     
+    float beta = sqrt(2.0*k/dx) * sqrt(sin(k*dx/2.0));
+    //omega*= 1.0/beta;
 
     // Fourier shift
     vec2 h_hat = imageLoad(surfaceHeightFFT, gid).xy;

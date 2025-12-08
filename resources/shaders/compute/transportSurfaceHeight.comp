@@ -35,7 +35,7 @@ void main() {
 
     float divU = (ur.x - ul.x) / (2.0 * dx) + (ut.y - ub.y) / (2.0 * dx);
 
-    float gamma = transportGamma;
+    float gamma = -transportGamma;
     float G = (divU > 0.0) ? -divU : -gamma * (-divU);
     G = min(G, 0.0); // To only dampen not amplify the wave
 

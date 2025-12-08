@@ -86,7 +86,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h7.png");
+    auto heightmapData = rs.getRaw("unnamed.jpg");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -99,7 +99,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 7.0f, 1);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 25.0f, 3);
 
     m_shallowWaterSimulation.initDamBreak();
 

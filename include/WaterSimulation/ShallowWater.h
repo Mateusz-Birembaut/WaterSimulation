@@ -335,6 +335,8 @@ class ShallowWater {
 
     ComputeProgram m_semiLagrangianAdvectionProgram;
 
+    ComputeProgram m_createWaterProgram;
+
   public:
     ShallowWater() = default;
 
@@ -523,6 +525,9 @@ class ShallowWater {
     void initBump();
     void initDamBreak();
     void initTsunami();
+    void initEmpty();
+
+    void createWater(float x, float y, float radius , float quantity);
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f, int channels = 1);

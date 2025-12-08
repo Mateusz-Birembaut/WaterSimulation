@@ -38,6 +38,14 @@ void main() {
         return;
     }
 
+    vec4 bulk = imageLoad(bulkFlow, pos);
+    float h_bulk = bulk.x;
+    
+    if (h_bulk <= 1e-3) {
+        imageStore(surfaceOut, pos, vec4(0.0));
+        return;
+    }
+
     vec2 ul = compute_u(pos + ivec2(-1, 0), gridSize);
     vec2 ur = compute_u(pos + ivec2(1, 0), gridSize);
     vec2 ut = compute_u(pos + ivec2(0, 1), gridSize);
@@ -45,9 +53,9 @@ void main() {
 
     float divU = (ur.x - ul.x) / (2.0 * dx) + (ut.y - ub.y) / (2.0 * dx);
 
-    float gamma = transportGamma;
+    float gamma = -transportGamma;
     float G = (divU > 0.0) ? -divU : -gamma * (-divU);
-    G = min(G, 0.0); // To only dampen not amplify the wave
+    G = min(G, 0.0); // To only dampen not amplify the wave, may be bugged (G always > 0)
 
     float surfqx = imageLoad(surfaceQx, pos).r;
     float surfqy = imageLoad(surfaceQy, pos).r;

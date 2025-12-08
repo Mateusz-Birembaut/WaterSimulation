@@ -36,6 +36,7 @@ void main() {
 
     if (bulk_h <= dryEps) {
         total_h = max(0.0, bulk_h);
+        surfh = 0.0;
         surfqx = 0.0;
         surfqy = 0.0;
     }
