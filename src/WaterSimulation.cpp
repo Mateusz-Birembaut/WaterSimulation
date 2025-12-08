@@ -118,7 +118,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h3.png");
+    auto heightmapData = rs.getRaw("unnamed.jpg");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -129,9 +129,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(511,511, 0.25f, 1.0f/60.0f);
     
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 1.0f, 4);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 25.0f, 3);
 
     m_shallowWaterSimulation.initDamBreak();
 
@@ -159,8 +159,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera.get()->setPos({0.0, 1.0, 0.0f});
-    m_camera.get()->setSpeed(10.0f);
+    m_camera.get()->setPos({0.0, 10.0, 0.0f});
+    m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     
     // test ECS et rendu avec shader de base
@@ -194,7 +194,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     */
 
-    float scale = 75.0f;
+    float scale = 200.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();

@@ -1,0 +1,12 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) writeonly uniform highp image2D texout;
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(texout);
+    
+    if (gid.x >= size.x || gid.y >= size.y) return;
+    
+    imageStore(texout, gid, vec4(0.0));
+}

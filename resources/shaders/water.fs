@@ -14,7 +14,7 @@ void main() {
     vec4 state =  texture(uAlbedoTexture, frag_UV);
     float depth = state.r;
     if(depth <= 1e-3) discard;
-    vec3 water_color = mix(shallow_color, deep_color, depth);
+    vec3 water_color = mix(shallow_color, deep_color, depth/3.0);
 
     FragColor = vec4(water_color, 1.0);
 
