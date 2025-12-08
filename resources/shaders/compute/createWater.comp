@@ -1,0 +1,31 @@
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) uniform highp image2D
+    stateIn; // r = h, g = qx, b = qy, a = not used
+
+layout(binding = 2, r32f) readonly uniform highp image2D terrain;
+
+uniform float posx;
+uniform float posy;
+uniform float radius;
+uniform float quantity;
+
+void main() {
+    uvec3 globalID = gl_GlobalInvocationID;
+    ivec2 gridSize = imageSize(stateIn);
+
+    if (globalID.x >= (uint(gridSize.x) - 1u) ||
+        globalID.y >= (uint(gridSize.y) - 1u) || globalID.x == 0u || globalID.y == 0u ) {
+        return;
+    }
+
+    vec2 cellPos = vec2(globalID.xy) + vec2(0.5);
+    vec2 diff = cellPos - vec2(posx, posy);
+    float dist = length(diff);
+
+    if (dist <= radius) {
+        float h = quantity * (1.0 - dist / radius);
+        vec4 currentState = imageLoad(stateIn, ivec2(globalID.xy));
+        imageStore(stateIn, ivec2(globalID.xy), vec4(h, currentState.g, currentState.b, currentState.a));
+    }
+}

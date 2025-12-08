@@ -1,0 +1,85 @@
+//#version 430
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform image2D
+    bulkState; // Bulk flow from decomposition, in spatial domain
+layout(binding = 1, rg32f) readonly uniform image2D
+    surfaceHeightFFT; // Surface height in frequency domain
+layout(binding = 2,
+       rg32f) uniform image2D surfaceQxFFT; // Surface qx in frequency
+layout(binding = 3,
+       rg32f) uniform image2D surfaceQyFFT; // Surface qy in frequency
+
+uniform float dt;
+uniform float gravity;
+uniform float dx;
+uniform int N;
+uniform float hBar;
+
+const float eps = 1e-6;
+const float PI = 3.14159265358979323846;
+
+vec2 complex_mult(vec2 a, vec2 b) {
+    return vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+void main() {
+    ivec2 gid = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(bulkState);
+
+    if (gid.x >= size.x || gid.y >= size.y) {
+        return;
+    }
+
+    vec2 qx_hat = imageLoad(surfaceQxFFT, gid).xy;
+    vec2 qy_hat = imageLoad(surfaceQyFFT, gid).xy;
+
+    if (gid.x == 0 && gid.y == 0) {
+        imageStore(surfaceQxFFT, gid, vec4(qx_hat, 0.0, 0.0));
+        imageStore(surfaceQyFFT, gid, vec4(qy_hat, 0.0, 0.0));
+        return;
+    }
+
+    // Compute wavenumber
+    
+    float kx_idx = (gid.x <= N / 2) ? float(gid.x) : float(gid.x - N);
+    float ky_idx = (gid.y <= N / 2) ? float(gid.y) : float(gid.y - N);
+
+    float kx = kx_idx * 2.0 * PI / (float(N) * dx);
+    float ky = ky_idx * 2.0 * PI / (float(N) * dx);
+
+    float k = sqrt(kx * kx + ky * ky);
+
+    if (k <= eps) {
+        imageStore(surfaceQxFFT, gid, vec4(qx_hat, 0.0, 0.0));
+        imageStore(surfaceQyFFT, gid, vec4(qy_hat, 0.0, 0.0));
+        return;
+    }
+
+    float h_bar = hBar;
+    float omega = sqrt(gravity * k * tanh(k * h_bar));
+    
+    float beta = sqrt(2.0*k/dx) * sqrt(sin(k*dx/2.0));
+    //omega*= 1.0/beta;
+
+    // Fourier shift
+    vec2 h_hat = imageLoad(surfaceHeightFFT, gid).xy;
+    vec2 shift_x = vec2(cos(-kx * dx * 0.5), sin(-kx * dx * 0.5));
+    vec2 shift_y = vec2(cos(-ky * dx * 0.5), sin(-ky * dx * 0.5));
+
+    vec2 h_hat_x = complex_mult(h_hat, shift_x);
+    vec2 h_hat_y = complex_mult(h_hat, shift_y);
+
+    vec2 dhdx = complex_mult(vec2(0.0, kx), h_hat_x);
+    vec2 dhdy = complex_mult(vec2(0.0, ky), h_hat_y);
+
+    float cos_om = cos(omega * dt);
+    float sin_om = sin(omega * dt);
+    float factor = omega / (k * k);
+
+    vec2 qx_new = cos_om * qx_hat - sin_om * factor * dhdx;
+    vec2 qy_new = cos_om * qy_hat - sin_om * factor * dhdy;
+
+    imageStore(surfaceQxFFT, gid, vec4(qx_new, 0.0, 0.0));
+    imageStore(surfaceQyFFT, gid, vec4(qy_new, 0.0, 0.0));
+}

@@ -1,0 +1,43 @@
+//#version 430
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, rgba32f) readonly uniform highp image2D stateIn;
+layout(binding = 1, rgba32f) writeonly uniform highp image2D stateOut;
+
+uniform float dx;
+uniform float dt;
+uniform float dryEps;
+
+void main() {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 gridSize = imageSize(stateOut);
+
+    if (pos.x <= 0 || pos.y <= 0 || pos.x >= gridSize.x - 1 || pos.y >= gridSize.y - 1) {
+        imageStore(stateOut, pos, vec4(0.0, 0.0, 0.0, 1.0));
+        return;
+    }
+
+    vec4 statec = imageLoad(stateIn, pos);
+    vec4 stater = imageLoad(stateIn, pos + ivec2(1, 0));
+    vec4 statet = imageLoad(stateIn, pos + ivec2(0, 1));
+
+    float h = statec.x;
+    float qx_c = statec.y;
+    float qx_r = stater.y;
+    float qy_c = statec.z;
+    float qy_t = statet.z;
+
+    float div_q = (qx_r - qx_c) / dx + (qy_t - qy_c) / dx;
+
+    float new_h = h - div_q * dt;
+    new_h = max(new_h, 0.0);
+
+    vec2 q = vec2(qx_c, qy_c);
+
+    if (new_h < dryEps) {
+        new_h = 0.0;
+        q = vec2(0.0);
+    }
+
+    imageStore(stateOut, pos, vec4(new_h, q.x, q.y, 1.0));
+}

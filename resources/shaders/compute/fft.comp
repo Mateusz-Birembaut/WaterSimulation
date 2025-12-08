@@ -1,0 +1,74 @@
+// I HEAVILY used chatgpt for this, sorry
+
+layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+// r real part, g imaginary
+layout(binding = 0, rg32f) uniform image2D u_input;
+layout(binding = 1, rg32f) uniform image2D u_output;
+
+uniform int u_stage;
+uniform int u_length;
+uniform int u_direction; // 1 for fft, -1 for ifft
+uniform int u_isVertical;
+
+const float PI = 3.14159265358979323846;
+
+vec2 cadd(vec2 a, vec2 b) { return a + b; }
+vec2 csub(vec2 a, vec2 b) { return a - b; }
+vec2 cmul(vec2 a, vec2 b) { return vec2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x); }
+vec2 cmulf(vec2 a, float s) { return a * s; }
+
+vec2 readComplex(int index, int otherCoord) {
+    ivec2 coord = u_isVertical == 0 ? ivec2(index, otherCoord) : ivec2(otherCoord, index);
+    vec4 v = imageLoad(u_input, coord);
+    return v.xy;
+}
+
+void writeComplex(int index, int otherCoord, vec2 val) {
+    ivec2 coord = u_isVertical == 0 ? ivec2(index, otherCoord) : ivec2(otherCoord, index);
+    imageStore(u_output, coord, vec4(val, 0.0, 0.0));
+}
+
+void main() {
+    uint globalX = gl_GlobalInvocationID.x;
+    uint other = gl_GlobalInvocationID.y; 
+
+    int N = u_length;
+    int s = u_stage;
+    int m = 1 << (s + 1); 
+    if (N == 0) return;
+
+
+    if (int(globalX) >= N) return;
+
+    // compute local positions used in Cooley-Tukey iterative butterfly stage
+    int i = int(globalX);
+    int halfb = m / 2;
+    int block = i / m;
+    int offset = i % halfb;
+    int pos = block * m + offset;
+    int posPair = pos + halfb;
+
+    // read pair values
+    vec2 A = readComplex(pos, int(other));
+    vec2 B = readComplex(posPair, int(other));
+
+    // compute twiddle: W = exp(-dir * 2pi * offset / m * i)
+    float angle = (2.0 * PI * float(offset)) / float(m);
+    float c = cos(angle);
+    float sgn = float(-u_direction); 
+    float sn = sgn * sin(angle);
+    vec2 W = vec2(c, sn);
+
+    vec2 Btw = cmul(B, W);
+
+    // choose output order:
+    vec2 outVal;
+    if ((i % m) < halfb) {
+        outVal = cadd(A, Btw);
+    } else {
+        outVal = csub(A, Btw);
+    }
+
+    writeComplex(i, int(other), outVal);
+}

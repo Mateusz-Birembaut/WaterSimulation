@@ -120,7 +120,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         Debug{} << "Plugin STB Image Resizer and Converter loaded ";
     }
 
-    auto heightmapData = rs.getRaw("h3.png");
+    auto heightmapData = rs.getRaw("unnamed.jpg");
     importer->openData(heightmapData);
     auto image = importer->image2D(0);
 
@@ -162,8 +162,8 @@ WaterSimulation::Application::Application(const Arguments& arguments):
 
     m_UIManager = std::make_unique<UIManager>();
     m_camera = std::make_unique<Camera>(windowSize());
-    m_camera.get()->setPos({0.0, 1.0, 0.0f});
-    m_camera.get()->setSpeed(10.0f);
+    m_camera.get()->setPos({0.0, 10.0, 0.0f});
+    m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     
     // test ECS et rendu avec shader de base
@@ -181,7 +181,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto albedoPtr = std::make_shared<Magnum::GL::Texture2D>(std::move(m_testAlbedo));
     
 
-    float scale = 75.0f;
+    float scale = 200.0f;
     
     // terrain test avec heightmap et texture pas pbr
     Entity testTerrain = m_registry.create();
