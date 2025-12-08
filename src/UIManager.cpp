@@ -112,13 +112,12 @@ void WaterSimulation::UIManager::paramWindow(
         static float quantity = 1.0f;
 
         ImGui::InputFloat2("Position", &position.x);
-        ImGui::SliderFloat("Radius", &radius, 0.1f, 10.0f, "%.2f");
+        ImGui::SliderFloat("Radius", &radius, 0.1f, 100.0f, "%.2f");
         ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
 
-        if (ImGui::Button("Create Water")) {
+        if (ImGui::Button("Create Water") || ImGui::IsItemActive()) {
             simulation->createWater(position.x, position.y, radius, quantity);
         }  
-        
         ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 

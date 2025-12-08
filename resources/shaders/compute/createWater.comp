@@ -26,6 +26,6 @@ void main() {
     if (dist <= radius) {
         float h = quantity * (1.0 - dist / radius);
         vec4 currentState = imageLoad(stateIn, ivec2(globalID.xy));
-        imageStore(stateIn, ivec2(globalID.xy), vec4(h, currentState.g, currentState.b, currentState.a));
+        imageStore(stateIn, ivec2(globalID.xy), vec4(h + currentState.r, currentState.g, currentState.b, currentState.a));
     }
 }

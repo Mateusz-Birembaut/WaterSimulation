@@ -51,7 +51,7 @@ void main() {
         return;
     }
 
-    float limitCFL = dx / (4.0 * dt);
+    float limitCFL = dx / (5.0 * dt);
 
     vec4 statec = imageLoad(stateIn, pos);
     vec4 statel = imageLoad(stateIn, pos + ivec2(-1, 0));

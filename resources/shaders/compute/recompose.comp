@@ -32,16 +32,21 @@ void main() {
     float terrainH = imageLoad(terrain, pos).r;
 
     float bulk_h = bulk.r - terrainH;
-    float total_h = bulk_h + surfh;
+    //float total_h = bulk_h + surfh;
 
     if (bulk_h <= dryEps) {
-        total_h = max(0.0, bulk_h);
         surfh = 0.0;
         surfqx = 0.0;
         surfqy = 0.0;
     }
 
-    total_h = max(0.0, total_h);
+    if(surfh <= dryEps){
+        surfh = 0.0;
+        surfqx = 0.0;
+        surfqy = 0.0;
+    }
+
+    float total_h = max(0.0, bulk_h + surfh);
 
     float qx = bulk.g + surfqx;
     float qy = bulk.b + surfqy;

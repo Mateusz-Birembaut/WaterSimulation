@@ -131,10 +131,10 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "SIZE IS : " << resized->size();
     
     // Shallow Water simulation setup
-    m_shallowWaterSimulation = ShallowWater(511,512, .25f, 1.0f/60.0f);
+    m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
     m_heightmapReadback.init({m_shallowWaterSimulation.getnx() + 1, m_shallowWaterSimulation.getny() + 1});
 
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 1.0f, 4);
+    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 20.0f, 3);
 
     m_shallowWaterSimulation.initDamBreak();
 

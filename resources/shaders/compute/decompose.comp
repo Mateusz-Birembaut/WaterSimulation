@@ -68,7 +68,7 @@ void main() {
 
         float d = decompositionD;
         float damping = smoothstep(dryEps, 4.0 * dryEps, h); // Better wet/dry handling
-        float alpha = (h * h) / 256.0;
+        float alpha = (h * h) / 512.0;
         alpha *= exp(-d * gradMag * gradMag) * damping;
 
         imageStore(tempOut, pos, vec4(H, qx, qy, alpha));
