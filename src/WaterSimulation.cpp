@@ -1,11 +1,13 @@
 
+#include <WaterSimulation/WaterSimulation.h>
+
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
+#include <WaterSimulation/Systems/PhysicsSystem.h>
 
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
 #include <WaterSimulation/UIManager.h>
-#include <WaterSimulation/WaterSimulation.h>
 #include <WaterSimulation/ECS.h>
 
 #include <WaterSimulation/Rendering/CustomShader/TerrainShader.h>
@@ -19,6 +21,9 @@
 #include <WaterSimulation/Components/LightComponent.h>
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/ShaderComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
+#include <WaterSimulation/Components/TerrainComponent.h>
+#include <WaterSimulation/Components/BuoyancyComponent.h>
 
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/PluginManager/Manager.h>
@@ -43,21 +48,48 @@
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
+#include <SDL2/SDL.h>
 
 #include <memory>
+
 
 using namespace Magnum;
 using namespace Math::Literals;
 using namespace Corrade::Utility;
 
+
 WaterSimulation::Application::Application(const Arguments& arguments): 
     Platform::Application{arguments, Configuration{}
         .setTitle("Water Simulation App")
-        .setSize({1200, 800})
         .addWindowFlags(Configuration::WindowFlag::Resizable)
     } 
-{   
-	Corrade::Utility::Resource rs{"WaterSimulationResources"};
+{
+    // Détecte l'écran où se trouve la souris et redimensionne la fenêtre à la taille de cet écran
+    int mouseX = 0, mouseY = 0;
+    SDL_GetGlobalMouseState(&mouseX, &mouseY);
+    int numDisplays = SDL_GetNumVideoDisplays();
+    int targetDisplay = 0;
+    for(int i = 0; i < numDisplays; ++i) {
+        SDL_Rect bounds;
+        if(SDL_GetDisplayBounds(i, &bounds) == 0) {
+            if(mouseX >= bounds.x && mouseX < bounds.x + bounds.w &&
+               mouseY >= bounds.y && mouseY < bounds.y + bounds.h) {
+                targetDisplay = i;
+                break;
+            }
+        }
+    }
+    SDL_Rect targetBounds;
+    if(SDL_GetDisplayBounds(targetDisplay, &targetBounds) == 0) {
+        SDL_Window* sdlWindow = static_cast<SDL_Window*>(window());
+        // Positionner la fenêtre d'abord sur l'écran cible
+        SDL_SetWindowPosition(sdlWindow, targetBounds.x, targetBounds.y);
+        // Redimensionner la fenêtre via SDL pour s'assurer d'utiliser la résolution de l'écran cible
+        SDL_SetWindowSize(sdlWindow, targetBounds.w, targetBounds.h);
+        // Mettre aussi à jour Magnum au cas où
+        setWindowSize({targetBounds.w, targetBounds.h});
+    }
+    Corrade::Utility::Resource rs{"WaterSimulationResources"};
 
     Debug{} << "Creating application";
     
@@ -189,10 +221,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     ); 
 
     //visu eau rapide
-    //auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
-    //auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
-
-    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getTerrainTexture(), [](Magnum::GL::Texture2D*){});
+    auto waterHeightTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
     auto waterAlbedoTexPtr = std::shared_ptr<Magnum::GL::Texture2D>(&m_shallowWaterSimulation.getStateTexture(), [](Magnum::GL::Texture2D*){});
 
 
@@ -204,8 +233,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     );
     m_registry.emplace<TransformComponent>(
         waterEntity,
-        Magnum::Vector3{0.0f, -1.0f, -3.0f} 
+        Magnum::Vector3{0.0f, 5.0f, -3.0f}  // si je remonte pas l'eau elle sous la heightmap (avec h7.png)
     );
+    m_registry.emplace<WaterComponent>(waterEntity, 512, 512, scale);
 
     auto waterShader = std::make_shared<DebugShader>();
     auto& waterMat = m_registry.emplace<MaterialComponent>(waterEntity);
@@ -225,6 +255,29 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
     ); */
     
+    Entity testEntity = m_registry.create();
+    auto & mat = m_registry.emplace<MaterialComponent>(
+        testEntity
+    );
+    mat.setAlbedo(albedoPtr);
+    auto & testTransform = m_registry.emplace<TransformComponent>(
+        testEntity
+    );
+    testTransform.position = Magnum::Vector3(0.0f, 20.0f, -15.0f);
+    testTransform.scale = Magnum::Vector3(10.0f, 10.0f, 10.0f);
+    m_testMesh = std::make_unique<Mesh>("./resources/assets/Meshes/sphereLOD1.obj");
+    auto& testMeshComp = m_registry.emplace<MeshComponent>(
+        testEntity,
+        std::vector<std::pair<float, Mesh*>>{{0.0f, m_testMesh.get()}}
+    );
+
+    auto& rigidBody = m_registry.emplace<RigidBodyComponent>(testEntity);
+    rigidBody.mass = 1.0f;
+    rigidBody.mesh = testMeshComp.activeMesh;
+    rigidBody.addCollider(new SphereCollider(10.0f));
+    auto& b = m_registry.emplace<BuoyancyComponent>(testEntity);
+    b.createTestPointsFromMesh(*testMeshComp.activeMesh);
+
 
     // sun light en cours
     auto sunEntity = m_registry.create();
@@ -233,6 +286,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_registry.emplace<DirectionalLightComponent>(sunEntity);
     m_registry.emplace<ShadowCasterComponent>(sunEntity);  
 }
+    
 
 WaterSimulation::Application::~Application() {
     m_registry.clear(); 
@@ -270,7 +324,7 @@ void WaterSimulation::Application::drawEvent() {
     }
 
     m_transform_System.update(m_registry);
-
+    m_physicSystem.update(m_registry, m_deltaTime);
 
     m_renderSystem.render(m_registry, *m_camera.get());
 
@@ -304,6 +358,26 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
     if(event.key() == Key::N) {
         m_renderSystem.m_renderDepthOnly = !m_renderSystem.m_renderDepthOnly;
         Debug{} << "Depth Mode :" << m_renderSystem.m_renderDepthOnly;
+        return;
+    }
+    if(event.key() == Key::B) {
+        m_renderSystem.m_renderShadowMapOnly = !m_renderSystem.m_renderShadowMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderShadowMapOnly;
+        return;
+    }
+    if(event.key() == Key::V) {
+        m_renderSystem.m_renderWaterMaskOnly = !m_renderSystem.m_renderWaterMaskOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderWaterMaskOnly;
+        return;
+    }
+    if(event.key() == Key::C) {
+        m_renderSystem.m_renderCausticMapOnly = !m_renderSystem.m_renderCausticMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderCausticMapOnly;
+        return;
+    }
+    if(event.key() == Key::X) {
+        m_renderSystem.m_renderGodRayMapOnly = !m_renderSystem.m_renderGodRayMapOnly;
+        Debug{} << "Draw shadow map only:" << m_renderSystem.m_renderGodRayMapOnly;
         return;
     }
 

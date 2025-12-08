@@ -9,6 +9,7 @@
 #include <WaterSimulation/ECS.h>
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
+#include <WaterSimulation/Systems/PhysicsSystem.h>
 
 
 #include <memory>
@@ -42,6 +43,10 @@ namespace WaterSimulation {
 
 			ShallowWater& shallowWaterSimulation() { return m_shallowWaterSimulation; }
 
+			Registry & registry(){ return m_registry; };
+
+			RenderSystem m_renderSystem;
+
 		private:
 			Magnum::Timeline m_timeline;
 			float m_deltaTime{};
@@ -53,7 +58,7 @@ namespace WaterSimulation {
 			// ECS registry and systems 
 			Registry m_registry;
 			TransformSystem m_transform_System;
-			RenderSystem m_renderSystem;
+			PhysicsSystem m_physicSystem;
 			
 			std::unique_ptr<Mesh> m_testMesh;
 			Magnum::GL::Texture2D m_testAlbedo;

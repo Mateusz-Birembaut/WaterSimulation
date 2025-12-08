@@ -137,6 +137,8 @@ namespace WaterSimulation{
 				}
 			
 				bool operator!=(const Iterator& other) const { return current != other.current; }
+
+				bool operator==(const Iterator& other) const { return current == other.current; }
 			
 			private:
 				Iter current, end;

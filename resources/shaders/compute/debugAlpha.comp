@@ -1,20 +1,20 @@
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(binding = 0, rgba32f) uniform highp image2D input;
+layout(binding = 0, rgba32f) uniform highp image2D u_input;
 uniform float dx;
 uniform float dt;
 uniform int stage;
 
 void main() {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 gridSize = imageSize(input);
+    ivec2 gridSize = imageSize(u_input);
 
     if (pos.x >= (uint(gridSize.x) - 1u) ||
         pos.y >= (uint(gridSize.y) - 1u) || pos.x <= 1 || pos.y <= 1) {
         return;
     }
 
-    vec4 v = imageLoad(input,pos);
+    vec4 v = imageLoad(u_input,pos);
 
-    imageStore(input, pos, vec4(v.x,v.y, v.z, 1.0) * 5000.0);
+    imageStore(u_input, pos, vec4(v.x,v.y, v.z, 1.0) * 5000.0);
 }

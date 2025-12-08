@@ -1,11 +1,17 @@
-layout(location = 0) in vec4 position;
-layout(location = 1) in vec2 textureCoordinates;
+in vec3 position;
+in vec2 uv;
 
-out vec2 texCoords;
+uniform mat4 mvp;
+uniform sampler2D uHeightMap;
+uniform bool hasHeightMap;
 
-void main(){
-	gl_Position = position;
-	texCoords = textureCoordinates;
+void main() {
+    float height = 0.0;
+    if (hasHeightMap) {
+        height = texture(uHeightMap, uv).r;
+    }
+    vec3 finalPosition = position + vec3(0.0, height, 0.0);
+    gl_Position = mvp * vec4(finalPosition, 1.0);
 }
 
 
