@@ -28,7 +28,7 @@ using namespace Magnum;
 
 
 void WaterSimulation::CausticPass::init() {
-	const Magnum::Vector2i causticResolution = {512, 512};
+	const Magnum::Vector2i causticResolution = {2000, 2000};
 	m_fb = GL::Framebuffer{{{}, causticResolution}};
 
 	m_causticMap = GL::Texture2D{};
@@ -45,7 +45,7 @@ void WaterSimulation::CausticPass::init() {
 
 
 void WaterSimulation::CausticPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(500, 500, 2.0);
+	Mesh gridData = Mesh::createGrid(2000, 2000, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
 	m_photonGrid = Magnum::GL::Mesh{};
@@ -108,6 +108,7 @@ void WaterSimulation::CausticPass::render(
 		m_causticShader.bindShadowMapTexture(shadowMap)
 		    .bindWaterMaskTexture(waterWorldPos)
 		    .setVPLight(lightViewProj)
+		    .setInvVPLight(lightViewProj.inverted())
 		    .setVPCamera(camViewProj)
 		    .setCameraPos(camera.position())
 		    .setLightPos(lightPosition)
@@ -124,7 +125,9 @@ void WaterSimulation::CausticPass::render(
 	}
 
 	
-	m_utils.blurTexture(m_causticMap);
+	if (m_enableBlur) {
+		m_utils.blurTexture(m_causticMap, m_blurRadius);
+	}
 
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

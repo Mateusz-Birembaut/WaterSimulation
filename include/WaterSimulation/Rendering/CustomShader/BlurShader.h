@@ -5,6 +5,7 @@
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Vector2.h>
 #include <Corrade/Utility/Resource.h>
 #include <Magnum/Shaders/GenericGL.h>
 
@@ -15,6 +16,9 @@ namespace WaterSimulation
 
 	private:
 		Magnum::Int m_uTextureLoc;
+		Magnum::Int m_uTexelSizeLoc;
+		Magnum::Int m_uRotationLoc;
+		Magnum::Int m_uRadiusLoc;
 
 	public:
 	
@@ -42,6 +46,9 @@ namespace WaterSimulation
             CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
 			m_uTextureLoc = uniformLocation("uTexture");
+			m_uTexelSizeLoc = uniformLocation("uTexelSize");
+			m_uRotationLoc = uniformLocation("uRotation");
+			m_uRadiusLoc = uniformLocation("uRadius");
 		}
 
 		BlurShader& bindTexture(Magnum::GL::Texture2D & texture){
@@ -49,6 +56,21 @@ namespace WaterSimulation
             setUniform(m_uTextureLoc, 0);
             return *this;
         }
+
+		BlurShader& setTexelSize(const Magnum::Vector2& texelSize) {
+			setUniform(m_uTexelSizeLoc, texelSize);
+			return *this;
+		}
+
+		BlurShader& setRotation(float rotation) {
+			setUniform(m_uRotationLoc, rotation);
+			return *this;
+		}
+
+		BlurShader& setRadius(float radius) {
+			setUniform(m_uRadiusLoc, radius);
+			return *this;
+		}
 
 	};
 } // namespace WaterSimulation

@@ -4,6 +4,7 @@
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/RigidBodyComponent.h>
 #include <WaterSimulation/PhysicsUtils.h>
+#include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Matrix3.h>
@@ -20,6 +21,8 @@ namespace WaterSimulation
 
 
 class PhysicsSystem  {
+
+    HeightmapReadback* m_heightmapReadback{nullptr};
 
     std::vector<std::pair<Entity, Entity>> collisionPairs;
     std::vector<CollisionInfo> collisionList;
@@ -39,7 +42,25 @@ class PhysicsSystem  {
 
     void collisionResolutionLinear(Registry& registry);
 
+    struct Disturbance {
+        int px, py;
+        float strength;
+        float _padding;
+    };
+
+    std::vector<Disturbance> m_disturbances;
+
     void applyBuoyancy(Registry& registry);
+
+    bool handleSphereTerrainCollision(Entity entityA,
+                                      RigidBodyComponent& rigidBodyA,
+                                      TransformComponent& transformA,
+                                      const Collider& colliderA,
+                                      Entity entityB,
+                                      RigidBodyComponent& rigidBodyB,
+                                      TransformComponent& transformB,
+                                      const Collider& colliderB,
+                                      CollisionInfo& collisionInfo) const;
 
 public : 
 
@@ -47,6 +68,10 @@ public :
     
     std::vector<CollisionInfo> getCollisionList(){return collisionList;}
 
+    void setHeightmapReadback(HeightmapReadback* hb) { m_heightmapReadback = hb; }
+
+    const std::vector<Disturbance>& getDisturbances() const { return m_disturbances; }
+    void clearDisturbances() { m_disturbances.clear(); }
 
 
 };

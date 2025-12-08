@@ -3,47 +3,50 @@ in vec2 fUV;
 out vec4 fragColor;
 
 uniform sampler2D uTexture;
+uniform vec2 uTexelSize;
+uniform float uRotation;
+uniform float uRadius;
 
-const float PI = 3.14159265359;
-const int SAMPLES = 32;        
-const float BLUR_RADIUS = 4.0; 
+const int POISSON_COUNT = 12;
+const vec2 POISSON_DISK[POISSON_COUNT] = vec2[](
+    vec2(-0.326212, -0.40581),
+    vec2(-0.840144, -0.07358),
+    vec2(-0.695914,  0.457137),
+    vec2(-0.203345,  0.620716),
+    vec2( 0.96234,  -0.194983),
+    vec2( 0.473434, -0.480026),
+    vec2( 0.519456,  0.767022),
+    vec2( 0.185461, -0.893124),
+    vec2( 0.507431,  0.064425),
+    vec2( 0.89642,   0.412458),
+    vec2(-0.32194,  -0.932615),
+    vec2(-0.791559, -0.59771)
+);
 
-
-float rand(vec2 co) {
-    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+float gaussianFalloff(float r, float sigma) {
+    float s = max(sigma, 1e-4);
+    return exp(-(r * r) / (2.0 * s * s));
 }
 
 void main() {
-    ivec2 size = textureSize(uTexture, 0);
-    vec2 texelSize = 1.0 / vec2(size); 
+    float sigma = max(uRadius * 0.5, 0.1);
+    float effectiveRadius = max(uRadius, 0.1);
 
-    vec4 totalColor = texture(uTexture, fUV);
-    float totalWeight = 1.0;
-
-    float noise = rand(fUV);
-    float angle = noise * 2.0 * PI;
-    
-    float s = sin(angle);
-    float c = cos(angle);
+    float s = sin(uRotation);
+    float c = cos(uRotation);
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
-    for(int i = 1; i < SAMPLES; i++) {
-        float scale = float(i) / float(SAMPLES - 1); 
-        float currentRadius = BLUR_RADIUS * scale;
+    vec4 accum = texture(uTexture, fUV);
+    float weightSum = 1.0;
 
-        vec2 offset = vec2(currentRadius, 0.0);
+    for(int i = 0; i < POISSON_COUNT; ++i) {
+        vec2 rotatedOffset = rotationMatrix * (POISSON_DISK[i] * effectiveRadius);
+        vec2 sampleUV = fUV + rotatedOffset * uTexelSize;
 
-        offset = rotationMatrix * offset;
-
-        vec2 offsetUV = offset * texelSize;
-
-        vec4 sample1 = texture(uTexture, fUV + offsetUV);
-        vec4 sample2 = texture(uTexture, fUV - offsetUV);
-
-        totalColor += sample1 + sample2;
-        totalWeight += 2.0;
+        float weight = gaussianFalloff(length(rotatedOffset), sigma);
+        accum += texture(uTexture, sampleUV) * weight;
+        weightSum += weight;
     }
 
-
-    fragColor = totalColor / totalWeight;
+    fragColor = accum / weightSum;
 }

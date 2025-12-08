@@ -10,11 +10,15 @@
 #include <WaterSimulation/Rendering/OpaquePass.h>
 #include <WaterSimulation/Rendering/ShadowMapPass.h>
 #include <WaterSimulation/Rendering/GodRayPass.h>
+#include <WaterSimulation/Rendering/CompositionPass.h>
+#include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Vector3.h>
 
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Mesh.h>
@@ -33,11 +37,13 @@ namespace WaterSimulation {
 			m_shadowMapPass.init(windowSize);
 			m_causticPass.init();
 			m_godrayPass.init();
+			m_compositionPass.init(windowSize);
 		}
 
 		void resize(const Magnum::Vector2i& windowSize) {
 			m_opaquePass.resize(windowSize);
 			m_shadowMapPass.resize(windowSize);
+			m_compositionPass.resize(windowSize);
 		}
 
 		void render(Registry& registry, Camera& cam);
@@ -58,11 +64,18 @@ namespace WaterSimulation {
 			return m_godrayPass;
 		}
 
+		void setHeightmapReadback(HeightmapReadback* hb) { m_heightmapReadback = hb; }
+
+		void visualizeHeightmap(Registry& registry, const Magnum::Matrix4& viewProj);
+
 	      private:
 		OpaquePass m_opaquePass;
 		ShadowMapPass m_shadowMapPass;
 		CausticPass m_causticPass;
 		GodRayPass m_godrayPass;
+		CompositionPass m_compositionPass;
+
+		HeightmapReadback * m_heightmapReadback{nullptr};
 
 
 		FullscreenTextureShader m_fullScreenTextureShader;
@@ -74,7 +87,7 @@ namespace WaterSimulation {
 		std::pair<Magnum::Vector3, Magnum::Matrix4> computeLightViewProj(Registry& registry, Camera& cam);
 		Magnum::GL::Texture2D& terrainHeightMap(Registry& registry);
 
-		    // Shader debug depth
+
 		WaterSimulation::DepthDebugShader m_depthDebugShader;
 		void drawFullscreenTextureDebugDepth(Magnum::GL::Texture2D& texture, float near, float far, bool isOrtho);
 

@@ -10,7 +10,7 @@
 #include <WaterSimulation/Systems/RenderSystem.h>
 #include <WaterSimulation/Systems/TransformSystem.h>
 #include <WaterSimulation/Systems/PhysicsSystem.h>
-
+#include <WaterSimulation/Rendering/HeightmapReadback.h>
 
 #include <memory>
 #include <unordered_set>
@@ -62,10 +62,11 @@ namespace WaterSimulation {
 			
 			std::unique_ptr<Mesh> m_testMesh;
 			Magnum::GL::Texture2D m_testAlbedo;
-
 			std::unique_ptr<Mesh> m_waterMesh;
-
 			std::unique_ptr<Mesh> m_terrainMesh;
+
+			HeightmapReadback m_heightmapReadback;
+
 			ShallowWater m_shallowWaterSimulation; // simulation de l'eau
 			Magnum::GL::Texture2D m_heightTexture; // carte des hauteurs de l'eau, affiché dans imgui
 			Magnum::GL::Texture2D m_momentumTexture; // carte des velocités u ou des q

@@ -90,7 +90,7 @@ namespace WaterSimulation
 			return m_far;
 		}
 
-		Magnum::Vector3 position(){
+		const Magnum::Vector3 & position() const {
 			return m_position;
 		}
 

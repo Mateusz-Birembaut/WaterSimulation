@@ -6,6 +6,7 @@ in vec2 v_gridPos[];
 uniform sampler2D uWaterMask;
 uniform sampler2D uShadowMap;
 uniform mat4 uVPLight;
+uniform mat4 uInvVPLight;
 uniform mat4 uVPCamera;
 
 uniform vec3 uCamPos;
@@ -20,6 +21,7 @@ uniform float uTime;
 const float IOR_AIR   = 1.0;
 const float IOR_WATER = 1.33;
 const float ETA       = IOR_AIR / IOR_WATER;
+const float FLOOR_OFFSET = 0.15;
 
 out float gDistFromSurface;
 out float gDistFromViewer; 
@@ -97,47 +99,123 @@ vec3 getProceduralNormal(vec2 p, float time) {
 }
 
 
-vec3 findFloor(vec3 position, vec3 direction){
-    vec3 p = position;
-    int MAX_ITER = 15;
-
-    for(int i = 0; i < MAX_ITER; i++){
-
-        vec4 lightClip = uVPLight * vec4(p, 1.0);
-        vec3 lightNDC = lightClip.xyz / lightClip.w; // -1 1
-        vec2 shadowUV = lightNDC.xy * 0.5 + 0.5;
-
-        if(shadowUV.x < 0 || shadowUV.x > 1 || shadowUV.y < 0 || shadowUV.y > 1) break;
-
-        float currentRayDepth = lightNDC.z * 0.5 + 0.5; // 0 1
-        float currentUVDepth = texture(uShadowMap, shadowUV).r; // 0 1 
-        float diff = currentUVDepth - currentRayDepth;
-
-        if (abs(diff) < 0.0001) break;
-
-        float displacementDist = diff * uLightFar;
-
-        p += direction * displacementDist;
-
-        // TODO ajouter le fait de partir dans l'autre sens pour des height maps plus complexe mais pour l'instant ok
-
-    }
-    return p;
+vec3 reconstructFromShadow(vec2 uv, float depth) {
+    vec4 lightClip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 worldPos = uInvVPLight * lightClip;
+    return worldPos.xyz / worldPos.w;
 }
 
+vec3 findFloor(vec3 position, vec3 direction){
+    const int MAX_STEPS = 32;
+    const int MAX_BISECT_STEPS = 16; 
+    const float DEPTH_EPS = 0.0001;
+
+    vec3 dir = normalize(direction);
+
+    vec4 startClip = uVPLight * vec4(position, 1.0);
+    vec3 startNDC = startClip.xyz / startClip.w;
+    vec2 startUV = startNDC.xy * 0.5 + 0.5;
+
+    if(startUV.x < 0.0 || startUV.x > 1.0 || startUV.y < 0.0 || startUV.y > 1.0)
+        return position;
+
+    float startRayDepth = startNDC.z * 0.5 + 0.5;
+    float startDepth = texture(uShadowMap, startUV).r;
+    float prevDiff = startDepth - startRayDepth;
+
+    if(abs(prevDiff) < DEPTH_EPS){
+        vec3 floorPoint = reconstructFromShadow(startUV, startDepth);
+        return floorPoint - dir * FLOOR_OFFSET;
+    }
+
+    float maxDistance = uLightFar;
+    float stepSize = maxDistance / float(MAX_STEPS);
+
+    float prevDistance = 0.0;
+    vec2 prevUV = startUV;
+    float prevDepth = startDepth;
+
+    for(int i = 1; i <= MAX_STEPS; ++i){
+        float currentDistance = stepSize * float(i);
+        vec3 currentPoint = position + dir * currentDistance;
+        vec4 currentClip = uVPLight * vec4(currentPoint, 1.0);
+        vec3 currentNDC = currentClip.xyz / currentClip.w;
+        vec2 currentUV = currentNDC.xy * 0.5 + 0.5;
+
+        if(currentUV.x < 0.0 || currentUV.x > 1.0 || currentUV.y < 0.0 || currentUV.y > 1.0)
+            break;
+
+        float currentRayDepth = currentNDC.z * 0.5 + 0.5;
+        float currentDepth = texture(uShadowMap, currentUV).r;
+        float currentDiff = currentDepth - currentRayDepth;
+
+        if(abs(currentDiff) < DEPTH_EPS){
+            vec3 floorPoint = reconstructFromShadow(currentUV, currentDepth);
+            return floorPoint - dir * FLOOR_OFFSET;
+        }
+
+        if(currentDiff <= 0.0 && prevDiff >= 0.0){
+            float aDist = prevDistance;
+            float bDist = currentDistance;
+            vec2 lastUV = currentUV;
+            float lastDepth = currentDepth;
+
+            for(int j = 0; j < MAX_BISECT_STEPS; ++j){
+                float midDist = 0.5 * (aDist + bDist);
+                vec3 midPoint = position + dir * midDist;
+                vec4 midClip = uVPLight * vec4(midPoint, 1.0);
+                vec3 midNDC = midClip.xyz / midClip.w;
+                vec2 midUV = midNDC.xy * 0.5 + 0.5;
+
+                if(midUV.x < 0.0 || midUV.x > 1.0 || midUV.y < 0.0 || midUV.y > 1.0)
+                    break;
+
+                float midRayDepth = midNDC.z * 0.5 + 0.5;
+                float midDepth = texture(uShadowMap, midUV).r;
+                float midDiff = midDepth - midRayDepth;
+
+                lastUV = midUV;
+                lastDepth = midDepth;
+
+                if(abs(midDiff) < DEPTH_EPS){
+                    vec3 floorPoint = reconstructFromShadow(midUV, midDepth);
+                    return floorPoint - dir * FLOOR_OFFSET;
+                }
+
+                if(midDiff > 0.0){
+                    aDist = midDist;
+                } else {
+                    bDist = midDist;
+                }
+            }
+
+            vec3 floorPoint = reconstructFromShadow(lastUV, lastDepth);
+            return floorPoint - dir * FLOOR_OFFSET;
+        }
+
+        prevDistance = currentDistance;
+        prevUV = currentUV;
+        prevDepth = currentDepth;
+        prevDiff = currentDiff;
+    }
+
+    if(prevDiff <= 0.0){
+        vec3 floorPoint = reconstructFromShadow(prevUV, prevDepth);
+        return floorPoint - dir * FLOOR_OFFSET;
+    }
+
+    return position;
+}
 
 void main()
 {
     vec2 uv = v_gridPos[0] * 0.5 + 0.5;
     vec4 worldPos = texture(uWaterMask, uv);
-    if (worldPos.a < 0.5) return;
+    if (worldPos.a < 0.5)
+        return;
 
     vec3 Ps = worldPos.rgb;
 
-    //float waveH = getWaveHeight(Ps.xz, uTime);
-    //Ps.y += waveH; 
-    //vec3 Ns = getProceduralNormal(Ps.xz, uTime);
-    
     vec3 Ns = getWaterNormal(uv, Ps);
 
     vec3 Ri = normalize(uLightPos - Ps);
@@ -148,29 +226,33 @@ void main()
 
     vec3 Pi = findFloor(Ps, Rt);
 
-	gl_Position = uVPCamera * vec4(Ps, 1.0);
-	gClipPos = gl_Position;
-    gDistFromSurface = 0.0;                 
-    gDistFromViewer = distance(Ps, uCamPos);
-    gViewDir = normalize(uCamPos - Ps);
-    gLightDir = Ri;                
-    
-    EmitVertex();
+    if (distance(Ps, Pi) < 0.01)
+        return;
 
+    float distInWater = distance(Ps, Pi);
+    float distToCamStart = distance(uCamPos, Ps);
+    float distToCamEnd = distance(uCamPos, Pi);
+
+    distToCamStart = max(distToCamStart, 1e-4);
+    distToCamEnd = max(distToCamEnd, 1e-4);
+
+    gl_Position = uVPCamera * vec4(Ps, 1.0);
+    gClipPos = gl_Position;
+    gDistFromSurface = 0.0;
+    gDistFromViewer = distToCamStart;
+    gViewDir = normalize(uCamPos - Ps);
+    gLightDir = Ri;
+    EmitVertex();
 
     gl_Position = uVPCamera * vec4(Pi, 1.0);
     gClipPos = gl_Position;
-    gDistFromSurface = distance(Ps, Pi);     
-    gDistFromViewer  = distance(Pi, uCamPos);
+    gDistFromSurface = distInWater;
+    gDistFromViewer = distToCamEnd;
     gViewDir = normalize(uCamPos - Pi);
-    gLightDir = Ri;                   
-    
+    gLightDir = Ri;
     EmitVertex();
 
-
     EndPrimitive();
-
-
 }
 
 

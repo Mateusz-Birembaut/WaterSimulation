@@ -27,8 +27,8 @@ using namespace Magnum;
 void WaterSimulation::ShadowMapPass::recreateTextures(const Magnum::Vector2i& windowSize){
     m_depthTexture = GL::Texture2D{};
     m_depthTexture.setStorage(1, GL::TextureFormat::DepthComponent32F, windowSize)
-        .setMinificationFilter(GL::SamplerFilter::Linear)
-        .setMagnificationFilter(GL::SamplerFilter::Linear)
+        .setMinificationFilter(GL::SamplerFilter::Nearest)
+        .setMagnificationFilter(GL::SamplerFilter::Nearest)
         .setWrapping(GL::SamplerWrapping::ClampToEdge);
 
     m_colorTexture = GL::Texture2D{};
@@ -99,7 +99,9 @@ void WaterSimulation::ShadowMapPass::rendeWaterPosTexture(Registry& registry, co
 		TransformComponent& transformComp = registry.get<TransformComponent>(entity);
 		MaterialComponent& materialComp = registry.get<MaterialComponent>(entity);
 
-		m_waterPosShader.bindHeightMapTexture(*materialComp.heightmap)
+		m_waterPosShader
+			.bindHeightMapTexture(*materialComp.heightmap)
+			.bindAlbedoTexture(*materialComp.albedo)
 						.setLightVP(viewProj)
 						.setModel(transformComp.globalModel)
 						.draw(meshComp.glMesh);

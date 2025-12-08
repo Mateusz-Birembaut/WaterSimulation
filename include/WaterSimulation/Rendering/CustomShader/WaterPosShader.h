@@ -15,6 +15,7 @@ namespace WaterSimulation {
 		Magnum::Int m_uModelLoc;
 		Magnum::Int m_uLightVpLoc;
 		Magnum::Int m_uHeightMapSamplerLoc;
+		Magnum::Int m_uAlbedoSamplerLoc;
 
 	      public:
 		explicit WaterPosShader() {
@@ -43,6 +44,7 @@ namespace WaterSimulation {
 			m_uModelLoc = uniformLocation("uModel");
 			m_uLightVpLoc = uniformLocation("uLightVP");
 			m_uHeightMapSamplerLoc = uniformLocation("uHeightMap");
+			m_uAlbedoSamplerLoc = uniformLocation("uAlbedoTexture");
 		}
 
 		WaterPosShader& setModel(const Magnum::Matrix4& model) {
@@ -58,6 +60,12 @@ namespace WaterSimulation {
 		WaterPosShader& bindHeightMapTexture(Magnum::GL::Texture2D& heigthmap) {
 			heigthmap.bind(0);
 			setUniform(m_uHeightMapSamplerLoc, 0);
+			return *this;
+		}
+
+		WaterPosShader& bindAlbedoTexture(Magnum::GL::Texture2D& albedo) {
+			albedo.bind(1);
+			setUniform(m_uAlbedoSamplerLoc, 1);
 			return *this;
 		}
 	};

@@ -327,6 +327,8 @@ void ShallowWater::compilePrograms() {
     m_clearProgram = ComputeProgram("clear.comp");
     m_clearRGProgram = ComputeProgram("clearRG.comp");
 
+        m_debugAlphaProgram = ComputeProgram("debugAlpha.comp");
+        m_disturbanceProgram = ComputeProgram("disturbance.comp");
     m_airywavesProgram = ComputeProgram("airywaves.comp");
 
     m_recomposeProgram = ComputeProgram("recompose.comp");
@@ -465,6 +467,33 @@ void ShallowWater::initTsunami() {
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 }
 
+void ShallowWater::applyDisturbances(const std::vector<Disturbance>& disturbances) {
+    if (disturbances.empty())
+        return;
+
+    // Upload disturbances to GPU buffer
+    m_disturbanceBuffer.setData(
+        Corrade::Containers::ArrayView<const Disturbance>{disturbances.data(), disturbances.size()},
+        Magnum::GL::BufferUsage::DynamicDraw
+    );
+
+    // Bind the buffer to binding point 1
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_disturbanceBuffer.id());
+
+    // Bind the state texture for read-write access
+    m_stateTexture.bindImage(0, 0, Magnum::GL::ImageAccess::ReadWrite,
+                             Magnum::GL::ImageFormat::RGBA32F);
+
+    // Set uniform for disturbance count
+    m_disturbanceProgram.setIntUniform("uDisturbanceCount", int(disturbances.size()));
+
+    // Dispatch compute shader (one work group per disturbance)
+    m_disturbanceProgram.dispatchCompute({unsigned(disturbances.size()), 1, 1});
+
+    // Memory barrier to ensure writes are visible
+    Magnum::GL::Renderer::setMemoryBarrier(
+        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+}
 void ShallowWater::initEmpty() {
     ping = false;
     

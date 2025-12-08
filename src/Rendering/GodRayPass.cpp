@@ -45,7 +45,7 @@ void WaterSimulation::GodRayPass::init() {
 
 
 void WaterSimulation::GodRayPass::setupPhotonGrid() {
-	Mesh gridData = Mesh::createGrid(700, 700, 2.0);
+	Mesh gridData = Mesh::createGrid(300, 300, 2.0);
 
 	m_photonBuffer = Magnum::GL::Buffer{};
 	m_photonGrid = Magnum::GL::Mesh{};
@@ -96,8 +96,6 @@ void WaterSimulation::GodRayPass::render(
 
 	if (viewWater.begin() != viewWater.end()) {
 		Entity waterEntity = *viewWater.begin();
-		auto& heightMap = registry.get<MaterialComponent>(waterEntity).heightmap;
-		auto& transform = registry.get<TransformComponent>(waterEntity);
 
 		const auto camViewProj = camera.projectionMatrix() * camera.viewMatrix();
 
@@ -107,6 +105,7 @@ void WaterSimulation::GodRayPass::render(
 		m_godrayShader.bindShadowMapTexture(shadowMap)
 		    .bindWaterMaskTexture(waterWorldPos)
 		    .setVPLight(lightViewProj)
+		    .setInvVPLight(lightViewProj.inverted())
 		    .setVPCamera(camViewProj)
 		    .setCameraPos(camera.position())
 		    .setLightPos(lightPosition)
@@ -123,7 +122,9 @@ void WaterSimulation::GodRayPass::render(
 	}
 
 	
-	m_utils.blurTexture(m_godrayTexture);
+	if (m_enableBlur) {
+		m_utils.blurTexture(m_godrayTexture, m_blurRadius);
+	}
 
 	glDisable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

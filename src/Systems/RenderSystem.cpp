@@ -5,6 +5,7 @@
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
 #include <WaterSimulation/Components/TerrainComponent.h>
 #include <WaterSimulation/Components/MaterialComponent.h>
+#include <WaterSimulation/Components/WaterComponent.h>
 
 #include <WaterSimulation/Camera.h>
 #include <WaterSimulation/Mesh.h>
@@ -16,6 +17,8 @@
 #include <Magnum/Shaders/PhongGL.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Matrix3.h>
+#include <Magnum/Math/Vector2.h>
+#include <Magnum/Math/Functions.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Shader.h>
@@ -69,7 +72,7 @@ void RenderSystem::render(Registry& registry,
         }
     }
 
-    m_opaquePass.render(registry, viewMatrix, projectionMatrix, m_lightViewProjMatrix, m_shadowMapPass.getDepthTexture()); // TODO : calculer const Matrix4 viewProj = projMatrix * viewMatrix; pour la passer aux deux render
+    m_opaquePass.render(registry, cam, m_lightViewProjMatrix, m_shadowMapPass.getDepthTexture());
 
     if(m_renderDepthOnly){
         drawFullscreenTextureDebugDepth(m_opaquePass.getDepthTexture(), cam.near(), cam.far(), false);
@@ -110,9 +113,26 @@ void RenderSystem::render(Registry& registry,
         return;
     }
 
-    drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
+
+    m_compositionPass.render(
+        m_heightmapReadback,
+        cam.position(),
+        m_opaquePass.getColorTexture(),
+        m_causticPass.getCausticTexture(),
+        m_godrayPass.getGodRayTexture(),
+        m_opaquePass.getDepthTexture(),
+        registry,
+        viewMatrix,
+        projectionMatrix);
+
+    // debug : afficher les données de la heightmap cpu
+    //GL::defaultFramebuffer.bind();
+    //visualizeHeightmap(registry, projectionMatrix * viewMatrix);
+
+    //drawFullscreenTexture(m_opaquePass.getColorTexture(), cam.near(), cam.far());
     return;
 }
+
 
 
 // rend la profondeur avec shader adapté
@@ -227,46 +247,63 @@ DisplayShader& DisplayShader::setTransformationMatrix(const Matrix4& matrix) {
 }
 
 
-/*
-    auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
-    if(sunView.begin() != sunView.end()) {
-        Entity sunEntity = *sunView.begin();
-		auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-		auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
+void RenderSystem::visualizeHeightmap(Registry& registry, const Magnum::Matrix4& viewProj) {
+    if (!m_heightmapReadback || !m_heightmapReadback->hasCpuData())
+        return;
 
-        float maxFarCam = 50.0f;
-        float minFarCam = 1.0f;
+    auto waterView = registry.view<WaterComponent, TransformComponent>();
+    if (waterView.begin() == waterView.end())
+        return;
 
-		Magnum::Vector3 p_mid{cam.position() + (((cam.near() + std::clamp(cam.far(), minFarCam, maxFarCam))/2.0f) * cam.direction())};
-        Magnum::Vector3 lightPos {p_mid - sunDirection.direction.normalized() * sunDirection.offset};
+    auto waterEntity = *waterView.begin();
+    TransformComponent& transformComp = registry.get<TransformComponent>(waterEntity);
+    WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
-        Vector3 forward = (p_mid - lightPos).normalized();
+    const Magnum::Vector2i size = m_heightmapReadback->size();
+    const float halfScale = wC.scale * 0.5f;
 
-        Vector3 up = Magnum::Vector3::yAxis().normalized();
-        Vector3 right = Magnum::Math::cross(forward, up).normalized();
+    // Créer les points à partir des hauteurs
+    std::vector<Magnum::Vector3> points;
+    const int step = 4; // Espacement entre les points pour ne pas surcharger
 
-        up = Magnum::Math::cross(right, forward).normalized();
+    for (int y = 0; y < size.y(); y += step) {
+        for (int x = 0; x < size.x(); x += step) {
+            const float u = float(x) / float(size.x() - 1);
+            const float v = float(y) / float(size.y() - 1);
 
-        Matrix4 lightView = Matrix4::lookAt(lightPos, p_mid, up);
-        lightView = lightView.invertedRigid();
+            const float localX = (u - 0.5f) * wC.scale;
+            const float localZ = (v - 0.5f) * wC.scale;
+            const float waterHeightLocal = m_heightmapReadback->heightAt(x, y);
 
-		const Magnum::Matrix4 lightProj = Magnum::Matrix4::orthographicProjection(
-			shadowCastData.projectionSize, 
-			shadowCastData.near,                    
-			shadowCastData.far                       
-		);
-
-        float len = 2.0f;
-        DebugDraw::instance().addPoint(lightPos, Color3{0.0f, 0.0f, 0.0f}, 0.5f);
-        DebugDraw::instance().addPoint(p_mid, Color3{1.0f, 1.0f, 0.0f}, 0.5f);
-        DebugDraw::instance().addLine(p_mid, p_mid + (forward * len), Color3{0.0f, 0.0f, 1.0f});
-        DebugDraw::instance().addLine(p_mid, p_mid + (up * len), Color3{0.0f, 1.0f, 0.0f});
-        DebugDraw::instance().addLine(p_mid, p_mid + (right * len), Color3{1.0f, 0.0f, 0.0f});
-        FrustumVisualizer::draw(lightView, lightProj, Color3{1.0f, 1.0f, 0.0f});
+            Magnum::Vector3 localPos{localX, waterHeightLocal, localZ};
+            Magnum::Vector3 worldPos = transformComp.globalModel.transformPoint(localPos);
+            points.push_back(worldPos);
+        }
     }
 
-    DebugDraw::instance().draw(viewMatrix, projectionMatrix);
-    */
+    if (points.empty())
+        return;
+
+    // Buffer temporaire pour les points
+    GL::Buffer pointBuffer;
+    pointBuffer.setData(points);
+
+    GL::Mesh pointMesh;
+    pointMesh.setPrimitive(GL::MeshPrimitive::Points)
+        .setCount(points.size())
+        .addVertexBuffer(std::move(pointBuffer), 0, GL::Attribute<0, Magnum::Vector3>{});
+
+    // Augmenter la taille des points
+    GL::Renderer::setPointSize(5.0f);
+    
+    // Shader simple pour afficher les points (utilise le shader flat de base)
+    Magnum::Shaders::FlatGL3D shader{Magnum::Shaders::FlatGL3D::Configuration{}.setFlags(Magnum::Shaders::FlatGL3D::Flag::VertexColor)};
+    shader.setTransformationProjectionMatrix(viewProj)
+        .setColor(0x00ff00_rgbf) // Vert
+        .draw(pointMesh);
+    
+    GL::Renderer::setPointSize(1.0f); // Restaurer la taille par défaut
+}
 
 } // namespace WaterSimulation
 

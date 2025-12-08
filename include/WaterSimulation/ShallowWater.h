@@ -13,6 +13,7 @@
 #include "Magnum/GL/Shader.h"
 #include "Magnum/GL/TextureArray.h"
 #include <Magnum/GL/AbstractShaderProgram.h>
+#include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Version.h>
@@ -313,6 +314,10 @@ class ShallowWater {
     ComputeProgram m_initProgram;
 
     ComputeProgram m_debugAlphaProgram;
+    ComputeProgram m_disturbanceProgram;
+
+    // Disturbance buffer
+    Magnum::GL::Buffer m_disturbanceBuffer;
 
     ComputeProgram m_fftProgram;
 
@@ -531,6 +536,14 @@ class ShallowWater {
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f, int channels = 1);
+
+    struct Disturbance {
+        int px, py;
+        float strength;
+        float _padding;
+    };
+
+    void applyDisturbances(const std::vector<Disturbance>& disturbances);
 
     // debug
     float minh;

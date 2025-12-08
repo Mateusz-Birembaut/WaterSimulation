@@ -9,7 +9,10 @@
 #include <WaterSimulation/PhysicsUtils.h>
 
 #include <Corrade/Utility/Debug.h>
+#include <Magnum/Math/Constants.h>
+#include <Magnum/Math/Functions.h>
 
+#include <cmath>
 #include <limits>
 #include <cstring>
 
@@ -66,6 +69,8 @@ void PhysicsSystem::recomputeAABB(Registry& registry){
     for(Entity entity : view){
         RigidBodyComponent& rigidBody = view.get<RigidBodyComponent>(entity);
         TransformComponent& transform = view.get<TransformComponent>(entity);
+        if (rigidBody.bodyType == PhysicsType::STATIC)
+            continue;
 
         Magnum::Vector3 min{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         Magnum::Vector3 max{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
@@ -176,6 +181,26 @@ void PhysicsSystem::recomputeAABB(Registry& registry){
                 rigidBody.aabbCollider.min = min;
                 rigidBody.aabbCollider.max = max;
 
+            }else if(collider.type == ColliderType::MESH){
+
+                const MeshCollider& meshCollider = (const MeshCollider&) collider;
+                if(meshCollider.vertices.empty())
+                    continue;
+
+                for(const Magnum::Vector3& vertex : meshCollider.vertices){
+                    Magnum::Vector3 worldVertex = transform.globalModel.transformPoint(vertex);
+                    min.x() = std::min(min.x(), worldVertex.x());
+                    min.y() = std::min(min.y(), worldVertex.y());
+                    min.z() = std::min(min.z(), worldVertex.z());
+
+                    max.x() = std::max(max.x(), worldVertex.x());
+                    max.y() = std::max(max.y(), worldVertex.y());
+                    max.z() = std::max(max.z(), worldVertex.z());
+                }
+
+                rigidBody.aabbCollider.min = min;
+                rigidBody.aabbCollider.max = max;
+
 
 
             }
@@ -244,6 +269,10 @@ void PhysicsSystem::integrate(Registry& registry, float deltaTime){
 
         rigidBody.forceAccumulator = Magnum::Vector3{0.0f};
         rigidBody.torqueAccumulator = Magnum::Vector3{0.0f};
+
+        Magnum::Matrix4 updatedModel = transform.model();
+        transform.globalModel = updatedModel;
+        transform.inverseGlobalModel = updatedModel.inverted();
     }
 
 }
@@ -310,6 +339,12 @@ void PhysicsSystem::narrowCollisionDetection(Entity entityA, RigidBodyComponent&
             const Collider& colliderA = *colliderAptr;
             const Collider& colliderB = *colliderBptr;
 
+            if (handleSphereTerrainCollision(entityA, rigidBodyA, transformA, colliderA,
+                                             entityB, rigidBodyB, transformB, colliderB, collisionInfo)) {
+                collisionList.push_back(collisionInfo);
+                continue;
+            }
+
             CollisionDetection::testCollision(entityA, colliderA, transformA, entityB, colliderB, transformB, collisionInfo);
             if(collisionInfo.isColliding){
                 collisionList.push_back(collisionInfo);
@@ -322,6 +357,150 @@ void PhysicsSystem::narrowCollisionDetection(Entity entityA, RigidBodyComponent&
         }
     }
 
+}
+
+bool PhysicsSystem::handleSphereTerrainCollision(Entity entityA,
+                                      RigidBodyComponent& rigidBodyA,
+                                      TransformComponent& transformA,
+                                      const Collider& colliderA,
+                                      Entity entityB,
+                                      RigidBodyComponent& rigidBodyB,
+                                      TransformComponent& transformB,
+                                      const Collider& colliderB,
+                                      CollisionInfo& collisionInfo) const {
+    if (!m_heightmapReadback)
+        return false;
+
+    const SphereCollider* sphereCollider = nullptr;
+    const MeshCollider* meshCollider = nullptr;
+    TransformComponent* sphereTransform = nullptr;
+    TransformComponent* meshTransform = nullptr;
+    bool sphereIsEntityA = false;
+
+    if (colliderA.type == ColliderType::SPHERE && colliderB.type == ColliderType::MESH) {
+        sphereCollider = static_cast<const SphereCollider*>(&colliderA);
+        meshCollider = static_cast<const MeshCollider*>(&colliderB);
+        sphereTransform = &transformA;
+        meshTransform = &transformB;
+        sphereIsEntityA = true;
+    } else if (colliderA.type == ColliderType::MESH && colliderB.type == ColliderType::SPHERE) {
+        sphereCollider = static_cast<const SphereCollider*>(&colliderB);
+        meshCollider = static_cast<const MeshCollider*>(&colliderA);
+        sphereTransform = &transformB;
+        meshTransform = &transformA;
+        sphereIsEntityA = false;
+    } else {
+        return false;
+    }
+
+    if (!meshCollider || meshCollider->vertices.empty())
+        return false;
+
+    const auto& terrainHeights = m_heightmapReadback->terrainHeightmap();
+    const Magnum::Vector2i terrainSize = meshCollider->resolution;
+    if (terrainHeights.empty() || terrainSize.x() <= 1 || terrainSize.y() <= 1)
+        return false;
+
+    const std::size_t expectedTexels = std::size_t(terrainSize.x()) * std::size_t(terrainSize.y());
+    if (terrainHeights.size() < expectedTexels)
+        return false;
+
+    const float minX = meshCollider->localMin.x();
+    const float maxX = meshCollider->localMax.x();
+    const float minZ = meshCollider->localMin.z();
+    const float maxZ = meshCollider->localMax.z();
+
+    const float spanX = maxX - minX;
+    const float spanZ = maxZ - minZ;
+    if (spanX <= 0.0f || spanZ <= 0.0f)
+        return false;
+
+    Magnum::Matrix4 sphereModel = sphereTransform->globalModel;
+    Magnum::Vector3 sphereCenter = (sphereModel * Magnum::Vector4{sphereCollider->localCentroid, 1.0f}).xyz();
+    const float radiusScale = std::max({sphereTransform->scale.x(), sphereTransform->scale.y(), sphereTransform->scale.z()});
+    const float sphereRadius = sphereCollider->radius * radiusScale;
+
+    const Magnum::Matrix4& terrainInverse = meshTransform->inverseGlobalModel;
+    Magnum::Vector3 localCenter = (terrainInverse * Magnum::Vector4{sphereCenter, 1.0f}).xyz();
+
+    const float normalizedX = (localCenter.x() - minX) / spanX;
+    const float normalizedZ = (localCenter.z() - minZ) / spanZ;
+
+    if (normalizedX < 0.0f || normalizedX > 1.0f || normalizedZ < 0.0f || normalizedZ > 1.0f)
+        return false;
+
+    const float gridX = normalizedX * float(terrainSize.x() - 1);
+    const float gridZ = normalizedZ * float(terrainSize.y() - 1);
+
+    auto sampleHeight = [&](float gx, float gz) -> float {
+        gx = Magnum::Math::clamp(gx, 0.0f, float(terrainSize.x() - 1));
+        gz = Magnum::Math::clamp(gz, 0.0f, float(terrainSize.y() - 1));
+
+        const int x0 = int(Magnum::Math::floor(gx));
+        const int z0 = int(Magnum::Math::floor(gz));
+        const int x1 = Magnum::Math::min(x0 + 1, terrainSize.x() - 1);
+        const int z1 = Magnum::Math::min(z0 + 1, terrainSize.y() - 1);
+
+        const float tx = gx - float(x0);
+        const float tz = gz - float(z0);
+
+        auto index = [&](int x, int z) -> std::size_t {
+            return std::size_t(z) * std::size_t(terrainSize.x()) + std::size_t(x);
+        };
+
+        const float h00 = terrainHeights[index(x0, z0)];
+        const float h10 = terrainHeights[index(x1, z0)];
+        const float h01 = terrainHeights[index(x0, z1)];
+        const float h11 = terrainHeights[index(x1, z1)];
+
+        const float hx0 = Magnum::Math::lerp(h00, h10, tx);
+        const float hx1 = Magnum::Math::lerp(h01, h11, tx);
+        return Magnum::Math::lerp(hx0, hx1, tz);
+    };
+
+    const float heightLocal = sampleHeight(gridX, gridZ);
+    Magnum::Vector3 localSurface{localCenter.x(), heightLocal, localCenter.z()};
+    Magnum::Vector3 worldSurface = (meshTransform->globalModel * Magnum::Vector4{localSurface, 1.0f}).xyz();
+
+    const float sphereBottom = sphereCenter.y() - sphereRadius;
+    const float penetration = worldSurface.y() - sphereBottom;
+    if (penetration <= 0.0f)
+        return false;
+
+    const float cellSizeX = spanX / float(terrainSize.x() - 1);
+    const float cellSizeZ = spanZ / float(terrainSize.y() - 1);
+
+    const float hL = sampleHeight(gridX - 1.0f, gridZ);
+    const float hR = sampleHeight(gridX + 1.0f, gridZ);
+    const float hD = sampleHeight(gridX, gridZ - 1.0f);
+    const float hU = sampleHeight(gridX, gridZ + 1.0f);
+
+    Magnum::Vector3 tangentX{2.0f * cellSizeX, hR - hL, 0.0f};
+    Magnum::Vector3 tangentZ{0.0f, hU - hD, 2.0f * cellSizeZ};
+    Magnum::Vector3 normalLocal = Magnum::Math::cross(tangentZ, tangentX);
+    const float normalLength = normalLocal.length();
+    if (normalLength > 1e-4f)
+        normalLocal /= normalLength;
+    else
+        normalLocal = Magnum::Vector3{0.0f, 1.0f, 0.0f};
+
+    Magnum::Vector3 normalWorld = meshTransform->globalModel.transformVector(normalLocal).normalized();
+    Magnum::Vector3 sphereContact = sphereCenter - normalWorld * sphereRadius;
+
+    collisionInfo.isColliding = true;
+    collisionInfo.penetrationDepth = penetration;
+
+    if (sphereIsEntityA) {
+        collisionInfo.normal = normalWorld;
+        collisionInfo.collisionPointA = sphereContact;
+        collisionInfo.collisionPointB = worldSurface;
+    } else {
+        collisionInfo.normal = -normalWorld;
+        collisionInfo.collisionPointA = worldSurface;
+        collisionInfo.collisionPointB = sphereContact;
+    }
+
+    return true;
 }
 
 //solver a impulsion avec la rotation (ne marche pas avec tous les objets)
@@ -338,10 +517,22 @@ void PhysicsSystem::collisionResolution(Registry& registry) {
         if (rigidBodyA.bodyType != PhysicsType::STATIC && rigidBodyB.bodyType != PhysicsType::STATIC) {
             transformA.position += correction;
             transformB.position -= correction;
+            Magnum::Matrix4 modelA = transformA.model();
+            transformA.globalModel = modelA;
+            transformA.inverseGlobalModel = modelA.inverted();
+            Magnum::Matrix4 modelB = transformB.model();
+            transformB.globalModel = modelB;
+            transformB.inverseGlobalModel = modelB.inverted();
         } else if (rigidBodyA.bodyType != PhysicsType::STATIC) {
             transformA.position += correction * 2.0f;
+            Magnum::Matrix4 modelA = transformA.model();
+            transformA.globalModel = modelA;
+            transformA.inverseGlobalModel = modelA.inverted();
         } else if (rigidBodyB.bodyType != PhysicsType::STATIC) {
             transformB.position -= correction * 2.0f;
+            Magnum::Matrix4 modelB = transformB.model();
+            transformB.globalModel = modelB;
+            transformB.inverseGlobalModel = modelB.inverted();
         }
 
         Magnum::Vector3 rA = collision.collisionPointA - rigidBodyA.globalCentroid;
@@ -443,10 +634,22 @@ void PhysicsSystem::collisionResolutionLinear(Registry& registry) {
         if (rigidBodyA.bodyType != PhysicsType::STATIC && rigidBodyB.bodyType != PhysicsType::STATIC) {
             transformA.position += correction;
             transformB.position -= correction;
+            Magnum::Matrix4 modelA = transformA.model();
+            transformA.globalModel = modelA;
+            transformA.inverseGlobalModel = modelA.inverted();
+            Magnum::Matrix4 modelB = transformB.model();
+            transformB.globalModel = modelB;
+            transformB.inverseGlobalModel = modelB.inverted();
         } else if (rigidBodyA.bodyType != PhysicsType::STATIC) {
             transformA.position += correction * 2.0f;
+            Magnum::Matrix4 modelA = transformA.model();
+            transformA.globalModel = modelA;
+            transformA.inverseGlobalModel = modelA.inverted();
         } else if (rigidBodyB.bodyType != PhysicsType::STATIC) {
             transformB.position -= correction * 2.0f;
+            Magnum::Matrix4 modelB = transformB.model();
+            transformB.globalModel = modelB;
+            transformB.inverseGlobalModel = modelB.inverted();
         }
 
         Magnum::Vector3 vA = rigidBodyA.linearVelocity;
@@ -477,6 +680,8 @@ void PhysicsSystem::collisionResolutionLinear(Registry& registry) {
 
 void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
+    m_disturbances.clear();
+
     auto waterView = registry.view<MeshComponent, TransformComponent, WaterComponent>();
 
     if (waterView.begin() == waterView.end()) {
@@ -488,88 +693,110 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
     MaterialComponent& materialComp = registry.get<MaterialComponent>(waterEntity);
     WaterComponent& wC = registry.get<WaterComponent>(waterEntity);
 
-    auto * heightmap = materialComp.heightmap.get();
+    if (m_heightmapReadback)
+        m_heightmapReadback->fetchLatestCPUCopy();
 
-    size_t dataSize = (wC.width) * (wC.height) * 4 * sizeof(float);
-
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, wC.pbo);
-    glBindTexture(GL_TEXTURE_2D, heightmap->id());
-
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, 0);
+    const bool hasHeightmap = m_heightmapReadback && m_heightmapReadback->hasCpuData();
+    const Magnum::Vector2i heightmapSize = hasHeightmap ? m_heightmapReadback->size() : Magnum::Vector2i{0};
     
-
-    void* ptr = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY);
-
-    if (ptr) {
-        std::memcpy(wC.heightData.data(), ptr, dataSize);
-
-        glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
-    }
-
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); 
-    // restore texture binding to avoid interfering with subsequent render passes
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-
     auto view = registry.view<TransformComponent, RigidBodyComponent, BuoyancyComponent>();
     for (auto entity : view) {
-		auto& transform = view.get<TransformComponent>(entity);
+        auto& transform = view.get<TransformComponent>(entity);
         auto& rb = view.get<RigidBodyComponent>(entity);
         auto& b = view.get<BuoyancyComponent>(entity);
 
-        if (b.localTestPoints.empty()) continue;
+        if (rb.bodyType == PhysicsType::STATIC) continue;
 
-        Magnum::Matrix4 transformMatrix = transform.globalModel; 
+        if (!hasHeightmap || heightmapSize.x() <= 0 || heightmapSize.y() <= 0) continue;
 
-        int pointsUnderwater = 0;
+        const float gravityMagnitude = std::abs(gravity.y());
+        const float fluidDensity = b.flotability > 0.0f ? b.flotability : 1000.0f;
 
-        for (const auto& localPoint : b.localTestPoints) {
-            Magnum::Vector4 worldPoint = {transformMatrix.transformPoint(localPoint), 1.0};
+        for (Collider* colliderPtr : rb.colliders) {
 
+            if (!colliderPtr || colliderPtr->type != ColliderType::SPHERE) continue;
+
+            const SphereCollider& sphere = static_cast<const SphereCollider&>(*colliderPtr);
+
+            const float radiusScale = std::max({transform.scale.x(), transform.scale.y(), transform.scale.z()});
+            const float radius = sphere.radius * radiusScale;
             
-            Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * worldPoint).xyz();
+            if (radius <= 0.0f) continue;
 
-            float u = (waterSpacePoint.x() + wC.scale * 0.5f) / wC.scale ;
-            float v = (waterSpacePoint.z() + wC.scale  * 0.5f) / wC.scale ;
+            Magnum::Vector3 sphereCenter = transform.globalModel.transformPoint(sphere.localCentroid);
+            Magnum::Vector4 centerWorld{sphereCenter, 1.0f};
+            Magnum::Vector3 waterSpacePoint = (transformComp.inverseGlobalModel * centerWorld).xyz();
 
-            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) {
-                continue;
+            const float u = (waterSpacePoint.x() + wC.scale * 0.5f) / wC.scale;
+            const float v = (waterSpacePoint.z() + wC.scale * 0.5f) / wC.scale;
+
+            if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f) continue;
+
+            const int px = Magnum::Math::clamp(int(u * float(heightmapSize.x() - 1)), 0, heightmapSize.x() - 1);
+            const int py = Magnum::Math::clamp(int(v * float(heightmapSize.y() - 1)), 0, heightmapSize.y() - 1);
+
+            const float waterHeightLocal = m_heightmapReadback->heightAt(px, py);
+            const Magnum::Vector3 waterState = m_heightmapReadback->stateAt(px, py);
+            Magnum::Vector4 surfaceLocal{waterSpacePoint.x(), waterHeightLocal, waterSpacePoint.z(), 1.0f};
+            const float waterHeightWorld = (transformComp.globalModel * surfaceLocal).y();
+
+            const float sphereBottom = sphereCenter.y() - radius;
+
+            if (waterHeightWorld <= sphereBottom) continue;
+
+            const float maxSubmersion = radius * 2.0f;
+            const float submergedHeight = Magnum::Math::clamp(waterHeightWorld - sphereBottom, 0.0f, maxSubmersion);
+
+            if (submergedHeight <= 0.0f) continue;
+
+            const float submergedVolume = Magnum::Constants::pi() * submergedHeight * submergedHeight * (radius - submergedHeight / 3.0f);
+            const float buoyantForceMagnitude = fluidDensity * gravityMagnitude * submergedVolume;
+
+            if (buoyantForceMagnitude <= 0.0f) continue;
+
+            rb.globalCentroid = transform.globalModel.transformPoint(rb.localCentroid);
+            rb.addForceAt({0.0f, buoyantForceMagnitude, 0.0f}, sphereCenter);
+
+            const float waterDepth = waterState.x();
+            
+            Magnum::Vector3 waterVelocityLocal{0.0f};
+            if (waterDepth > 1.0e-4f) {
+                const float invDepth = 1.0f / waterDepth;
+                waterVelocityLocal.x() = waterState.y() * invDepth;
+                waterVelocityLocal.z() = waterState.z() * invDepth;
             }
 
-            int px = int(u * (wC.width - 1));
-            int py = int(v * (wC.height - 1));
-            
-            int index = (py * wC.width + px) * 4;
+            Magnum::Matrix3 waterRotation = transformComp.globalModel.rotationScaling();
+            Magnum::Vector3 waterVelocityWorld = waterRotation * waterVelocityLocal;
 
-			//check la hauter de l'eau
-			float waterHeight = wC.heightData[index];
+            Magnum::Vector3 bodyVelocityAtPoint = rb.getVelocityAt(sphereCenter);
+            Magnum::Vector3 relativeVelocity = waterVelocityWorld - bodyVelocityAtPoint;
+            Magnum::Vector3 horizontalRelative{relativeVelocity.x(), 0.0f, relativeVelocity.z()};
 
-            float displaced_volumes = 0.0f;
-
-            //if (worldPoint.y() < waterHeight) {
-            if (waterSpacePoint.y()  < waterHeight) {
-                pointsUnderwater++;
-
-                float depth = waterHeight - worldPoint.y();
-
-				// voir formule pour ajouter force 
-
-				///Corrade::Utility::Debug{} << "ajout force au point" << worldPoint.xyz() << "à la hauteur" << waterHeight;
-                rb.addForceAt({0.0f, 1.0f * 10000, 0.0f} , worldPoint.xyz());
+            const float submersionRatio = submergedHeight / maxSubmersion;
+            const float relSpeed = horizontalRelative.length();
+            if (relSpeed > 1.0e-3f) {
+                const float referenceArea = Magnum::Constants::pi() * radius * radius;
+                const float dragCoefficient = b.waterDrag > 0.0f ? b.waterDrag : 1.0f;
+                const float dragMagnitude = 0.5f * fluidDensity * referenceArea * relSpeed * relSpeed * dragCoefficient * submersionRatio;
+                Magnum::Vector3 lateralForce = dragMagnitude * (horizontalRelative / relSpeed);
+                rb.addForceAt(lateralForce, sphereCenter);
             }
+
+            const float strengthFactor = 5.0f;
+            const float wakeStrength = relSpeed * submersionRatio * strengthFactor; 
+            m_disturbances.push_back({px, py, wakeStrength, 0.0f});
         }
-        
     }
 }
 
 
 void PhysicsSystem::update(Registry& registry, float deltaTime) {
-
-    recomputeAABB(registry);
-
     this->deltaTime = deltaTime;
 
     integrate(registry, deltaTime);
+
+    recomputeAABB(registry);
 
     broadCollisionDetection(registry);
 

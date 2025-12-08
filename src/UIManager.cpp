@@ -5,7 +5,6 @@
 #include <WaterSimulation/UIManager.h>
 #include <WaterSimulation/ECS.h>
 
-#include <WaterSimulation/Components/LightComponent.h>
 #include <WaterSimulation/Components/TransformComponent.h>
 #include <WaterSimulation/Components/DirectionalLightComponent.h>
 #include <WaterSimulation/Components/ShadowCasterComponent.h>
@@ -300,31 +299,30 @@ void WaterSimulation::UIManager::sunWindow(Registry & registry){
     {
         ImGui::Begin("Sun");
 
-        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent, LightComponent>();
+        auto sunView = registry.view<DirectionalLightComponent, ShadowCasterComponent>();
         if (sunView.begin() != sunView.end()) {
 
             Entity sunEntity = *sunView.begin();
 
-            auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
-            auto& sunLight = sunView.get<LightComponent>(sunEntity);
+            auto& sun = sunView.get<DirectionalLightComponent>(sunEntity);
             auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
 
 
             ImGui::Text("Color:");
-            float color[3] = {sunLight.color.r(), sunLight.color.g(), sunLight.color.b()};
+            float color[3] = {sun.color.r(), sun.color.g(), sun.color.b()};
             if (ImGui::ColorEdit3("Sun Color", color)) {
-                sunLight.color = Magnum::Color3{color[0], color[1], color[2]};
+                sun.color = Magnum::Color3{color[0], color[1], color[2]};
             }
-            float intensity = sunLight.intensity;
+            float intensity = sun.intensity;
             if (ImGui::DragFloat("Intensity", &intensity, 0.1f, 0.0f, 100.0f)) {
-                sunLight.intensity = intensity;
+                sun.intensity = intensity;
             }
 
             ImGui::Text("Direction:");
-            if (ImGui::DragFloat3("Direction", sunDirection.direction.data(), 0.01f, -1.0f, 1.0f)) {
-                sunDirection.direction = sunDirection.direction.normalized();
+            if (ImGui::DragFloat3("Direction", sun.direction.data(), 0.01f, -1.0f, 1.0f)) {
+                sun.direction = sun.direction.normalized();
             }
-            ImGui::DragFloat("Offset", &sunDirection.offset, 0.1f, 0.1f, 10000.0f);
+            ImGui::DragFloat("Offset", &sun.offset, 0.1f, 0.1f, 10000.0f);
             
 
             ImGui::Text("Shadow Map:");
@@ -342,29 +340,26 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
 
     auto* app = dynamic_cast<WaterSimulation::Application*>(& _app);
     ImGui::Begin("Visuals");
-    {   
 
-        auto & causticPass = (app->m_renderSystem.causticPass());
+    auto& causticPass = app->m_renderSystem.causticPass();
+    ImGui::Text("Caustic Parameters:");
+    ImGui::DragFloat("S Min", &causticPass.m_S_MIN, 0.1f);
+    ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
+    ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
+    ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
+    ImGui::Checkbox("Blur Caustics", &causticPass.m_enableBlur);
+    ImGui::SliderFloat("Caustics Blur Radius", &causticPass.m_blurRadius, 0.0f, 10.0f);
 
-        ImGui::Text("Caustic Parameters:");
-        ImGui::DragFloat("S Min", &causticPass.m_S_MIN, 0.1f);
-        ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
-        ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
-        ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
+    auto& godrayPass = app->m_renderSystem.godrayPass();
+    ImGui::Separator();
+    ImGui::Text("God Rays Parameters:");
+    ImGui::DragFloat("G", &godrayPass.m_g, 0.005f);
+    ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.005f);
+    ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
+    ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
+    ImGui::Checkbox("Blur God Rays", &godrayPass.m_enableBlur);
+    ImGui::SliderFloat("God Rays Blur Radius", &godrayPass.m_blurRadius, 0.0f, 10.0f);
 
-    }
-
-    {   
-
-        auto & godrayPass = (app->m_renderSystem.godrayPass());
-
-        ImGui::Text("God Rays Parameters:");
-        ImGui::DragFloat("G", &godrayPass.m_g, 0.1f);
-        ImGui::DragFloat("Gamma", &godrayPass.m_gamma, 0.1f);
-        ImGui::DragFloat("Photon Intensity GD", &godrayPass.m_intensity, 0.1f);
-        ImGui::DragFloat("Ray width", &godrayPass.m_rayWidth, 0.1f);
-
-    }
     ImGui::End();
 }
 
