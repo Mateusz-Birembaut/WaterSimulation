@@ -32,6 +32,7 @@ namespace WaterSimulation {
 		float heightAt(int x, int y) const;
 		float heightAtUV(const Magnum::Vector2& uv) const;
 		Magnum::Vector3 stateAt(int x, int y) const;
+		Magnum::Vector2 velocityAt(int x, int y) const;
 
 		Magnum::Vector2i size() const {
 			return m_size;

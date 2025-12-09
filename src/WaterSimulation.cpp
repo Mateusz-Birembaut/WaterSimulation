@@ -389,23 +389,36 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
 
         const bool heavy = m_nextHeavyShot;
         const float radius = 1.0f;
-        const float mass = heavy ? 800.0f : 200.0f;
-        const float waterDrag = heavy ? 30.0f : 20.0f;
-        const float flotability = heavy ? 80.0f : 800.0f;
+        const float mass = heavy ? 1600.0f : 350.0f;
+        const float waterDrag = heavy ? 2.0f : 2.0f;
+        const float flotability = heavy ? 80.0f : 300.0f;
         const float impulse = heavy ? 9000.0f : 6000.0f;
         static const std::string metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
         static const std::string metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
-        static const std::string floatAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/grass.png");
+        static const std::string metalNormalPath = Corrade::Utility::Path::join(resDir, "textures/grass.png");
 
-        const std::string& shotAlbedo = heavy ? metalAlbedoPath : floatAlbedoPath;
-        const std::string& shotArm    = heavy ? metalArmPath    : std::string{};
+
+        static const std::string woodAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_diff_1k.png");
+        static const std::string woodArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_arm_1k.png");
+        static const std::string woodNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_nor_gl_1k.png");
+
+        const std::string& shotAlbedo = heavy ? metalAlbedoPath : woodAlbedoPath;
+        const std::string& shotArm    = heavy ? metalArmPath    : woodArmPath;
+        const std::string& shotNormal    = heavy ? metalNormalPath    : woodNormalPath;
 
         Entity e = createSphereEntity(spawnPos, radius, mass, flotability, waterDrag, shotAlbedo, shotArm);
 
-        if (heavy && m_registry.has<MaterialComponent>(e) && m_metalNormal) {
+        if (m_registry.has<MaterialComponent>(e)) {
             auto& mat = m_registry.get<MaterialComponent>(e);
-            mat.normal = m_metalNormal;
+            std::shared_ptr<Magnum::GL::Texture2D> normalTex;
+            if (heavy) {
+                normalTex = m_metalNormal ? m_metalNormal : loadTexCached(shotNormal);
+            } else {
+                normalTex = loadTexCached(shotNormal);
+            }
+            if (normalTex) mat.normal = normalTex;
         }
+
 
         if (m_registry.has<RigidBodyComponent>(e) && m_registry.has<TransformComponent>(e)) {
             auto& rb = m_registry.get<RigidBodyComponent>(e);

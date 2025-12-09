@@ -26,6 +26,7 @@ namespace WaterSimulation {
 		Magnum::Int m_uALoc;
 		Magnum::Int m_uBLoc;
 		Magnum::Int m_uLightFarLoc;
+		Magnum::Int m_uFloorOffsetLoc;
 		Magnum::Int m_uInvLightViewProjLoc;
 
 	      public:
@@ -84,6 +85,8 @@ namespace WaterSimulation {
 			m_uBLoc = uniformLocation("uB");
 
 			m_uLightFarLoc = uniformLocation("uLightFar");
+
+			m_uFloorOffsetLoc = uniformLocation("uFloorOffset");
 
 			m_uInvLightViewProjLoc = uniformLocation("uInvVPLight");
 		}
@@ -158,6 +161,11 @@ namespace WaterSimulation {
 
 		CausticShader& setLightFar(float lightFar) {
 			setUniform(m_uLightFarLoc, lightFar);
+			return *this;
+		}
+
+		CausticShader& setFloorOffset(float floorOffset) {
+			setUniform(m_uFloorOffsetLoc, floorOffset);
 			return *this;
 		}
 	};

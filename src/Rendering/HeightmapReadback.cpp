@@ -161,3 +161,10 @@ Magnum::Vector3 HeightmapReadback::stateAt(int x, int y) const {
 	const auto& cache = m_cpuCaches[m_lastCpuIndex];
 	return {cache[idx + 0], cache[idx + 1], cache[idx + 2]};
 }
+
+Magnum::Vector2 HeightmapReadback::velocityAt(int x, int y) const {
+	Magnum::Vector3 state = stateAt(x, y);
+	float h = state.x();
+	if (h < 1e-4f) return {0.0f, 0.0f};
+	return {state.y() / h, state.z() / h};
+}

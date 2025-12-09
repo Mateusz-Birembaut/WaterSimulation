@@ -346,6 +346,7 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
     ImGui::DragFloat("S Max", &causticPass.m_S_MAX, 0.1f);
     ImGui::DragFloat("Photon Intensity C", &causticPass.m_photonIntensity, 0.01f);
     ImGui::DragFloat("Water Attenuation", &causticPass.m_waterAttenuation, 0.01f);
+    ImGui::DragFloat("Floor Offset", &causticPass.m_floorOffset, 0.01f);
     ImGui::Checkbox("Blur Caustics", &causticPass.m_enableBlur);
     ImGui::SliderFloat("Caustics Blur Radius", &causticPass.m_blurRadius, 0.0f, 10.0f);
 

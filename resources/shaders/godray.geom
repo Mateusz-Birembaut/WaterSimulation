@@ -62,43 +62,6 @@ vec3 getWaterNormal(vec2 uv, vec3 posCenter)
 }
 
 
-
-float getWaveHeight(vec2 p, float time) {
-    float h = 0.0;
-    
-    // Vague 1 : La houle principale (Lente, grande amplitude)
-    // Direction diagonale (p.x + p.y)
-    h += sin(p.x * 0.5 + p.y * 0.5 + time * 1.0) * 0.4;
-
-    // Vague 2 : Vague croisée (Plus rapide, amplitude moyenne)
-    // Direction opposée et angle différent (p.x * 1.0 - p.y * 0.8)
-    h += sin(p.x * 1.0 - p.y * 0.8 + time * 1.4) * 0.2;
-
-    // Vague 3 : Petits clapotis (Rapide, faible amplitude)
-    // Casse la symétrie restante
-    h += sin(-p.x * 1.5 + p.y * 0.3 + time * 2.5) * 0.1;
-
-    return h;
-}
-
-// Correction 2 : Recalculer h_center localement pour être cohérent
-vec3 getProceduralNormal(vec2 p, float time) {
-    vec2 e = vec2(0.01, 0.0);
-    
-    // On recalcule les 3 hauteurs avec la MÊME fonction
-    // p est déjà Ps.xz
-    float h_center = getWaveHeight(p, time);
-    float h_right  = getWaveHeight(p + e.xy, time);
-    float h_up     = getWaveHeight(p + e.yx, time);
-    
-    // Maintenant la différence est juste (ex: 0.11 - 0.10 = 0.01)
-    vec3 v1 = vec3(e.x, h_right - h_center, 0.0);
-    vec3 v2 = vec3(0.0, h_up - h_center, e.x);
-    
-    return normalize(cross(v2, v1)); 
-}
-
-
 vec3 reconstructFromShadow(vec2 uv, float depth) {
     vec4 lightClip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 worldPos = uInvVPLight * lightClip;

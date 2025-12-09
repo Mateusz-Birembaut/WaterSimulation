@@ -119,6 +119,7 @@ void WaterSimulation::CausticPass::render(
 		    .setA(a_calc)
 		    .setB(b_calc)
 		    .setLightFar(sunFar)
+			.setFloorOffset(m_floorOffset)
 		    .draw(m_photonGrid);
 	} else {
 		Debug{} << "Water entity not found, couldn't compute caustics";

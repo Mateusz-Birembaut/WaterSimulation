@@ -799,22 +799,34 @@ void PhysicsSystem::applyBuoyancy(Registry& registry) {
 
             Magnum::Vector3 bodyVelocityAtPoint = rb.getVelocityAt(sphereCenter);
             Magnum::Vector3 relativeVelocity = waterVelocityWorld - bodyVelocityAtPoint;
-            Magnum::Vector3 horizontalRelative{relativeVelocity.x(), 0.0f, relativeVelocity.z()};
-
+            
             const float submersionRatio = submergedHeight / maxSubmersion;
-            const float relSpeed = horizontalRelative.length();
+
+            const float relSpeed = relativeVelocity.length();
             if (relSpeed > 1.0e-3f) {
                 const float referenceArea = Magnum::Constants::pi() * radius * radius;
                 const float dragCoefficient = b.waterDrag > 0.0f ? b.waterDrag : 1.0f;
                 const float dragMagnitude = 0.5f * fluidDensity * referenceArea * relSpeed * relSpeed * dragCoefficient * submersionRatio;
-                Magnum::Vector3 lateralForce = dragMagnitude * (horizontalRelative / relSpeed);
-                //rb.addForceAt(lateralForce, sphereCenter);
-                rb.forceAccumulator += lateralForce;
-            }
+                Magnum::Vector3 dragForce = dragMagnitude * (relativeVelocity / relSpeed);
+                
+                rb.forceAccumulator += dragForce;
 
-            const float strengthFactor = 5.0f;
-            const float wakeStrength = relSpeed * submersionRatio * strengthFactor; 
-            m_disturbances.push_back({px, py, wakeStrength, 0.0f});
+                const float sphereTop = sphereCenter.y() + radius;
+                const float depth = waterHeightWorld - sphereTop;
+                float depthAttenuation = 1.0f;
+
+                if (depth > 0.0f) {
+                    depthAttenuation = Magnum::Math::clamp(1.0f - (depth / radius), 0.0f, 1.0f);
+                }
+
+                if (depthAttenuation > 0.0f) {
+                    const float speed = relativeVelocity.length();
+
+                    const float strengthFactor = 0.25f;
+                    const float wakeStrength = speed * submersionRatio * strengthFactor * depthAttenuation; 
+                    m_disturbances.push_back({px, py, wakeStrength, 0.0f});
+                }
+            }
         }
     }
 }
