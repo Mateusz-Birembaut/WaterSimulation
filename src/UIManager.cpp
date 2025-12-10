@@ -25,6 +25,8 @@
 using namespace Magnum;
 using namespace Math::Literals;
 
+
+
 void WaterSimulation::UIManager::drawUI(Application &app) {
     auto &imgui = app.getContext();
 
@@ -110,14 +112,28 @@ void WaterSimulation::UIManager::paramWindow(
         static ImVec2 position(0.0f, 0.0f);
         static float radius = 1.0f;
         static float quantity = 1.0f;
+        static bool fill = false;
 
-        ImGui::InputFloat2("Position", &position.x);
-        ImGui::SliderFloat("Radius", &radius, 0.1f, 100.0f, "%.2f");
-        ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
+        ImGui::Checkbox("Put water everywhere",&fill);
+        
 
-        if (ImGui::Button("Create Water") || ImGui::IsItemActive()) {
-            simulation->createWater(position.x, position.y, radius, quantity);
-        }  
+        if(!fill){
+            ImGui::InputFloat2("Position", &position.x);
+            ImGui::SliderFloat("Radius", &radius, 0.1f, 50.0f, "%.2f");
+            ImGui::SliderFloat("Quantity", &quantity, 0.1f, 1.0f, "%.2f");
+            
+            if (ImGui::Button("Create Water") || ImGui::IsItemActive()) {
+                simulation->createWater(position.x, position.y, radius, quantity);
+            }  
+        }else{
+            ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
+            if (ImGui::Button("Fill") || ImGui::IsItemActive()) {
+                simulation->createWater(.0f,.0f,100000, quantity);
+            }  
+        }
+        
+        
+        
         ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
@@ -134,6 +150,22 @@ void WaterSimulation::UIManager::paramWindow(
         ImGui::SliderInt("Diffusion Iterations", &simulation->diffusionIterations, 1, 512);
         ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
         ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
+
+        if (ImGui::Button("Load Map 2")) {
+            loadMap("h7.png", 1, 30.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Map 3")) {
+            loadMap("unnamed.jpg", 3, 30.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load River")) {
+            loadMap("river.png", 3, 50.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Volcano")) {
+            loadMap("volcano.png", 3, 20.0f, simulation);
+        }
 
         ImGui::End();
     }
@@ -364,3 +396,24 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
 }
 
 
+void WaterSimulation::UIManager::loadMap(const char * filename, int channels, float scaling, ShallowWater *simulation){
+
+    int nx = simulation->getnx();
+    int ny = simulation->getny();
+
+    Corrade::Utility::Resource rs{"WaterSimulationResources"};
+
+    converter->configuration().setValue("size", std::to_string(nx+1) + " " + std::to_string(ny+1));
+
+    auto heightmapData = rs.getRaw(filename);
+    importer->openData(heightmapData);
+
+    auto image = importer->image2D(0);
+    auto resized = converter->convert(*image);
+    auto allo = resized->format();
+    Debug{} << "FORMAT IS : " << allo;
+    Debug{} << "SIZE IS : " << resized->size();
+
+    simulation->loadTerrainHeightMap(&*resized, scaling, channels);
+
+}
