@@ -7,7 +7,7 @@ namespace WaterSimulation
 {
 	struct ShadowCasterComponent
 	{
-		Magnum::Vector2 projectionSize{100.0f, 100.0f};
+		Magnum::Vector2 projectionSize{200.0f, 200.0f};
 		float near = 0.1f;
 		float far = 1000.0f;
 

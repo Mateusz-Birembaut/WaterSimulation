@@ -28,7 +28,7 @@ using namespace Magnum;
 
 
 void WaterSimulation::CausticPass::init() {
-	const Magnum::Vector2i causticResolution = {2000, 2000};
+	const Magnum::Vector2i causticResolution = {1500, 1500};
 	m_fb = GL::Framebuffer{{{}, causticResolution}};
 
 	m_causticMap = GL::Texture2D{};

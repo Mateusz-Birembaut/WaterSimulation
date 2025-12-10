@@ -20,16 +20,11 @@ out vec4 FragColor;
 const float PI = 3.14159265359;
 
 
-// ============================
-//      SHADOW FUNCTION
-// ============================
 float computeShadow(vec4 fragPosLightSpace)
 {
-    // Transform into [0,1] range
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    // Outside shadow map → no shadow
     if (projCoords.z >= 1.0)
         return 0.0;
 
@@ -38,7 +33,6 @@ float computeShadow(vec4 fragPosLightSpace)
 
     vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
 
-    // simple 3×3 PCF
     for (int x = -1; x <= 1; x++)
     for (int y = -1; y <= 1; y++)
     {
@@ -50,9 +44,6 @@ float computeShadow(vec4 fragPosLightSpace)
 }
 
 
-// ============================
-//       PBR FUNCTIONS
-// ============================
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
@@ -86,14 +77,10 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 }
 
 
-// ============================
-//            MAIN
-// ============================
 void main()
 {
     vec2 uv = frag_UV * uUvScale;
 
-    // Textures (albedo en sRGB)
     vec3 albedo = pow(texture(uAlbedoTexture, uv).rgb, vec3(2.2));
     vec3 arm = texture(uARM, uv).rgb;
 
@@ -103,17 +90,19 @@ void main()
 
     vec3 N = normalize(frag_Normal);
     vec3 mapN = texture(uNormalMap, uv).xyz * 2.0 - 1.0;
+    if (length(mapN) < 0.001) mapN = vec3(0.0, 0.0, 1.0);
 
     vec3 dp1 = dFdx(frag_WorldPos);
     vec3 dp2 = dFdy(frag_WorldPos);
     vec2 duv1 = dFdx(uv);
     vec2 duv2 = dFdy(uv);
-    vec3 T = normalize(dp1 * duv2.y - dp2 * duv1.y);
-    vec3 B = normalize(cross(T, N));
+
+    vec3 T = dp1 * duv2.y - dp2 * duv1.y;
+    T = normalize(T - N * dot(T, N));
+    vec3 B = normalize(cross(N, T));
     N = normalize(T * mapN.x + B * mapN.y + N * mapN.z);
     vec3 V = normalize(uCameraPosition - frag_WorldPos);
 
-    // Directional light (soleil)
     vec3 L = normalize(-uLightDirection);
     vec3 H = normalize(V + L);
 
@@ -121,10 +110,8 @@ void main()
 
     vec3 radiance = uLightColor * uLightIntensity;
 
-    // Base reflectance
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
-    // Cook-Torrance BRDF
     float NDF = DistributionGGX(N, H, roughness);
     float G   = GeometrySmith(N, V, L, roughness);
     vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
@@ -136,17 +123,14 @@ void main()
     float denom       = 4.0 * max(dot(N, V), 0.0) * NdotL + 0.0001;
     vec3 specular     = numerator / denom;
 
-    // Final shading
     float shadow = computeShadow(frag_posLightSpace);
 
     vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL * (1.0 - shadow);
 
-    // Ambient (IBL manquant, mais version simple)
-    vec3 ambient = albedo * ao * 0.15;
+    vec3 ambient = albedo * ao * 0.95;
 
     vec3 color = ambient + Lo;
 
-    // Tonemapping + gamma
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));
 

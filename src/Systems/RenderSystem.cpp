@@ -172,7 +172,7 @@ std::pair<Magnum::Vector3, Magnum::Matrix4> RenderSystem::computeLightViewProj(W
         auto& sunDirection = sunView.get<DirectionalLightComponent>(sunEntity);
         auto& shadowCastData = sunView.get<ShadowCasterComponent>(sunEntity);
 
-        float maxFarCam = 50.0f;
+        float maxFarCam = 200.0f;
         float minFarCam = 1.0f;
 
 

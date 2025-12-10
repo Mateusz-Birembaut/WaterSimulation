@@ -68,7 +68,8 @@ static std::string resolveResourcesDir()
     const std::string candidates[] = {
         Path::join(exeDir, "resources"),                           // alongside executable
         Path::join(Path::join(exeDir, ".."), "resources"),         // ../resources
-        Path::join(Path::join(exeDir, "../.."), "resources"),      // ../../resources (common when exe in build/Debug/bin)
+        Path::join(Path::join(exeDir, "../.."), "resources"),
+        Path::join(Path::join(exeDir, "../../.."), "resources"),      // ../../resources (common when exe in build/Debug/bin)
         std::string{"resources"}                                   // relative cwd fallback
     };
 
@@ -390,7 +391,7 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
         const bool heavy = m_nextHeavyShot;
         const float radius = 1.0f;
         const float mass = heavy ? 1600.0f : 350.0f;
-        const float waterDrag = heavy ? 2.0f : 2.0f;
+        const float waterDrag = heavy ? 2.0f : 5.0f;
         const float flotability = heavy ? 80.0f : 300.0f;
         const float impulse = heavy ? 9000.0f : 6000.0f;
         static const std::string metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
