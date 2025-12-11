@@ -295,6 +295,11 @@ class ShallowWater {
             return *this;
         }
 
+        ComputeProgram &setVec2Uniform(const char *name, Magnum::Vector2 value) {
+            setUniform(uniformLocation(name), value);
+            return *this;
+        }
+
         ComputeProgram &run(unsigned int nx, unsigned int ny) {
             dispatchCompute({nx, ny, 1});
             return *this;
@@ -532,7 +537,9 @@ class ShallowWater {
     void initTsunami();
     void initEmpty();
 
-    void createWater(float x, float y, float radius , float quantity);
+    void createWater(float x, float y, float radius, float quantity);
+
+    void sendWaveWall(int side, float width, float quantity);
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,
                               float scaling = 1.0f, int channels = 1);

@@ -121,15 +121,17 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     Debug{} << "Creating application";
     
     m_timeline.start();
+    
     // Plugins setup
 
-    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> importerManager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
-    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> converterManager; //manager des plugins, sert a instantier les plugins de chargements d'assets nottament
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> importerManager;
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> converterManager;
 
-    Debug{} << "Available importer plugins : " << importerManager.pluginList();
-    Debug{} << "Available converter plugins : " << converterManager.pluginList();
 
     auto importer = importerManager.loadAndInstantiate("StbImageImporter");
+    auto converter = converterManager.loadAndInstantiate("StbResizeImageConverter");
+
+    /* auto importer = importerManager.loadAndInstantiate("StbImageImporter");
 
     if(!importer){
         Error{} << "Could not load STB Image Importer plugin, have you initialized all git submodules ?";
@@ -156,13 +158,13 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     auto resized = converter->convert(*image);
     auto allo = resized->format();
     Debug{} << "FORMAT IS : " << allo;
-    Debug{} << "SIZE IS : " << resized->size();
+    Debug{} << "SIZE IS : " << resized->size(); */
     
     // Shallow Water simulation setup
     m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
     m_heightmapReadback.init({m_shallowWaterSimulation.getnx() + 1, m_shallowWaterSimulation.getny() + 1});
 
-    m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 20.0f, 3);
+    //m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 20.0f, 3);
 
     m_shallowWaterSimulation.initDamBreak();
 
