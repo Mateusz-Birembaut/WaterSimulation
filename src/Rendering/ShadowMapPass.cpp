@@ -18,6 +18,7 @@
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/GL/Sampler.h>
 #include <Magnum/Math/Vector2.h>
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/GL/Renderer.h>
@@ -27,9 +28,11 @@ using namespace Magnum;
 void WaterSimulation::ShadowMapPass::recreateTextures(const Magnum::Vector2i& windowSize){
     m_depthTexture = GL::Texture2D{};
     m_depthTexture.setStorage(1, GL::TextureFormat::DepthComponent32F, windowSize)
-        .setMinificationFilter(GL::SamplerFilter::Nearest)
-        .setMagnificationFilter(GL::SamplerFilter::Nearest)
-        .setWrapping(GL::SamplerWrapping::ClampToEdge);
+        .setMinificationFilter(GL::SamplerFilter::Linear)
+        .setMagnificationFilter(GL::SamplerFilter::Linear)
+		.setCompareMode(GL::SamplerCompareMode::CompareRefToTexture)
+		.setCompareFunction(GL::SamplerCompareFunction::LessOrEqual)
+		.setWrapping(GL::SamplerWrapping::ClampToEdge);
 
     m_colorTexture = GL::Texture2D{};
     m_colorTexture.setStorage(1, GL::TextureFormat::RGBA32F, windowSize)

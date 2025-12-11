@@ -131,7 +131,6 @@ public:
         setUniform(m_uCameraPositionLoc, pos);
         return *this;
     }
-
     void draw(Magnum::GL::Mesh& mesh,
               const Magnum::Matrix4& model,
               const Magnum::Matrix4& mvp,
@@ -153,7 +152,7 @@ public:
         setLightDirection(sunLight.direction);
         setLightColor(sunLight.color);
         setLightIntensity(sunLight.intensity);
-        setUvScale(4.0f);
+        setUvScale(1.0f);
         setCameraPosition(camPos);
 
         bindShadowMap(shadowMap);

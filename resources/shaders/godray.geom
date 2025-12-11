@@ -181,7 +181,8 @@ void main()
 
     vec3 Ns = getWaterNormal(uv, Ps);
 
-    vec3 Ri = normalize(uLightPos - Ps);
+    vec3 Ri =  normalize(Ps - uLightPos);
+    
     vec3 Rt = refract(Ri, Ns, ETA);
 
     if (length(Rt) == 0.0)

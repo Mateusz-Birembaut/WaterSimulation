@@ -26,6 +26,7 @@ namespace WaterSimulation {
         std::shared_ptr<Magnum::GL::Texture2D> normal;
         std::shared_ptr<Magnum::GL::Texture2D> heightmap;
 
+
         Magnum::Color4 baseColor{1.0f};
 
 

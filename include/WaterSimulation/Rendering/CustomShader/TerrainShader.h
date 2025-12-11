@@ -154,8 +154,6 @@ namespace WaterSimulation
 			 DirectionalLightComponent& sunLight,
 			 Magnum::Vector3 camPos) override{
 
-				//TODO gerer lights
-
 				Magnum::GL::Texture2D* albedoTex = material.albedo.get();
 				Magnum::GL::Texture2D* heightMapTex = material.heightmap.get();
 				Magnum::GL::Texture2D* armTex = material.arm.get();

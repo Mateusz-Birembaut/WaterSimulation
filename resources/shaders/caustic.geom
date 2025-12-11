@@ -180,13 +180,10 @@ void main()
 
     vec3 Ps = worldPos.rgb;
 
-    //float waveH = getWaveHeight(Ps.xz, uTime);
-    //Ps.y += waveH; 
-    //vec3 Ns = getProceduralNormal(Ps.xz, uTime);
-    
     vec3 Ns = getWaterNormal(uv, Ps);
 
-    vec3 Ri = normalize(uLightPos - Ps);
+    vec3 Ri = normalize(Ps - uLightPos);
+    
     vec3 Rt = refract(Ri, Ns, ETA);
 
     if (length(Rt) == 0.0)

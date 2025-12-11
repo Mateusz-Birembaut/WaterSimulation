@@ -252,17 +252,9 @@ WaterSimulation::Application::Application(const Arguments& arguments):
         waterShader
     ); 
 
-    //Debug Quad
 
-    
-    // Use the preloaded metal textures for the demo sphere
-    Entity testEntity = createSphereEntity(
-        Magnum::Vector3(0.0f, 15.0f, -35.0f),
-        1.0f,
-        600.0f,
-        30.0f,
-        m_metalAlbedo ? m_metalAlbedo : albedoPtr,
-        m_metalArm);
+    spawnSphereAt(Magnum::Vector3(0.0f, 15.0f, -35.0f));
+
 
     // sun light en cours
     auto sunEntity = m_registry.create();
@@ -384,49 +376,10 @@ void WaterSimulation::Application::keyPressEvent(KeyEvent& event) {
     if(event.key() == Key::A) {
         const Magnum::Vector3 camPos = m_camera->position();
         const Magnum::Vector3 dir = m_camera->direction();
-
         const float spawnOffset = 2.5f;
         const Magnum::Vector3 spawnPos = camPos + dir * spawnOffset;
 
-        const bool heavy = m_nextHeavyShot;
-        const float radius = 1.0f;
-        const float mass = heavy ? 1600.0f : 350.0f;
-        const float waterDrag = heavy ? 2.0f : 5.0f;
-        const float flotability = heavy ? 80.0f : 300.0f;
-        const float impulse = heavy ? 9000.0f : 6000.0f;
-        static const std::string metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
-        static const std::string metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
-        static const std::string metalNormalPath = Corrade::Utility::Path::join(resDir, "textures/grass.png");
-
-
-        static const std::string woodAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_diff_1k.png");
-        static const std::string woodArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_arm_1k.png");
-        static const std::string woodNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_nor_gl_1k.png");
-
-        const std::string& shotAlbedo = heavy ? metalAlbedoPath : woodAlbedoPath;
-        const std::string& shotArm    = heavy ? metalArmPath    : woodArmPath;
-        const std::string& shotNormal    = heavy ? metalNormalPath    : woodNormalPath;
-
-        Entity e = createSphereEntity(spawnPos, radius, mass, flotability, waterDrag, shotAlbedo, shotArm);
-
-        if (m_registry.has<MaterialComponent>(e)) {
-            auto& mat = m_registry.get<MaterialComponent>(e);
-            std::shared_ptr<Magnum::GL::Texture2D> normalTex;
-            if (heavy) {
-                normalTex = m_metalNormal ? m_metalNormal : loadTexCached(shotNormal);
-            } else {
-                normalTex = loadTexCached(shotNormal);
-            }
-            if (normalTex) mat.normal = normalTex;
-        }
-
-
-        if (m_registry.has<RigidBodyComponent>(e) && m_registry.has<TransformComponent>(e)) {
-            auto& rb = m_registry.get<RigidBodyComponent>(e);
-            rb.forceAccumulator += dir * impulse;
-        }
-
-        m_nextHeavyShot = !m_nextHeavyShot;
+        spawnSphereAt(spawnPos, dir);
         return;
     }
 
@@ -484,7 +437,7 @@ void WaterSimulation::Application::handleCameraInputs(){
 MAGNUM_APPLICATION_MAIN(WaterSimulation::Application)
 
 
-uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3& position, float radius, float mass, float waterDrag, std::shared_ptr<Magnum::GL::Texture2D> albedo, std::shared_ptr<Magnum::GL::Texture2D> arm)
+uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3& position, float radius, float mass, float flotability, float waterDrag, std::shared_ptr<Magnum::GL::Texture2D> albedo, std::shared_ptr<Magnum::GL::Texture2D> arm)
 {
     Entity e = m_registry.create();
 
@@ -530,7 +483,7 @@ uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3&
     rb.addCollider(sphereCol);
 
     auto& b = m_registry.emplace<BuoyancyComponent>(e);
-    b.flotability = 500.0f; 
+    b.flotability = flotability;
     b.waterDrag = waterDrag;
 
     auto shaderPtr = std::make_shared<PBRShader>();
@@ -542,26 +495,59 @@ uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3&
     return e;
 }
 
-uint32_t WaterSimulation::Application::createSphereEntity(const Magnum::Vector3& position,
-    float radius,
-    float mass,
-    float flotability,
-    float waterDrag,
-    const std::string& albedoPath,
-    const std::string& armPath)
+uint32_t WaterSimulation::Application::spawnSphereAt(const Magnum::Vector3& position, const Magnum::Vector3& impulseDir)
 {
-    auto albedoTex = albedoPath.empty() ? std::shared_ptr<Magnum::GL::Texture2D>{} : loadTexCached(albedoPath);
-    auto armTex    = armPath.empty()    ? std::shared_ptr<Magnum::GL::Texture2D>{} : loadTexCached(armPath);
+    const bool heavy = m_nextHeavyShot;
+    const float radius = 1.0f;
+    const float mass = heavy ? 1600.0f : 350.0f;
+    const float waterDrag = heavy ? 2.0f : 5.0f;
+    const float flotability = heavy ? 80.0f : 300.0f;
+    const float impulseStrength = heavy ? 9000.0f : 6000.0f;
 
-    Entity e = createSphereEntity(position, radius, mass, waterDrag, albedoTex, armTex);
+    static const std::string metalAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_diff.png");
+    static const std::string metalArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_arm.png");
+    static const std::string metalNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereMetal/s_metal_norm.png");
 
-    if (m_registry.has<BuoyancyComponent>(e)) {
-        auto& b = m_registry.get<BuoyancyComponent>(e);
-        b.flotability = flotability;
+    static const std::string woodAlbedoPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_diff_1k.png");
+    static const std::string woodArmPath    = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_arm_1k.png");
+    static const std::string woodNormalPath = Corrade::Utility::Path::join(resDir, "textures/sphereWood/moss_wood_nor_gl_1k.png");
+
+    const std::string& shotNormal    = heavy ? metalNormalPath    : woodNormalPath;
+
+    std::shared_ptr<Magnum::GL::Texture2D> shotAlbedoTex;
+    std::shared_ptr<Magnum::GL::Texture2D> shotArmTex;
+    if (heavy) {
+        shotAlbedoTex = m_metalAlbedo ? m_metalAlbedo : loadTexCached(metalAlbedoPath);
+        shotArmTex    = m_metalArm ? m_metalArm : loadTexCached(metalArmPath);
+    } else {
+        shotAlbedoTex = loadTexCached(woodAlbedoPath);
+        shotArmTex    = loadTexCached(woodArmPath);
     }
+
+    auto e = createSphereEntity(position, radius, mass, flotability, waterDrag, shotAlbedoTex, shotArmTex);
+
+    if (m_registry.has<MaterialComponent>(e)) {
+        auto& mat = m_registry.get<MaterialComponent>(e);
+        std::shared_ptr<Magnum::GL::Texture2D> normalTex;
+        if (heavy) {
+            normalTex = m_metalNormal ? m_metalNormal : loadTexCached(shotNormal);
+        } else {
+            normalTex = loadTexCached(shotNormal);
+        }
+        if (normalTex) mat.normal = normalTex;
+    }
+
+    if (!impulseDir.isZero() && m_registry.has<RigidBodyComponent>(e) && m_registry.has<TransformComponent>(e)) {
+        auto& rb = m_registry.get<RigidBodyComponent>(e);
+        const Magnum::Vector3 dirNorm = impulseDir.normalized();
+        rb.forceAccumulator += dirNorm * impulseStrength;
+    }
+
+    m_nextHeavyShot = !m_nextHeavyShot;
 
     return e;
 }
+
 
 
 uint32_t WaterSimulation::Application::createTerrain(float scale)
@@ -624,6 +610,7 @@ uint32_t WaterSimulation::Application::createTerrain(float scale)
                 .setSubImage(0, {}, Magnum::ImageView2D{*sandArmImage});
             matTerrain.arm = std::make_shared<Magnum::GL::Texture2D>(std::move(sandArmTex));
         }
+        
     }
 
     matTerrain.heightmap = heightmapPtr;

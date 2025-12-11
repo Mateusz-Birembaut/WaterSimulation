@@ -48,11 +48,9 @@ namespace WaterSimulation {
 
 			Registry & registry(){ return m_registry; };
 
-			Entity createSphereEntity(const Magnum::Vector3& position, float radius = 1.0f, float mass = 600.0f, float waterDrag = 30.0f, std::shared_ptr<Magnum::GL::Texture2D> albedo = nullptr, std::shared_ptr<Magnum::GL::Texture2D> arm = nullptr);
+			Entity createSphereEntity(const Magnum::Vector3& position, float radius = 1.0f, float mass = 600.0f, float flotability = 300.0f, float waterDrag = 30.0f, std::shared_ptr<Magnum::GL::Texture2D> albedo = nullptr, std::shared_ptr<Magnum::GL::Texture2D> arm = nullptr);
+			Entity spawnSphereAt(const Magnum::Vector3& position, const Magnum::Vector3& impulseDir = Magnum::Vector3{0.0f});
 
-			Entity createSphereEntity(const Magnum::Vector3& position, float radius, float mass, float flotability, float waterDrag, const std::string& albedoPath, const std::string& armPath = {});
-
-			// Create the terrain entity with its textures, heightmap and collider.
 			Entity createTerrain(float scale);
 
 			RenderSystem m_renderSystem;
