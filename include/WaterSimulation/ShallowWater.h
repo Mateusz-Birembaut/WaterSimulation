@@ -538,10 +538,7 @@ class ShallowWater {
     void initEmpty();
 
     void createWater(float x, float y, float radius, float quantity);
-    void sendWave(float x, float y, float radius, float quantity,
-                  float dirX = 0.0f, float dirY = 0.0f);
-    // Send a wave wall from an edge of the domain
-    // side: 0 = bottom (Y=0), 1 = top (Y=max), 2 = left (X=0), 3 = right (X=max)
+
     void sendWaveWall(int side, float width, float quantity);
 
     void loadTerrainHeightMap(Magnum::Trade::ImageData2D *tex,

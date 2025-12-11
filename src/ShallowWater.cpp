@@ -524,23 +524,7 @@ void ShallowWater::createWater(float x, float y, float radius, float quantity){
         Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 }
 
-void ShallowWater::sendWave(float x, float y, float radius, float quantity,
-                            float dirX, float dirY){
 
-    m_createWaterProgram.bindReadWrite(&m_stateTexture)
-        .bindTerrain(&m_terrainTexture)
-        .setFloatUniform("posx", x)
-        .setFloatUniform("posy", y)
-        .setFloatUniform("radius", radius)
-        .setFloatUniform("quantity", quantity)
-        .setIntUniform("mode", 1) 
-        .setVec2Uniform("waveDir", Magnum::Vector2{dirX, dirY})
-        .setFloatUniform("gravity", gravity)
-        .run(groupx, groupy);
-
-    Magnum::GL::Renderer::setMemoryBarrier(
-        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
-}
 
 void ShallowWater::sendWaveWall(int side, float width, float quantity){
     m_createWaterProgram.bindReadWrite(&m_stateTexture)

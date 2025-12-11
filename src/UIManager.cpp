@@ -93,7 +93,7 @@ void WaterSimulation::UIManager::paramWindow(
             simulation->step();
         }
 
-        if (ImGui::Button("Init Dam Break")) {
+        /* if (ImGui::Button("Init Dam Break")) {
             simulation->initDamBreak();
         }
         ImGui::SameLine();
@@ -103,13 +103,13 @@ void WaterSimulation::UIManager::paramWindow(
         ImGui::SameLine();
         if (ImGui::Button("Init Tsunami")) {
             simulation->initTsunami();
-        }
+        } */
         ImGui::SameLine();
-        if (ImGui::Button("Init Empty")) {
+        if (ImGui::Button("Clear All Water")) {
             simulation->initEmpty();
         }
-        ImGui::Text("Create");
-        static ImVec2 position(0.0f, 0.0f);
+        ImGui::Text("Create Water");
+        static ImVec2 position(256.0f, 256.0f);
         static float radius = 1.0f;
         static float quantity = 1.0f;
         static bool fill = false;
@@ -122,7 +122,7 @@ void WaterSimulation::UIManager::paramWindow(
             ImGui::SliderFloat("Radius", &radius, 0.1f, 50.0f, "%.2f");
             ImGui::SliderFloat("Quantity", &quantity, 0.1f, 1.0f, "%.2f");
             
-            if (ImGui::Button("Create Water") || ImGui::IsItemActive()) {
+            if (ImGui::Button("Create (you can hold this button)") || ImGui::IsItemActive()) {
                 simulation->createWater(position.x, position.y, radius, quantity);
             }  
         }else{
@@ -133,7 +133,7 @@ void WaterSimulation::UIManager::paramWindow(
         }
         
         ImGui::Separator();
-        ImGui::Text("Send Wave Wall");
+        ImGui::Text("Send a Wave");
         static int waveSide = 0;  // 0=bottom, 1=top, 2=left, 3=right
         static float waveWidth = 20.0f;
         static float waveWallQuantity = 2.0f;
@@ -148,22 +148,22 @@ void WaterSimulation::UIManager::paramWindow(
         }
         ImGui::Separator();
         
-        ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
+        ImGui::Checkbox("Airy Waves Enabled", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
         ImGui::Separator();
-        ImGui::Text("Simulation Parameters");
+        ImGui::Text("Base Parameters");
         
-        ImGui::SliderFloat("Gravity", &simulation->gravity, 0.1f, 50.0f, "%.2f");
-        ImGui::SliderFloat("Dry Epsilon", &simulation->dryEps, 1e-6f, 0.1f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Gravity", &simulation->gravity, 0.1f, 100.0f, "%.2f");
+        ImGui::SliderFloat("Dry Epsilon (Threshold when a cell is considered dry)", &simulation->dryEps, 1e-6f, 0.1f, "%.6f", ImGuiSliderFlags_Logarithmic);
         
         ImGui::Separator();
         ImGui::Text("Airy Waves Parameters");
         
-        ImGui::SliderFloat("Decomposition D", &simulation->decompositionD, 0.000001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Decomposition D (The higher it is, the less airy waves we have) ", &simulation->decompositionD, 0.000001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
         ImGui::SliderInt("Diffusion Iterations", &simulation->diffusionIterations, 1, 512);
-        ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
-        ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
+        //ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
+        //ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
 
 
         if (ImGui::Button("Load Mountain")) {
@@ -240,7 +240,7 @@ void WaterSimulation::UIManager::paramWindow(
                 texSize);
         }
 
-        if (ImGui::CollapsingHeader("4. FFT (Airy Waves)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("4. FFT (On Airy Waves Quantities)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FFT Height");
             ImGui::SameLine(100);
             ImGui::Text("FFT Qx");
