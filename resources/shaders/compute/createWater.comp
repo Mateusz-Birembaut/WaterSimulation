@@ -10,6 +10,17 @@ uniform float posy;
 uniform float radius;
 uniform float quantity;
 
+// 0 = create water, 1 = send wave (radial), 2 = send wave wall
+uniform int mode;
+uniform vec2 waveDir;
+uniform float gravity;
+// For wave wall: 0 = from Y=0 (bottom), 1 = from Y=max (top), 2 = from X=0 (left), 3 = from X=max (right)
+uniform int wallSide;
+// Width of the wave wall (how deep into the domain)
+uniform float wallWidth;
+
+const float PI = 3.14159265358979323846;
+
 void main() {
     uvec3 globalID = gl_GlobalInvocationID;
     ivec2 gridSize = imageSize(stateIn);
@@ -19,13 +30,103 @@ void main() {
         return;
     }
 
+    vec4 currentState = imageLoad(stateIn, ivec2(globalID.xy));
+    
+    if (mode == 2) {
+        // Wave wall mode - create a wave across entire edge
+        float dist = 0.0;
+        vec2 propDir = vec2(0.0);
+        bool inWaveZone = false;
+        
+        if (wallSide == 0) {
+            // Wave from bottom (Y = 0), propagates in +Y
+            dist = float(globalID.y);
+            propDir = vec2(0.0, 1.0);
+            inWaveZone = (dist < wallWidth);
+        } else if (wallSide == 1) {
+            // Wave from top (Y = max), propagates in -Y
+            dist = float(gridSize.y - 1 - int(globalID.y));
+            propDir = vec2(0.0, -1.0);
+            inWaveZone = (dist < wallWidth);
+        } else if (wallSide == 2) {
+            // Wave from left (X = 0), propagates in +X
+            dist = float(globalID.x);
+            propDir = vec2(1.0, 0.0);
+            inWaveZone = (dist < wallWidth);
+        } else if (wallSide == 3) {
+            // Wave from right (X = max), propagates in -X
+            dist = float(gridSize.x - 1 - int(globalID.x));
+            propDir = vec2(-1.0, 0.0);
+            inWaveZone = (dist < wallWidth);
+        }
+        
+        if (inWaveZone) {
+            float currentH = currentState.r;
+            
+            // Smooth cosine profile for the wave
+            float t = dist / wallWidth;
+            float h = quantity * 0.5 * (1.0 + cos(PI * t));
+            
+            // Compute wave velocity
+            float totalH = max(currentH + h, 0.001);
+            float waveSpeed = sqrt(gravity * totalH);
+            
+            float qx = h * waveSpeed * propDir.x;
+            float qy = h * waveSpeed * propDir.y;
+            
+            imageStore(stateIn, ivec2(globalID.xy), vec4(
+                h + currentState.r,
+                qx + currentState.g,
+                qy + currentState.b,
+                currentState.a
+            ));
+        }
+        return;
+    }
+
     vec2 cellPos = vec2(globalID.xy) + vec2(0.5);
     vec2 diff = cellPos - vec2(posx, posy);
     float dist = length(diff);
 
     if (dist <= radius) {
-        float h = quantity * (1.0 - dist / radius);
-        vec4 currentState = imageLoad(stateIn, ivec2(globalID.xy));
-        imageStore(stateIn, ivec2(globalID.xy), vec4(h + currentState.r, currentState.g, currentState.b, currentState.a));
+        if (mode == 0) {
+            float h = quantity * (1.0 - dist / radius);
+            imageStore(stateIn, ivec2(globalID.xy), vec4(
+                h + currentState.r,
+                currentState.g,
+                currentState.b,
+                currentState.a
+            ));
+        } else if (mode == 1) {
+            float currentH = currentState.r;
+            
+            float t = dist / radius;
+            float h = quantity * 0.5 * (1.0 + cos(PI * t));
+            
+            float totalH = max(currentH + h, 0.001);
+            float waveSpeed = sqrt(gravity * totalH);
+            
+            vec2 propDir;
+            float dirLen = length(waveDir);
+            if (dirLen > 0.001) {
+                propDir = waveDir / dirLen;
+            } else {
+                if (dist > 0.001) {
+                    propDir = diff / dist;
+                } else {
+                    propDir = vec2(0.0);
+                }
+            }
+            
+            float qx = h * waveSpeed * propDir.x;
+            float qy = h * waveSpeed * propDir.y;
+            
+            imageStore(stateIn, ivec2(globalID.xy), vec4(
+                h + currentState.r,
+                qx + currentState.g,
+                qy + currentState.b,
+                currentState.a
+            ));
+        }
     }
 }

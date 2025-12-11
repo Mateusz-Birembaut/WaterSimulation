@@ -127,12 +127,26 @@ void WaterSimulation::UIManager::paramWindow(
             }  
         }else{
             ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
-            if (ImGui::Button("Fill") || ImGui::IsItemActive()) {
+            if (ImGui::Button("Fill")) {
                 simulation->createWater(.0f,.0f,100000, quantity);
             }  
         }
         
+        ImGui::Separator();
+        ImGui::Text("Send Wave Wall");
+        static int waveSide = 0;  // 0=bottom, 1=top, 2=left, 3=right
+        static float waveWidth = 20.0f;
+        static float waveWallQuantity = 2.0f;
         
+        const char* sideNames[] = { "Bottom (Y=0)", "Top (Y=max)", "Left (X=0)", "Right (X=max)" };
+        ImGui::Combo("Wave Side", &waveSide, sideNames, 4);
+        ImGui::SliderFloat("Wave Width", &waveWidth, 5.0f, 100.0f, "%.1f");
+        ImGui::SliderFloat("Wave Height", &waveWallQuantity, 0.1f, 10.0f, "%.2f");
+        
+        if (ImGui::Button("Send Wave Wall")) {
+            simulation->sendWaveWall(waveSide, waveWidth, waveWallQuantity);
+        }
+        ImGui::Separator();
         
         ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
@@ -151,20 +165,21 @@ void WaterSimulation::UIManager::paramWindow(
         ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
         ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
 
-        if (ImGui::Button("Load Map 2")) {
-            loadMap("h7.png", 1, 30.0f, simulation);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Load Map 3")) {
-            loadMap("unnamed.jpg", 3, 30.0f, simulation);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Load River")) {
-            loadMap("river.png", 3, 50.0f, simulation);
+
+        if (ImGui::Button("Load Mountain")) {
+            loadMap("mountain.jpg", 3, 30.0f, simulation);
         }
         ImGui::SameLine();
         if (ImGui::Button("Load Volcano")) {
             loadMap("volcano.png", 3, 20.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Ridge")) {
+            loadMap("ridge.png", 3, 20.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Canyon")) {
+            loadMap("canyon.png", 3, 20.0f, simulation);
         }
 
         ImGui::End();
