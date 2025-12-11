@@ -148,7 +148,6 @@ void ShallowWater::step() {
     m_updateWaterHeightProgram.bindUpdateHeight(&m_tempTexture, &m_tempTexture3, &m_prevStateTexture, &m_stateTexture)
         .setFloatUniform("dt", dt)
         .setFloatUniform("dx", dx)
-        .setFloatUniform("dryEps", dryEps)
         .run(groupx, groupy);
    
 
