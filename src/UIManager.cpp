@@ -25,6 +25,8 @@
 using namespace Magnum;
 using namespace Math::Literals;
 
+
+
 void WaterSimulation::UIManager::drawUI(Application &app) {
     auto &imgui = app.getContext();
 
@@ -91,7 +93,7 @@ void WaterSimulation::UIManager::paramWindow(
             simulation->step();
         }
 
-        if (ImGui::Button("Init Dam Break")) {
+        /* if (ImGui::Button("Init Dam Break")) {
             simulation->initDamBreak();
         }
         ImGui::SameLine();
@@ -101,39 +103,84 @@ void WaterSimulation::UIManager::paramWindow(
         ImGui::SameLine();
         if (ImGui::Button("Init Tsunami")) {
             simulation->initTsunami();
-        }
+        } */
         ImGui::SameLine();
-        if (ImGui::Button("Init Empty")) {
+        if (ImGui::Button("Clear All Water")) {
             simulation->initEmpty();
         }
-        ImGui::Text("Create");
-        static ImVec2 position(0.0f, 0.0f);
+        ImGui::Text("Create Water");
+        static ImVec2 position(256.0f, 256.0f);
         static float radius = 1.0f;
         static float quantity = 1.0f;
+        static bool fill = false;
 
-        ImGui::InputFloat2("Position", &position.x);
-        ImGui::SliderFloat("Radius", &radius, 0.1f, 100.0f, "%.2f");
-        ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
+        ImGui::Checkbox("Put water everywhere",&fill);
+        
 
-        if (ImGui::Button("Create Water") || ImGui::IsItemActive()) {
-            simulation->createWater(position.x, position.y, radius, quantity);
-        }  
-        ImGui::Checkbox("Airy waves", &simulation->airyWavesEnabled);
+        if(!fill){
+            ImGui::InputFloat2("Position", &position.x);
+            ImGui::SliderFloat("Radius", &radius, 0.1f, 50.0f, "%.2f");
+            ImGui::SliderFloat("Quantity", &quantity, 0.1f, 1.0f, "%.2f");
+            
+            if (ImGui::Button("Create (you can hold this button)") || ImGui::IsItemActive()) {
+                simulation->createWater(position.x, position.y, radius, quantity);
+            }  
+        }else{
+            ImGui::SliderFloat("Quantity", &quantity, 0.1f, 100.0f, "%.2f");
+            if (ImGui::Button("Fill")) {
+                simulation->createWater(.0f,.0f,100000, quantity);
+            }  
+        }
+        
+        ImGui::Separator();
+        ImGui::Text("Send a Wave");
+        static int waveSide = 0;  // 0=bottom, 1=top, 2=left, 3=right
+        static float waveWidth = 20.0f;
+        static float waveWallQuantity = 2.0f;
+        
+        const char* sideNames[] = { "Bottom (Y=0)", "Top (Y=max)", "Left (X=0)", "Right (X=max)" };
+        ImGui::Combo("Wave Side", &waveSide, sideNames, 4);
+        ImGui::SliderFloat("Wave Width", &waveWidth, 5.0f, 100.0f, "%.1f");
+        ImGui::SliderFloat("Wave Height", &waveWallQuantity, 0.1f, 10.0f, "%.2f");
+        
+        if (ImGui::Button("Send Wave Wall")) {
+            simulation->sendWaveWall(waveSide, waveWidth, waveWallQuantity);
+        }
+        ImGui::Separator();
+        
+        ImGui::Checkbox("Airy Waves Enabled", &simulation->airyWavesEnabled);
         ImGui::InputInt("Step Number", &(app->step_number), 1, 10);
 
         ImGui::Separator();
-        ImGui::Text("Simulation Parameters");
+        ImGui::Text("Base Parameters");
         
-        ImGui::SliderFloat("Gravity", &simulation->gravity, 0.1f, 50.0f, "%.2f");
-        ImGui::SliderFloat("Dry Epsilon", &simulation->dryEps, 1e-6f, 0.1f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Gravity", &simulation->gravity, 0.1f, 100.0f, "%.2f");
+        ImGui::SliderFloat("Dry Epsilon (Threshold when a cell is considered dry)", &simulation->dryEps, 1e-6f, 0.1f, "%.6f", ImGuiSliderFlags_Logarithmic);
         
         ImGui::Separator();
         ImGui::Text("Airy Waves Parameters");
         
-        ImGui::SliderFloat("Decomposition D", &simulation->decompositionD, 0.000001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Decomposition D (The higher it is, the less airy waves we have) ", &simulation->decompositionD, 0.000001f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
         ImGui::SliderInt("Diffusion Iterations", &simulation->diffusionIterations, 1, 512);
-        ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
-        ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
+        //ImGui::SliderFloat("Airy h_bar", &simulation->airyHBar, 0.1f, 20.0f, "%.2f");
+        //ImGui::SliderFloat("Transport Gamma", &simulation->transportGamma, 0.0f, 1.0f, "%.3f");
+
+
+        if (ImGui::Button("Load Mountain")) {
+            loadMap("mountain.jpg", 3, 30.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Volcano")) {
+            loadMap("volcano.png", 3, 20.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Ridge")) {
+            loadMap("ridge.png", 3, 20.0f, simulation);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Load Canyon")) {
+            loadMap("canyon.png", 3, 20.0f, simulation);
+        }
 
         ImGui::End();
     }
@@ -193,7 +240,7 @@ void WaterSimulation::UIManager::paramWindow(
                 texSize);
         }
 
-        if (ImGui::CollapsingHeader("4. FFT (Airy Waves)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::CollapsingHeader("4. FFT (On Airy Waves Quantities)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::Text("FFT Height");
             ImGui::SameLine(100);
             ImGui::Text("FFT Qx");
@@ -364,3 +411,24 @@ void WaterSimulation::UIManager::visualWindow(Magnum::Platform::Sdl2Application 
 }
 
 
+void WaterSimulation::UIManager::loadMap(const char * filename, int channels, float scaling, ShallowWater *simulation){
+
+    int nx = simulation->getnx();
+    int ny = simulation->getny();
+
+    Corrade::Utility::Resource rs{"WaterSimulationResources"};
+
+    converter->configuration().setValue("size", std::to_string(nx+1) + " " + std::to_string(ny+1));
+
+    auto heightmapData = rs.getRaw(filename);
+    importer->openData(heightmapData);
+
+    auto image = importer->image2D(0);
+    auto resized = converter->convert(*image);
+    auto allo = resized->format();
+    Debug{} << "FORMAT IS : " << allo;
+    Debug{} << "SIZE IS : " << resized->size();
+
+    simulation->loadTerrainHeightMap(&*resized, scaling, channels);
+
+}
