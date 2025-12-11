@@ -168,18 +168,22 @@ void WaterSimulation::UIManager::paramWindow(
 
         if (ImGui::Button("Load Mountain")) {
             loadMap("mountain.jpg", 3, 30.0f, simulation);
+            app->createTerrain(200.0f);
         }
         ImGui::SameLine();
         if (ImGui::Button("Load Volcano")) {
             loadMap("volcano.png", 3, 20.0f, simulation);
+            app->createTerrain(200.0f);
         }
         ImGui::SameLine();
         if (ImGui::Button("Load Ridge")) {
             loadMap("ridge.png", 3, 20.0f, simulation);
+            app->createTerrain(200.0f); 
         }
         ImGui::SameLine();
         if (ImGui::Button("Load Canyon")) {
             loadMap("canyon.png", 3, 20.0f, simulation);
+            app->createTerrain(200.0f);
         }
 
         ImGui::End();

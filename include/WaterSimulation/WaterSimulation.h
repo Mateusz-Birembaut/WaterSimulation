@@ -41,8 +41,8 @@ namespace WaterSimulation {
 			Magnum::ImGuiIntegration::Context & getContext() {return m_imgui;};
 			bool cursorLocked() { return m_cursorLocked;};
 
-			bool simulationPaused = true;
-			int step_number = 1; //number of shallow water steps for a single time step, increasing this increases simulation speed
+			bool simulationPaused = false;
+			int step_number = 1; //number of shallow water steps for a single time step, increasing this increases water speed
 
 			ShallowWater& shallowWaterSimulation() { return m_shallowWaterSimulation; }
 

@@ -33,6 +33,8 @@ namespace WaterSimulation {
             //rs = Corrade::Utility::Resource{"WaterSimulationResources"};
            
         }
+
+        void loadMap(const char * filename, int channels, float scaling, ShallowWater *simulation);
     private:
 
         Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> importerManager;
@@ -50,6 +52,6 @@ namespace WaterSimulation {
         void cameraWindow(Camera & cam);
         void visualWindow(Magnum::Platform::Sdl2Application & app);
 
-        void loadMap(const char * filename, int channels, float scaling, ShallowWater *simulation);
+        
     };
 } // namespace WaterSimulationa

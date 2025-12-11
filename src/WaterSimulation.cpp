@@ -164,9 +164,11 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_shallowWaterSimulation = ShallowWater(511,511, .25f, 1.0f/60.0f);
     m_heightmapReadback.init({m_shallowWaterSimulation.getnx() + 1, m_shallowWaterSimulation.getny() + 1});
 
+    
+
     //m_shallowWaterSimulation.loadTerrainHeightMap(&*resized, 20.0f, 3);
 
-    m_shallowWaterSimulation.initDamBreak();
+    //m_shallowWaterSimulation.initDamBreak();
 
     debugShader = DisplayShader("debug.vs", "debug.fs");
     
@@ -198,6 +200,7 @@ WaterSimulation::Application::Application(const Arguments& arguments):
     m_camera.get()->setSpeed(25.0f);
     m_camera.get()->setRotSpeed(5.0f);
     
+    m_UIManager->loadMap("mountain.jpg", 3, 30.0f, &m_shallowWaterSimulation);
     // test ECS et rendu avec shader de base
     // test sphere avec texture
 
