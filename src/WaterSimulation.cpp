@@ -397,17 +397,20 @@ void WaterSimulation::Application::keyReleaseEvent(KeyEvent& event) {
 }
 
 void WaterSimulation::Application::pointerPressEvent(PointerEvent& event) {
+    if(m_cursorLocked) return;
     if(m_imgui.handlePointerPressEvent(event)) return;
 }
 
 void WaterSimulation::Application::pointerReleaseEvent(PointerEvent& event) {
+    if(m_cursorLocked) return;
     if(m_imgui.handlePointerReleaseEvent(event)) return;
 }
 
 void WaterSimulation::Application::pointerMoveEvent(PointerMoveEvent& event) {
-    if(m_imgui.handlePointerMoveEvent(event)) return;
-
-    if(!m_cursorLocked) return;
+    if(!m_cursorLocked) {
+        if(m_imgui.handlePointerMoveEvent(event)) return;
+        return;
+    }
 
     Vector2 delta = event.relativePosition();
     if(delta.isZero()) return;
@@ -419,6 +422,7 @@ void WaterSimulation::Application::pointerMoveEvent(PointerMoveEvent& event) {
 }
 
 void WaterSimulation::Application::scrollEvent(ScrollEvent& event) {
+    if(m_cursorLocked) return;
     if(m_imgui.handleScrollEvent(event)) {
         /* Prevent scrolling the page */
         event.setAccepted();

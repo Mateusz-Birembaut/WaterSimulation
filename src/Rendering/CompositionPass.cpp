@@ -83,26 +83,26 @@ void CompositionPass::render(
 		    .draw(m_fullscreenTriangle);
 	};
 
-	// Ensure no fog is baked into intermediate passes
+	// desactive le fog pour le rendu intermediaire
 	m_fullscreenShader
 	    .setIsUnderwater(false)
 	    .setFogDensity(0.0f)
 	    .setFogColor(underwaterFogColor);
 
-	// Base layer: opaque geometry
+	// draw la géometry
 	drawFullscreen(opaqueColor);
 
-	// Additive overlays for caustics and godrays
+	// en mode additif pour ajouter les textures des caustics et godrays
 	GL::Renderer::enable(GL::Renderer::Feature::Blending);
 	GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::One,
 	    GL::Renderer::BlendFunction::One);
 	drawFullscreen(caustics);
 	drawFullscreen(godrays);
 
-	// Attach opaque depth texture so water depth test uses scene depth
+
 	m_fb.attachTexture(GL::Framebuffer::BufferAttachment::Depth, opaqueDepth, 0);
 
-	// Render water meshes with regular alpha blending and depth testing
+	// on rend l'eau en transparent par dessus
 	GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
 	    GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
@@ -114,7 +114,6 @@ void CompositionPass::render(
 
 
 	GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-	// don't write depth when drawing transparent water
 	GL::Renderer::setDepthMask(false);
 	GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
@@ -140,19 +139,19 @@ void CompositionPass::render(
 		    mvp,
 		    material,
 		    Matrix4{Math::IdentityInit},
-		    opaqueDepth, // reuse scene depth as shadow map placeholder
+		    opaqueDepth, 
 		    sunLight,
 			cameraPosition);
 	}
 
 
-	// restore depth write and face culling state
+	
 	GL::Renderer::setDepthMask(true);
 	GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 	GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 	GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
-	// Present the composed color buffer to the default framebuffer
+	// on donne le resultat final a l'ecran
 	GL::defaultFramebuffer.bind();
 	m_fullscreenShader
 	    .setIsUnderwater(isUnderwater)

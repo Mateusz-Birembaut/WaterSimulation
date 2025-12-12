@@ -24,11 +24,11 @@ namespace WaterSimulation {
 
 	      public:
 
-		float m_g = 0.8f;
-		float m_gamma = 1.3f;
-		float m_intensity = 10.0f;
-		float m_rayWidth = 2.0f;
-		float m_blurRadius = 3.25f;
+		float m_g = 0.930f;
+		float m_gamma = 0.105f;
+		float m_intensity = 35.0f;
+		float m_rayWidth = 0.0f;
+		float m_blurRadius = 10.0f;
 
         bool m_enableBlur = true; // Toggle for blur effect
 

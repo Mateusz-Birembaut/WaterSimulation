@@ -171,7 +171,6 @@ vec3 findFloor(vec3 position, vec3 direction){
     return position;
 }
 
-
 void main()
 {
     vec2 uv = v_gridPos[0] * 0.5 + 0.5;
@@ -183,7 +182,7 @@ void main()
     vec3 Ns = getWaterNormal(uv, Ps);
 
     vec3 Ri = normalize(Ps - uLightPos);
-    
+
     vec3 Rt = refract(Ri, Ns, ETA);
 
     if (length(Rt) == 0.0)
@@ -200,7 +199,7 @@ void main()
 
     float sfinal = uA + uB / distToCam;
 
-    vIntensity = uIntensity * exp(-uAttenuation * distInWater);
+    vIntensity = uIntensity * (1.0 - exp(-uAttenuation * distInWater)); // pas exactement comme le papier mais ca rend mieux
     gl_Position = uVPCamera * vec4(Pi, 1.0);
     vClipPos = gl_Position;
     gl_PointSize = sfinal;
