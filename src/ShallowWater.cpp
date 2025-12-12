@@ -476,22 +476,17 @@ void ShallowWater::applyDisturbances(const std::vector<Disturbance>& disturbance
         Magnum::GL::BufferUsage::DynamicDraw
     );
 
-    // Bind the buffer to binding point 1
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_disturbanceBuffer.id());
 
-    // Bind the state texture for read-write access
-    m_stateTexture.bindImage(0, 0, Magnum::GL::ImageAccess::ReadWrite,
-                             Magnum::GL::ImageFormat::RGBA32F);
+    m_stateTexture.bindImage(0, 0, Magnum::GL::ImageAccess::ReadWrite, Magnum::GL::ImageFormat::RGBA32F);
 
-    // Set uniform for disturbance count
     m_disturbanceProgram.setIntUniform("uDisturbanceCount", int(disturbances.size()));
 
     // Dispatch compute shader (one work group per disturbance)
     m_disturbanceProgram.dispatchCompute({unsigned(disturbances.size()), 1, 1});
 
-    // Memory barrier to ensure writes are visible
-    Magnum::GL::Renderer::setMemoryBarrier(
-        Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
+    // Memory barrier to ensure writes are seen by the gpu
+    Magnum::GL::Renderer::setMemoryBarrier(Magnum::GL::Renderer::MemoryBarrier::ShaderImageAccess);
 }
 void ShallowWater::initEmpty() {
     ping = false;
